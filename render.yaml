@@ -4,8 +4,8 @@ services:
     name: icom-backend
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements-render.txt
-    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
     plan: free
     envVars:
       - key: PYTHON_VERSION
