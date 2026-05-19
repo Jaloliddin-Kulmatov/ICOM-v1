@@ -1,0 +1,255 @@
+"use client";
+
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Sparkles, X, Send, Minimize2, Bot, User, RefreshCw } from "lucide-react";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+const QUICK = [
+  "How do I extend my D-2 visa?",
+  "Open a Kakao Bank account",
+  "Find part-time jobs near my campus",
+  "Translate this Korean form for me",
+];
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
+async function sendToAI(message: string, history: Message[]): Promise<string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+  const url = `${API_BASE}/ai/chat`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      message,
+      history: history.map((m) => ({ role: m.role, content: m.content })),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "AI service error");
+  }
+  const data = await res.json();
+  return data.reply;
+}
+
+export default function ChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (open && !minimized) setTimeout(() => inputRef.current?.focus(), 100);
+  }, [open, minimized]);
+
+  const send = useCallback(async (text: string) => {
+    const msg = text.trim();
+    if (!msg || loading) return;
+    setInput("");
+    setError("");
+
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: msg };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
+    try {
+      const reply = await sendToAI(msg, messages);
+      setMessages((prev) => [...prev, { id: Date.now().toString() + "r", role: "assistant", content: reply }]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Something went wrong";
+      setError(
+        msg.toLowerCase().includes("fetch")
+          ? `Backend not running. In a terminal:\n\ncd ~/Downloads/icon-platform/backend\nsource .venv/bin/activate\npython run.py`
+          : msg
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, messages]);
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
+  };
+
+  return (
+    <>
+      {/* FAB */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open AI Assistant"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-[0_4px_24px_rgba(99,102,241,0.5)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.7)] hover:scale-105 active:scale-95 transition-all duration-200 animate-pulse-glow"
+        >
+          <Sparkles size={22} />
+        </button>
+      )}
+
+      {/* Panel */}
+      {open && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 w-[360px] rounded-2xl border border-border bg-card shadow-[0_16px_64px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 flex flex-col ${
+            minimized ? "h-14" : "h-[500px]"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground leading-tight">ICOM AI</p>
+                <p className="text-[10px] text-emerald-500 leading-tight">Your Korea guide</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button
+                  onClick={() => { setMessages([]); setError(""); }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title="Clear chat"
+                >
+                  <RefreshCw size={12} />
+                </button>
+              )}
+              <button
+                onClick={() => setMinimized(!minimized)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <Minimize2 size={13} />
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          {!minimized && (
+            <>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
+                {/* Welcome */}
+                {messages.length === 0 && (
+                  <div className="text-center py-4 animate-fade-in">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                      <Sparkles size={22} className="text-indigo-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground mb-1">Hi! I&apos;m ICOM AI</p>
+                    <p className="text-xs text-muted-foreground max-w-[220px] mx-auto leading-relaxed">
+                      Ask me anything about life in Korea — visa, banking, housing, jobs, or translation.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-1.5 justify-center">
+                      {QUICK.map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => send(q)}
+                          className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/8 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/15 transition-colors"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {messages.map((m) => (
+                  <div key={m.id} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                      m.role === "assistant"
+                        ? "bg-gradient-to-br from-indigo-500 to-violet-600"
+                        : "bg-muted border border-border"
+                    }`}>
+                      {m.role === "assistant"
+                        ? <Bot size={12} className="text-white" />
+                        : <User size={11} className="text-muted-foreground" />
+                      }
+                    </div>
+                    <div className={`max-w-[80%] rounded-2xl px-3 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                      m.role === "user"
+                        ? "bg-indigo-500 text-white rounded-tr-sm"
+                        : "bg-muted text-foreground rounded-tl-sm border border-border"
+                    }`}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+
+                {loading && (
+                  <div className="flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                      <Bot size={12} className="text-white" />
+                    </div>
+                    <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2.5 flex items-center gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce"
+                          style={{ animationDelay: `${i * 0.15}s` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex gap-2">
+                    <div className="flex-1 px-3 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 whitespace-pre-wrap leading-relaxed">
+                      {error}
+                    </div>
+                  </div>
+                )}
+
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Input */}
+              <div className="px-3 pb-3 pt-2 border-t border-border shrink-0">
+                <div className="flex items-center gap-2 bg-muted rounded-xl border border-border px-3 py-2 focus-within:border-indigo-500/40 transition-colors">
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder="Ask anything about Korea..."
+                    disabled={loading}
+                    className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  />
+                  <button
+                    onClick={() => send(input)}
+                    disabled={!input.trim() || loading}
+                    className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
+                </div>
+                <p className="text-[9px] text-muted-foreground/50 text-center mt-1.5">
+                  ICOM AI
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

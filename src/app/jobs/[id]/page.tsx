@@ -1,0 +1,228 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Navbar from "@/components/layout/navbar";
+import Link from "next/link";
+import {
+  ArrowLeft, MapPin, Clock, DollarSign, CheckCircle2,
+  Briefcase, Tag, Calendar, Loader2, AlertCircle, Building2, ExternalLink,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatRelativeTime } from "@/lib/utils";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
+const typeConfig: Record<string, { label: string; variant: "default" | "success" | "cyan" | "warning" | "violet" }> = {
+  "part-time":  { label: "Part-time",  variant: "default" },
+  internship:   { label: "Internship", variant: "cyan"    },
+  research:     { label: "Research",   variant: "violet"  },
+  "full-time":  { label: "Full-time",  variant: "success" },
+  remote:       { label: "Remote",     variant: "warning" },
+};
+
+interface JobDetail {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  type: string;
+  salary?: string;
+  description: string;
+  requirements: string[];
+  visa_compatible: string[];
+  deadline?: string;
+  tags: string[];
+  isNew?: boolean;
+  created_at: string;
+}
+
+export default function JobDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [job, setJob] = useState<JobDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`${API}/admin/jobs/${id}`)
+      .then(r => r.ok ? r.json() : Promise.reject("Not found"))
+      .then(d => setJob(d.job))
+      .catch(() => setError("Job not found or no longer available."))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="flex items-center justify-center pt-40">
+        <Loader2 size={24} className="animate-spin text-muted-foreground" />
+      </div>
+    </div>
+  );
+
+  if (error || !job) return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="max-w-2xl mx-auto px-4 pt-24 text-center">
+        <AlertCircle size={32} className="text-muted-foreground/40 mx-auto mb-3" />
+        <h1 className="text-lg font-bold text-foreground mb-2">Job Not Found</h1>
+        <p className="text-sm text-muted-foreground mb-8">This listing may have expired. Browse open positions on these platforms:</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-8">
+          {[
+            { name: "WorkNet Korea", sub: "Official Korean government job board", url: "https://www.work.go.kr/foreign/index.do", flag: "🇰🇷" },
+            { name: "Saramin (사람인)", sub: "Largest Korean job portal", url: "https://www.saramin.co.kr", flag: "💼" },
+            { name: "JobKorea", sub: "Popular for part-time & internships", url: "https://www.jobkorea.co.kr", flag: "🏢" },
+            { name: "Alba (알바몬)", sub: "Part-time jobs near campus", url: "https://www.albamon.com", flag: "⏰" },
+            { name: "Seek & Hired", sub: "English-friendly international jobs", url: "https://www.linkedin.com/jobs", flag: "🌍" },
+            { name: "EPIK / TaLK", sub: "Teaching English in Korean schools", url: "https://www.epik.go.kr", flag: "📚" },
+          ].map(site => (
+            <a key={site.name} href={site.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:bg-muted/50 transition-all group">
+              <span className="text-2xl">{site.flag}</span>
+              <div>
+                <p className="text-sm font-semibold text-foreground group-hover:text-indigo-500 transition-colors">{site.name}</p>
+                <p className="text-xs text-muted-foreground">{site.sub}</p>
+              </div>
+              <ExternalLink size={13} className="text-muted-foreground/40 group-hover:text-indigo-400 ml-auto shrink-0" />
+            </a>
+          ))}
+        </div>
+
+        <Link href="/jobs" className="text-sm px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors inline-block">
+          ← Back to ICOM Jobs
+        </Link>
+      </div>
+    </div>
+  );
+
+  const typeInfo = typeConfig[job.type] ?? { label: job.type, variant: "default" as const };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="pt-16">
+        <div className="border-b border-border bg-gradient-to-b from-indigo-500/5 to-transparent">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+            <Link href="/jobs" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
+              <ArrowLeft size={13} /> Back to Jobs
+            </Link>
+
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-border flex items-center justify-center text-xl font-bold text-foreground shrink-0">
+                {job.company[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-2xl font-bold text-foreground">{job.title}</h1>
+                  {job.isNew && <Badge variant="new" className="text-[10px]">New</Badge>}
+                </div>
+                <p className="text-sm text-muted-foreground font-medium mb-3">{job.company}</p>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><MapPin size={11} />{job.location}</span>
+                  {job.salary && <span className="flex items-center gap-1"><DollarSign size={11} />{job.salary}</span>}
+                  <span className="flex items-center gap-1"><Clock size={11} />{formatRelativeTime(job.created_at)}</span>
+                  {job.deadline && <span className="flex items-center gap-1 text-amber-500"><Calendar size={11} />Apply by {job.deadline}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* Main */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
+              {job.visa_compatible.map(v => (
+                <Badge key={v} variant="success" className="gap-1 text-xs">
+                  <CheckCircle2 size={10} /> {v}
+                </Badge>
+              ))}
+              {job.tags.map(t => (
+                <Badge key={t} variant="outline" className="text-xs border-border">
+                  <Tag size={9} className="mr-1" />{t}
+                </Badge>
+              ))}
+            </div>
+
+            {/* Description */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <Briefcase size={14} className="text-indigo-500" /> Job Description
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{job.description}</p>
+            </div>
+
+            {/* Requirements */}
+            {job.requirements.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-500" /> Requirements
+                </h2>
+                <ul className="space-y-2">
+                  {job.requirements.map((req, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
+                      <span className="text-emerald-500 mt-0.5 shrink-0">·</span>
+                      <span className="leading-relaxed">{req}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/5 to-transparent p-5">
+              <Button className="w-full mb-3" size="lg">
+                Apply Now
+              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Contact the employer directly or visit their website to apply.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Building2 size={12} className="text-muted-foreground" /> Job Details
+              </h3>
+              {[
+                { label: "Type",      value: typeInfo.label },
+                { label: "Location",  value: job.location },
+                { label: "Salary",    value: job.salary || "Not specified" },
+                { label: "Deadline",  value: job.deadline || "Open" },
+              ].map(row => (
+                <div key={row.label} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="text-foreground font-medium text-right max-w-[60%]">{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+              <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <CheckCircle2 size={12} className="text-emerald-500" /> Visa Compatible
+              </h3>
+              {job.visa_compatible.length > 0 ? job.visa_compatible.map(v => (
+                <div key={v} className="flex items-center gap-2 text-xs">
+                  <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
+                  <span className="text-foreground">{v} visa holders can apply</span>
+                </div>
+              )) : (
+                <p className="text-xs text-muted-foreground">Contact employer for visa info.</p>
+              )}
+            </div>
+
+            <Link href="/jobs" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
+              <ExternalLink size={11} /> Browse more jobs
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

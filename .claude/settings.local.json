@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:5001/api/health)",
+      "Read(//private/tmp/**)",
+      "Bash(npm run *)",
+      "Bash(echo \"Next PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s http://localhost:5001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"test\"}')",
+      "Bash(pkill -f \"python run.py\")",
+      "Bash(pkill -f \"flask\")",
+      "Bash(lsof -ti:5001)",
+      "Bash(xargs kill -9)",
+      "Bash(curl -s -I http://localhost:5001/api/auth/login -X OPTIONS -H \"Origin: http://localhost:3001\" -H \"Access-Control-Request-Method: POST\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(lsof -ti:3000)",
+      "Bash(lsof -ti:3001)",
+      "Bash(sqlite3 icon.db \"SELECT id, name, short_name, city, region FROM universities WHERE region LIKE '%jeolla%' OR region LIKE '%Jeolla%';\")",
+      "Bash(sqlite3 icon.db \".tables\")",
+      "Bash(sqlite3 instance/icon.db \".tables\")",
+      "Bash(sqlite3 icon.db \".schema\")",
+      "Bash(ls instance/)",
+      "Bash(npx tsc *)",
+      "Bash(xargs ls -la)",
+      "Bash(curl -s -X POST http://localhost:5001/api/ai/restaurants -H 'Content-Type: application/json' -d '{\"city\":\"Jeonju\",\"nationality\":\"Uzbekistan\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:5001/api/ambassador/apply -H 'Content-Type: application/json' -d '{\"name\":\"Test User\",\"email\":\"test@test.com\",\"university\":\"JBNU\",\"motivation\":\"test motivation\"}')",
+      "Bash(curl -s -X POST http://localhost:5001/api/auth/login -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' -d '{\"email\":\"jaloliddinqulmatov12@gmail.com\",\"password\":\"test\"}')",
+      "Bash(curl -s -I -X OPTIONS http://localhost:5001/api/auth/login -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: Content-Type,Authorization')",
+      "Bash(python3 seed_clubs.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('name:', d.get\\('name'\\)\\); print\\('node:', d.get\\('engines',{}\\).get\\('node','not set'\\)\\)\")",
+      "Bash(pip3 freeze *)",
+      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) or print\\(f'OK: {f}'\\) for f in ['app.py','run.py','models.py']]\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('backend/routes/ambassador.py'\\).read\\(\\)\\); print\\('backend OK'\\)\")"
+    ]
+  }
+}

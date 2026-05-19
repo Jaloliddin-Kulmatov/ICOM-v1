@@ -1,0 +1,140 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { ArrowRight, Sparkles, Star, Users, Briefcase, Globe, LayoutDashboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth";
+
+const avatarCountries = ["🇺🇿", "🇨🇳", "🇻🇳", "🇮🇳", "🇲🇳"];
+
+const highlights = [
+  { icon: Users,     text: "28,000+ students", sub: "active community" },
+  { icon: Briefcase, text: "1,200+ jobs",       sub: "visa-compatible" },
+  { icon: Globe,     text: "89 countries",      sub: "represented" },
+  { icon: Sparkles,  text: "AI assistant",      sub: "always available" },
+];
+
+export default function HeroSection() {
+  const { user } = useAuth();
+
+  return (
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden mesh-gradient">
+      <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
+      <div className="absolute top-1/4 left-1/3 w-[480px] h-[480px] rounded-full bg-indigo-600/8 dark:bg-indigo-600/12 blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[360px] h-[360px] rounded-full bg-violet-600/6 dark:bg-violet-600/10 blur-[80px] pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center py-24">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/8 text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-8 animate-fade-in">
+          <Sparkles size={12} />
+          Now serving international students at JBNU and across Korea
+        </div>
+
+        {/* Headline */}
+        <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-extrabold tracking-tight leading-[1.06] mb-6 animate-slide-up">
+          <span className="text-foreground">The home for</span>
+          <br />
+          <span className="gradient-text">international</span>
+          <br />
+          <span className="text-foreground">students in Korea</span>
+        </h1>
+
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          Community, jobs, visa guidance, housing, banking, and an AI assistant —
+          everything you need, in one place.
+        </p>
+
+        {/* CTAs — change based on auth state */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14 animate-slide-up" style={{ animationDelay: "0.15s" }}>
+          {user ? (
+            <>
+              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(99,102,241,0.4)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.6)]">
+                <Link href="/dashboard">
+                  <LayoutDashboard size={17} className="mr-2" />
+                  Go to Dashboard
+                  <ArrowRight size={17} className="ml-2" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="xl" asChild className="w-full sm:w-auto">
+                <Link href="/community">
+                  <Users size={16} className="mr-2 text-indigo-500" />
+                  Explore community
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(99,102,241,0.4)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.6)]">
+                <Link href="/register">
+                  Get started free
+                  <ArrowRight size={17} className="ml-2" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="xl" asChild className="w-full sm:w-auto">
+                <Link href="/community">
+                  <Users size={16} className="mr-2 text-indigo-500" />
+                  Explore community
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Social proof */}
+        <div className="flex items-center justify-center gap-3 mb-14 animate-fade-in" style={{ animationDelay: "0.25s" }}>
+          <div className="flex -space-x-2">
+            {avatarCountries.map((flag, i) => (
+              <div
+                key={i}
+                className="w-7 h-7 rounded-full ring-2 ring-background bg-gradient-to-br from-indigo-500/30 to-violet-500/30 flex items-center justify-center text-xs"
+                style={{ zIndex: 5 - i }}
+              >
+                {flag}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="text-foreground font-semibold">2,400+</span> students joined last month
+          </p>
+          <span className="text-muted-foreground/30 hidden sm:inline">·</span>
+          <div className="hidden sm:flex items-center gap-1">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={12} className="text-amber-400 fill-amber-400" />
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">4.9 / 5</span>
+          </div>
+        </div>
+
+        {/* Highlights grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+          {highlights.map(({ icon: Icon, text, sub }) => (
+            <div
+              key={text}
+              className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card/60 dark:bg-white/3 backdrop-blur-sm hover:border-indigo-500/30 hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                <Icon size={16} className="text-indigo-500 dark:text-indigo-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-foreground">{text}</p>
+                <p className="text-[11px] text-muted-foreground">{sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* JBNU badge */}
+        <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+          <Badge variant="violet" className="text-xs px-3 py-1 gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            Starting at Jeonbuk National University (JBNU) · Jeonju, Korea
+          </Badge>
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+    </section>
+  );
+}
