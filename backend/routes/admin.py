@@ -1,0 +1,189 @@
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+
+from app import db
+from models import User, Club, Job, ClubMembership
+
+admin_bp = Blueprint("admin", __name__)
+
+
+def _require_admin():
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    if user.role != "admin":
+        return None, (jsonify({"error": "Admin access required."}), 403)
+    return user, None
+
+
+# ── Clubs ────────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/clubs", methods=["GET"])
+def list_clubs():
+    # Optionally include membership info if JWT present
+    user_id = None
+    try:
+        verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+        if identity:
+            user_id = int(identity)
+    except Exception:
+        pass
+    clubs = Club.query.filter_by(is_active=True).order_by(Club.created_at.desc()).all()
+    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in clubs]}), 200
+
+
+@admin_bp.route("/clubs/<int:club_id>/join", methods=["POST"])
+@jwt_required()
+def join_club(club_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+    if not club.is_active:
+        return jsonify({"error": "Club not found."}), 404
+    existing = ClubMembership.query.filter_by(user_id=user_id, club_id=club_id).first()
+    if existing:
+        return jsonify({"error": "Already a member."}), 409
+    membership = ClubMembership(user_id=user_id, club_id=club_id)
+    db.session.add(membership)
+    db.session.commit()
+    return jsonify({"message": "Joined!", "club": club.to_dict(user_id=user_id)}), 200
+
+
+@admin_bp.route("/clubs/<int:club_id>/leave", methods=["POST"])
+@jwt_required()
+def leave_club(club_id):
+    user_id = int(get_jwt_identity())
+    membership = ClubMembership.query.filter_by(user_id=user_id, club_id=club_id).first()
+    if not membership:
+        return jsonify({"error": "Not a member."}), 404
+    db.session.delete(membership)
+    db.session.commit()
+    club = Club.query.get_or_404(club_id)
+    return jsonify({"message": "Left club.", "club": club.to_dict(user_id=user_id)}), 200
+
+
+@admin_bp.route("/clubs/my", methods=["GET"])
+@jwt_required()
+def my_clubs():
+    user_id = int(get_jwt_identity())
+    memberships = ClubMembership.query.filter_by(user_id=user_id).all()
+    clubs = [m.club for m in memberships if m.club.is_active]
+    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in clubs]}), 200
+
+
+@admin_bp.route("/clubs", methods=["POST"])
+@jwt_required()
+def create_club():
+    user, err = _require_admin()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Club name is required."}), 400
+
+    club = Club(
+        name=name,
+        description=(data.get("description") or "").strip(),
+        category=(data.get("category") or "social").strip(),
+        university=(data.get("university") or "JBNU").strip(),
+        contact=(data.get("contact") or "").strip(),
+        meeting_time=(data.get("meeting_time") or "").strip(),
+        location=(data.get("location") or "").strip(),
+        created_by=user.id,
+    )
+    db.session.add(club)
+    db.session.commit()
+    return jsonify({"club": club.to_dict()}), 201
+
+
+@admin_bp.route("/clubs/<int:club_id>", methods=["DELETE"])
+@jwt_required()
+def delete_club(club_id):
+    user, err = _require_admin()
+    if err:
+        return err
+
+    club = Club.query.get_or_404(club_id)
+    club.is_active = False
+    db.session.commit()
+    return jsonify({"message": "Club removed."}), 200
+
+
+# ── Jobs ─────────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/jobs", methods=["GET"])
+def list_jobs():
+    jobs = Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
+    return jsonify({"jobs": [j.to_dict() for j in jobs]}), 200
+
+
+@admin_bp.route("/jobs", methods=["POST"])
+@jwt_required()
+def create_job():
+    user, err = _require_admin()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    company = (data.get("company") or "").strip()
+    if not title or not company:
+        return jsonify({"error": "Title and company are required."}), 400
+
+    job = Job(
+        title=title,
+        company=company,
+        location=(data.get("location") or "").strip(),
+        job_type=(data.get("type") or "part-time").strip(),
+        salary=(data.get("salary") or "").strip(),
+        description=(data.get("description") or "").strip(),
+        requirements=(data.get("requirements") or "").strip(),
+        visa_compatible=(data.get("visa_compatible") or "D-2, D-4").strip(),
+        deadline=(data.get("deadline") or "").strip(),
+        tags=(data.get("tags") or "").strip(),
+        created_by=user.id,
+    )
+    db.session.add(job)
+    db.session.commit()
+    return jsonify({"job": job.to_dict()}), 201
+
+
+@admin_bp.route("/jobs/<int:job_id>", methods=["GET"])
+def get_job(job_id):
+    job = Job.query.filter_by(id=job_id, is_active=True).first_or_404()
+    return jsonify({"job": job.to_dict()}), 200
+
+
+@admin_bp.route("/jobs/<int:job_id>", methods=["DELETE"])
+@jwt_required()
+def delete_job(job_id):
+    user, err = _require_admin()
+    if err:
+        return err
+
+    job = Job.query.get_or_404(job_id)
+    job.is_active = False
+    db.session.commit()
+    return jsonify({"message": "Job removed."}), 200
+
+
+# ── Make user admin (dev helper) ─────────────────────────────────────────────
+
+@admin_bp.route("/make-admin", methods=["POST"])
+@jwt_required()
+def make_admin():
+    """Promote a user to admin by email. Only existing admins can do this."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    target = User.query.filter_by(email=email).first()
+    if not target:
+        return jsonify({"error": "User not found."}), 404
+
+    target.role = "admin"
+    db.session.commit()
+    return jsonify({"message": f"{target.name} is now an admin."}), 200
