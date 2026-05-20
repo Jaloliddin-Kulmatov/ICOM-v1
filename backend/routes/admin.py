@@ -187,3 +187,20 @@ def make_admin():
     target.role = "admin"
     db.session.commit()
     return jsonify({"message": f"{target.name} is now an admin."}), 200
+
+
+# ── List all users ────────────────────────────────────────────────────────────
+
+@admin_bp.route("/users", methods=["GET"])
+@jwt_required()
+def list_users():
+    """Return all registered users. Admin only."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    users = User.query.order_by(User.created_at.desc()).all()
+    return jsonify({
+        "total": len(users),
+        "users": [u.to_dict() for u in users],
+    }), 200

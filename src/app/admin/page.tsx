@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth";
-import { ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2, AlertCircle, Star, CheckCircle2, XCircle } from "lucide-react";
+import { ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2, AlertCircle, Star, CheckCircle2, XCircle, GraduationCap, Globe, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -37,6 +37,11 @@ interface Job {
   type: string; salary: string; deadline: string;
 }
 
+interface AppUser {
+  id: number; name: string; email: string; university: string;
+  country: string; visa_type: string; role: string; created_at: string;
+}
+
 interface AmbassadorApp {
   id: number; name: string; email: string; university: string;
   department: string; year: string; country: string; visa_type: string;
@@ -49,10 +54,12 @@ const JOB_TYPES = ["part-time", "internship", "research", "full-time", "voluntee
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"clubs" | "jobs" | "ambassadors">("clubs");
+  const [tab, setTab] = useState<"clubs" | "jobs" | "ambassadors" | "users">("clubs");
   const [clubs, setClubs] = useState<Club[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [ambassadors, setAmbassadors] = useState<AmbassadorApp[]>([]);
+  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -69,14 +76,16 @@ export default function AdminPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [cd, jd, ad] = await Promise.all([
+      const [cd, jd, ad, ud] = await Promise.all([
         apiCall("GET", "/admin/clubs"),
         apiCall("GET", "/admin/jobs"),
         apiCall("GET", "/ambassador/applications"),
+        apiCall("GET", "/admin/users"),
       ]);
       setClubs(cd.clubs || []);
       setJobs(jd.jobs || []);
       setAmbassadors(ad.applications || []);
+      setAppUsers(ud.users || []);
     } catch {
       // ignore on load
     }
@@ -163,8 +172,13 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/8 mb-6 w-fit">
-          {([["clubs", Users, "Clubs"], ["jobs", Briefcase, "Jobs"], ["ambassadors", Star, `Ambassadors${ambassadors.filter(a=>a.status==="pending").length ? ` (${ambassadors.filter(a=>a.status==="pending").length})` : ""}`]] as const).map(([id, Icon, label]) => (
+        <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-white/5 border border-white/8 mb-6 w-fit">
+          {([
+            ["clubs", Users, "Clubs"],
+            ["jobs", Briefcase, "Jobs"],
+            ["ambassadors", Star, `Ambassadors${ambassadors.filter(a=>a.status==="pending").length ? ` (${ambassadors.filter(a=>a.status==="pending").length})` : ""}`],
+            ["users", Users, `Users (${appUsers.length})`],
+          ] as const).map(([id, Icon, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -316,6 +330,85 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* USERS TAB */}
+        {tab === "users" && (
+          <div className="space-y-4">
+            {/* Summary bar */}
+            <div className="flex items-center justify-between p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-indigo-400" />
+                <span className="text-sm font-semibold text-foreground">
+                  {appUsers.length} registered user{appUsers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {/* Search */}
+              <input
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/50 transition-colors w-56"
+              />
+            </div>
+
+            {/* User list */}
+            <div className="space-y-2">
+              {appUsers
+                .filter(u =>
+                  !userSearch ||
+                  u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                  u.email.toLowerCase().includes(userSearch.toLowerCase())
+                )
+                .map((u, i) => (
+                  <div key={u.id} className="flex items-center gap-4 p-4 rounded-xl border border-white/8 bg-white/3 hover:bg-white/5 transition-colors">
+                    {/* Index + avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/40 to-violet-500/40 flex items-center justify-center text-xs font-bold text-indigo-300 shrink-0">
+                      {i + 1}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{u.name}</p>
+                        {u.role === "admin" && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20 font-bold">admin</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                    {/* Meta */}
+                    <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+                      {u.university && (
+                        <div className="flex items-center gap-1">
+                          <GraduationCap size={11} />
+                          <span>{u.university}</span>
+                        </div>
+                      )}
+                      {u.country && (
+                        <div className="flex items-center gap-1">
+                          <Globe size={11} />
+                          <span>{u.country}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-muted-foreground/50">
+                        <Calendar size={11} />
+                        <span>{new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {appUsers.length > 0 && appUsers.filter(u =>
+                !userSearch ||
+                u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                u.email.toLowerCase().includes(userSearch.toLowerCase())
+              ).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">No users match your search.</p>
+              )}
+              {appUsers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">No users found.</p>
+              )}
+            </div>
           </div>
         )}
 
