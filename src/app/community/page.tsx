@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Search, Users, Globe, MapPin, Clock, Phone, CheckCircle2,
   LogIn, Loader2, Plus, X, Lock, ChevronDown, ChevronUp,
-  UserCheck, Link as LinkIcon, Settings, MessageSquare,
+  Link as LinkIcon, Settings, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
@@ -472,8 +472,6 @@ export default function CommunityPage() {
 
   const tabClubs = clubs.filter(c => (c.club_type || "club") === activeTab);
   const categories = ["all", ...Array.from(new Set(tabClubs.map(c => c.category)))];
-  const myClubs = clubs.filter(c => c.my_status === "approved" || c.is_creator);
-
   const filtered = tabClubs.filter(c => {
     const matchCat = activeCategory === "all" || c.category === activeCategory;
     const matchSearch = !search ||
@@ -596,23 +594,6 @@ export default function CommunityPage() {
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-4">
-                {/* My clubs */}
-                {user && myClubs.length > 0 && (
-                  <div className="p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
-                    <h2 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
-                      <UserCheck size={13} className="text-indigo-400" /> My Clubs ({myClubs.length})
-                    </h2>
-                    <div className="space-y-1.5">
-                      {myClubs.map(c => (
-                        <div key={c.id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-                          <span className="truncate">{c.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Categories */}
                 <div>
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Category</h2>
