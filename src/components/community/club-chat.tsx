@@ -48,12 +48,26 @@ export default function ClubChat({ club, onClose }: { club: Club; onClose: () =>
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
-  // Save last-read message ID to localStorage whenever messages update (mark as read while viewing)
+  // Save last-read message ID to localStorage when chat is closed/unmounted.
+  // (Not on every message update — otherwise the badge gets cleared instantly
+  // while the chat is still open, before the user notices new messages.)
   useEffect(() => {
-    if (lastIdRef.current > 0) {
-      localStorage.setItem(`chat_lid_${club.id}`, String(lastIdRef.current));
+    return () => {
+      if (lastIdRef.current > 0) {
+        localStorage.setItem(`chat_lid_${club.id}`, String(lastIdRef.current));
+      }
+    };
+  }, [club.id]);
+
+  // Also save when the user sends a message — clear signal that they've read up to that point
+  useEffect(() => {
+    if (lastIdRef.current > 0 && messages.length > 0) {
+      const myLastSent = [...messages].reverse().find(m => m.user_id === user?.id);
+      if (myLastSent) {
+        localStorage.setItem(`chat_lid_${club.id}`, String(lastIdRef.current));
+      }
     }
-  }, [messages, club.id]);
+  }, [messages, club.id, user?.id]);
 
   // Scroll to bottom on new messages
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
