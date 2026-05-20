@@ -1,3 +1,6 @@
+![Uploading Screenshot 2026-05-20 at 6.34.08 PM.png…]()
+
+
 # ICOM — International Community in Korea
 
 > The all-in-one platform for international students living and studying in Korea.
