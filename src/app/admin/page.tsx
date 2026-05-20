@@ -55,6 +55,32 @@ interface AmbassadorApp {
 const CLUB_CATEGORIES = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
 const JOB_TYPES = ["part-time", "internship", "research", "full-time", "volunteer"];
 
+// Avatar palette — 12 distinct colour pairs [bg, text]
+const AVATAR_COLORS = [
+  ["bg-indigo-500",  "text-white"],
+  ["bg-violet-500",  "text-white"],
+  ["bg-emerald-500", "text-white"],
+  ["bg-cyan-500",    "text-white"],
+  ["bg-rose-500",    "text-white"],
+  ["bg-amber-500",   "text-white"],
+  ["bg-sky-500",     "text-white"],
+  ["bg-fuchsia-500", "text-white"],
+  ["bg-teal-500",    "text-white"],
+  ["bg-orange-500",  "text-white"],
+  ["bg-lime-500",    "text-gray-900"],
+  ["bg-pink-500",    "text-white"],
+];
+
+function avatarColor(id: number) {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -506,14 +532,16 @@ export default function AdminPage() {
 
             {/* User list */}
             <div className="space-y-2">
-              {filteredUsers.map((u, i) => (
+              {filteredUsers.map((u, i) => {
+                const [bg, fg] = avatarColor(u.id);
+                return (
                 <div
                   key={u.id}
                   className="flex items-start gap-3 p-4 rounded-xl border border-white/8 bg-white/3 hover:bg-white/5 transition-colors"
                 >
-                  {/* Number badge */}
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/40 to-violet-500/40 flex items-center justify-center text-[11px] font-bold text-indigo-300 shrink-0 mt-0.5">
-                    {i + 1}
+                  {/* Coloured initial avatar */}
+                  <div className={`w-9 h-9 rounded-full ${bg} ${fg} flex items-center justify-center text-sm font-bold shrink-0 mt-0.5 select-none`}>
+                    {initials(u.name)}
                   </div>
 
                   {/* Main info */}
@@ -549,7 +577,8 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {filteredUsers.length === 0 && userSearch && (
                 <p className="text-sm text-muted-foreground text-center py-8">
