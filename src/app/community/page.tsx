@@ -387,6 +387,7 @@ export default function CommunityPage() {
   const [chatClub, setChatClub] = useState<Club | null>(null);
   const [activeTabMain, setActiveTabMain] = useState<"club" | "community" | "news">("club");
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+  const [newsUnread, setNewsUnread] = useState(0);
 
   const checkUnread = useCallback(async (approvedClubs: Club[]) => {
     if (!approvedClubs.length) return;
@@ -423,6 +424,38 @@ export default function CommunityPage() {
   }, [checkUnread]);
 
   useEffect(() => { fetchClubs(); }, [fetchClubs]);
+
+  // Poll chat unread every 20 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      const approved = clubs.filter(c => c.my_status === "approved" || c.is_creator);
+      if (approved.length > 0) checkUnread(approved);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [clubs, user, checkUnread]);
+
+  // Check news unread on mount and every 30s
+  const checkNewsUnread = useCallback(async () => {
+    if (!user) return;
+    const lastSeenId = parseInt(localStorage.getItem("news_last_post_id") || "0", 10);
+    try {
+      const res = await fetch(`${API}/posts`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) return;
+      const d = await res.json();
+      const posts: { id: number }[] = d.posts || [];
+      const count = posts.filter(p => p.id > lastSeenId).length;
+      setNewsUnread(count);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  useEffect(() => {
+    checkNewsUnread();
+    const interval = setInterval(checkNewsUnread, 30000);
+    return () => clearInterval(interval);
+  }, [checkNewsUnread]);
 
   const handleAction = async (club: Club, action: "request" | "leave") => {
     const path = action === "request" ? `/clubs/${club.id}/request` : `/clubs/${club.id}/leave`;
@@ -494,21 +527,53 @@ export default function CommunityPage() {
               { key: "club",      label: "Clubs" },
               { key: "community", label: "Community" },
               { key: "news",      label: "News" },
-            ] as const).map(tab => (
-              <button key={tab.key} onClick={() => { if (tab.key !== "news") setActiveTab(tab.key as "club" | "community"); setActiveCategory("all"); setActiveTabMain(tab.key); }}
-                className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-                  activeTabMain === tab.key
-                    ? "bg-background shadow-sm text-foreground border border-border"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}>
-                {tab.label}
-                {tab.key !== "news" && (
-                  <span className="ml-1.5 text-[10px] text-muted-foreground">
-                    ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
-                  </span>
-                )}
-              </button>
-            ))}
+            ] as const).map(tab => {
+              // Count total unread chat messages across all clubs for the chat tabs
+              const totalChatUnread = tab.key !== "news"
+                ? clubs.filter(c => (c.club_type || "club") === tab.key).reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0)
+                : 0;
+              return (
+                <button key={tab.key}
+                  onClick={() => {
+                    if (tab.key !== "news") setActiveTab(tab.key as "club" | "community");
+                    setActiveCategory("all");
+                    setActiveTabMain(tab.key);
+                    if (tab.key === "news") {
+                      // Mark news as read — save latest seen ID
+                      fetch(`${API}/posts`, { headers: { Authorization: `Bearer ${getToken()}` } })
+                        .then(r => r.json())
+                        .then(d => {
+                          const posts: { id: number }[] = d.posts || [];
+                          if (posts.length > 0) localStorage.setItem("news_last_post_id", String(Math.max(...posts.map(p => p.id))));
+                        }).catch(() => {});
+                      setNewsUnread(0);
+                    }
+                  }}
+                  className={`relative px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+                    activeTabMain === tab.key
+                      ? "bg-background shadow-sm text-foreground border border-border"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}>
+                  {tab.label}
+                  {tab.key !== "news" && (
+                    <span className="ml-1.5 text-[10px] text-muted-foreground">
+                      ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
+                    </span>
+                  )}
+                  {/* Unread badge */}
+                  {tab.key === "news" && newsUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                      {newsUnread > 9 ? "9+" : newsUnread}
+                    </span>
+                  )}
+                  {tab.key !== "news" && totalChatUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                      {totalChatUnread > 9 ? "9+" : totalChatUnread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* News tab */}
