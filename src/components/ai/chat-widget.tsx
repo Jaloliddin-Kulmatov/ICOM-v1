@@ -56,32 +56,56 @@ export default function ChatWidget() {
   const dragging = useRef(false);
   const dragOffset = useRef({ dx: 0, dy: 0 });
   const didDrag = useRef(false);
+  const posRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Keep posRef in sync
+  useEffect(() => { posRef.current = pos; }, [pos]);
 
   // Set initial position bottom-right after mount
   useEffect(() => {
-    setPos({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
+    const p = { x: window.innerWidth - 80, y: window.innerHeight - 80 };
+    setPos(p);
+    posRef.current = p;
   }, []);
 
-  // Global mouse move / up listeners for dragging
+  // Mouse + Touch move/up listeners
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!dragging.current || !pos) return;
+    const move = (cx: number, cy: number) => {
+      if (!dragging.current) return;
       didDrag.current = true;
-      setPos({ x: e.clientX - dragOffset.current.dx, y: e.clientY - dragOffset.current.dy });
+      const newPos = {
+        x: Math.max(28, Math.min(window.innerWidth - 28,  cx - dragOffset.current.dx)),
+        y: Math.max(28, Math.min(window.innerHeight - 28, cy - dragOffset.current.dy)),
+      };
+      posRef.current = newPos;
+      setPos(newPos);
     };
-    const onUp = () => { dragging.current = false; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, [pos]);
+    const end = () => { dragging.current = false; };
 
-  const startDrag = (e: React.MouseEvent) => {
-    if (!pos) return;
+    const onMouseMove = (e: MouseEvent) => move(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => { const t = e.touches[0]; move(t.clientX, t.clientY); };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", end);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", end);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", end);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", end);
+    };
+  }, []);
+
+  const startDrag = (cx: number, cy: number) => {
+    if (!posRef.current) return;
     dragging.current = true;
     didDrag.current = false;
-    dragOffset.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
-    e.preventDefault();
+    dragOffset.current = { dx: cx - posRef.current.x, dy: cy - posRef.current.y };
   };
+
+  const onMouseDown = (e: React.MouseEvent) => { startDrag(e.clientX, e.clientY); e.preventDefault(); };
+  const onTouchStart = (e: React.TouchEvent) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -125,7 +149,8 @@ export default function ChatWidget() {
       {/* FAB */}
       {!open && pos && (
         <button
-          onMouseDown={startDrag}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           onClick={() => { if (!didDrag.current) setOpen(true); }}
           aria-label="Open AI Assistant"
           style={{ left: pos.x, top: pos.y, transform: "translate(-50%, -50%)" }}
