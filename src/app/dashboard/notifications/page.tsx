@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
   Bell, MessageSquare, Newspaper, CheckCheck,
-  Loader2, ExternalLink, RefreshCw,
+  Loader2, ExternalLink, RefreshCw, UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -41,7 +41,7 @@ interface ChatMessage {
 
 interface Notif {
   id: string;
-  type: "chat" | "news";
+  type: "chat" | "news" | "approval";
   clubId?: number;
   clubName?: string;
   clubType?: "club" | "community";
@@ -85,6 +85,27 @@ export default function NotificationsPage() {
       const myClubs: Club[] = (clubsData.clubs || []).filter(
         (c: Club) => c.my_status === "approved" || c.is_creator
       );
+
+      // 1b. Detect newly-approved memberships (not yet acknowledged)
+      const approvalNotifs: Notif[] = [];
+      const seenStr = localStorage.getItem("seen_approved_clubs") || "[]";
+      let seen: number[] = [];
+      try { seen = JSON.parse(seenStr); } catch { seen = []; }
+      const newlyApproved = myClubs.filter(
+        (c) => c.my_status === "approved" && !c.is_creator && !seen.includes(c.id)
+      );
+      for (const club of newlyApproved) {
+        approvalNotifs.push({
+          id: `approval_${club.id}`,
+          type: "approval",
+          clubId: club.id,
+          clubName: club.name,
+          clubType: club.club_type,
+          count: 1,
+          previewText: `Your request to join ${club.name} was accepted — welcome to the ${club.club_type}! 🎉`,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       // 2. Check chat unread per club
       const chatNotifs: Notif[] = [];
@@ -149,7 +170,7 @@ export default function NotificationsPage() {
       } catch { /* ignore */ }
 
       // Sort newest first
-      const all = [...chatNotifs, ...newsNotifs].sort(
+      const all = [...approvalNotifs, ...chatNotifs, ...newsNotifs].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
       setNotifs(all);
@@ -163,9 +184,18 @@ export default function NotificationsPage() {
   useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
 
   // Mark a single notification as read
+  // Helper: add a club ID to the "seen approved" list so the notification doesn't reappear
+  const markApprovalSeen = (clubId: number) => {
+    const seenStr = localStorage.getItem("seen_approved_clubs") || "[]";
+    let seen: number[] = [];
+    try { seen = JSON.parse(seenStr); } catch { seen = []; }
+    if (!seen.includes(clubId)) {
+      localStorage.setItem("seen_approved_clubs", JSON.stringify([...seen, clubId]));
+    }
+  };
+
   const dismiss = async (notif: Notif) => {
     if (notif.type === "news") {
-      // Fetch latest post IDs and save to localStorage
       try {
         const res = await fetch(`${API}/posts`, {
           headers: { Authorization: `Bearer ${getToken()}` },
@@ -179,15 +209,15 @@ export default function NotificationsPage() {
           );
         }
       } catch { /* ignore */ }
+    } else if (notif.type === "approval" && notif.clubId !== undefined) {
+      markApprovalSeen(notif.clubId);
     }
-    // For chat: we let the user click "View" to open the chat — actual read marking
-    // happens in ClubChat when they open it. Just remove from this list.
+    // For chat: actual read marking happens when the user opens the chat.
     setNotifs((prev) => prev.filter((n) => n.id !== notif.id));
   };
 
   // Mark all as read
   const dismissAll = async () => {
-    // Mark news read
     try {
       const res = await fetch(`${API}/posts`, {
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -201,6 +231,10 @@ export default function NotificationsPage() {
         );
       }
     } catch { /* ignore */ }
+    // Mark all currently-shown approvals as seen
+    notifs
+      .filter((n) => n.type === "approval" && n.clubId !== undefined)
+      .forEach((n) => markApprovalSeen(n.clubId!));
     setNotifs([]);
   };
 
@@ -289,13 +323,17 @@ export default function NotificationsPage() {
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
                     notif.type === "chat"
                       ? "bg-indigo-500/15"
-                      : "bg-violet-500/15"
+                      : notif.type === "news"
+                      ? "bg-violet-500/15"
+                      : "bg-emerald-500/15"
                   }`}
                 >
                   {notif.type === "chat" ? (
                     <MessageSquare size={16} className="text-indigo-400" />
-                  ) : (
+                  ) : notif.type === "news" ? (
                     <Newspaper size={16} className="text-violet-400" />
+                  ) : (
+                    <UserCheck size={16} className="text-emerald-400" />
                   )}
                 </div>
 
@@ -303,18 +341,22 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <p className="text-sm font-semibold text-foreground">
-                      {notif.type === "chat" ? notif.clubName : "News Feed"}
+                      {notif.type === "chat" ? notif.clubName
+                       : notif.type === "approval" ? "Join request accepted"
+                       : "News Feed"}
                     </p>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-tight ${
                         notif.type === "chat"
                           ? "bg-indigo-500/15 text-indigo-400"
-                          : "bg-violet-500/15 text-violet-400"
+                          : notif.type === "news"
+                          ? "bg-violet-500/15 text-violet-400"
+                          : "bg-emerald-500/15 text-emerald-400"
                       }`}
                     >
-                      {notif.count} new
+                      {notif.type === "approval" ? "accepted ✓" : `${notif.count} new`}
                     </span>
-                    {notif.type === "chat" && notif.clubType && (
+                    {(notif.type === "chat" || notif.type === "approval") && notif.clubType && (
                       <span className="text-[10px] text-muted-foreground/50 capitalize">
                         {notif.clubType}
                       </span>
@@ -324,7 +366,7 @@ export default function NotificationsPage() {
                     {notif.previewText}
                   </p>
                   <p className="text-[10px] text-muted-foreground/40 mt-1.5">
-                    {timeAgo(notif.timestamp)}
+                    {notif.type === "approval" ? "just now" : timeAgo(notif.timestamp)}
                   </p>
                 </div>
 

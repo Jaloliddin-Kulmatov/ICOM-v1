@@ -431,6 +431,34 @@ export default function CommunityPage() {
 
   useEffect(() => { fetchClubs(); }, [fetchClubs]);
 
+  // Re-fetch clubs every 30s so newly-approved memberships are picked up
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(fetchClubs, 30000);
+    return () => clearInterval(interval);
+  }, [user, fetchClubs]);
+
+  // Detect newly-approved join requests and show toast
+  useEffect(() => {
+    if (!user || clubs.length === 0) return;
+    const seenStr = localStorage.getItem("seen_approved_clubs") || "[]";
+    let seen: number[] = [];
+    try { seen = JSON.parse(seenStr); } catch { seen = []; }
+    const newlyApproved = clubs.filter(
+      c => c.my_status === "approved" && !c.is_creator && !seen.includes(c.id)
+    );
+    if (newlyApproved.length > 0) {
+      const first = newlyApproved[0];
+      setToast({
+        msg: `🎉 You're now a member of ${first.name}!`,
+        clubId: first.id,
+      });
+      // Mark all as seen so the toast doesn't keep firing
+      const updated = [...seen, ...newlyApproved.map(c => c.id)];
+      localStorage.setItem("seen_approved_clubs", JSON.stringify(updated));
+    }
+  }, [clubs, user]);
+
   // Poll chat unread every 8 seconds
   useEffect(() => {
     if (!user) return;

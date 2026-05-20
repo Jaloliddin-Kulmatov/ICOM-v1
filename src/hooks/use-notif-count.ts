@@ -30,12 +30,23 @@ export function useNotifCount(userId: number | undefined): number {
         });
         if (!clubsRes.ok) return;
         const clubsData = await clubsRes.json();
-        const myClubs = (clubsData.clubs || []).filter(
+        const allMyClubs = (clubsData.clubs || []).filter(
           (c: { my_status: string; is_creator: boolean }) =>
             c.my_status === "approved" || c.is_creator
         );
+        const myClubs = allMyClubs;
 
         let total = 0;
+
+        // Newly-approved join requests — count once per club until acknowledged
+        const seenStr = localStorage.getItem("seen_approved_clubs") || "[]";
+        let seen: number[] = [];
+        try { seen = JSON.parse(seenStr); } catch { seen = []; }
+        const newlyApproved = allMyClubs.filter(
+          (c: { id: number; my_status: string; is_creator: boolean }) =>
+            c.my_status === "approved" && !c.is_creator && !seen.includes(c.id)
+        );
+        total += newlyApproved.length;
 
         // Chat unreads — only messages from other people
         await Promise.all(
