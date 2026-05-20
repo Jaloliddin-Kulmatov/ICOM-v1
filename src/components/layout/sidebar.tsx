@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -27,6 +27,84 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
+function getToken() {
+  return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+}
+
+function useNotifCount(userId: number | undefined) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let cancelled = false;
+
+    const check = async () => {
+      const token = getToken();
+      if (!token) return;
+      try {
+        // Chat unreads
+        const clubsRes = await fetch(`${API}/clubs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!clubsRes.ok) return;
+        const clubsData = await clubsRes.json();
+        const myClubs = (clubsData.clubs || []).filter(
+          (c: { my_status: string; is_creator: boolean }) =>
+            c.my_status === "approved" || c.is_creator
+        );
+
+        let total = 0;
+
+        await Promise.all(
+          myClubs.map(async (club: { id: number }) => {
+            const lastId = parseInt(
+              localStorage.getItem(`chat_lid_${club.id}`) || "0",
+              10
+            );
+            try {
+              const r = await fetch(`${API}/clubs/${club.id}/chat?after=${lastId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!r.ok) return;
+              const d = await r.json();
+              if ((d.messages || []).length > 0) total += 1;
+            } catch { /* ignore */ }
+          })
+        );
+
+        // News unreads
+        const lastSeenId = parseInt(
+          localStorage.getItem("news_last_post_id") || "0",
+          10
+        );
+        try {
+          const r = await fetch(`${API}/posts`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (r.ok) {
+            const d = await r.json();
+            const newPosts = (d.posts || []).filter(
+              (p: { id: number }) => p.id > lastSeenId
+            );
+            if (newPosts.length > 0) total += 1;
+          }
+        } catch { /* ignore */ }
+
+        if (!cancelled) setCount(total);
+      } catch { /* ignore */ }
+    };
+
+    check();
+    const interval = setInterval(check, 60000); // re-check every 60s
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [userId]);
+
+  return count;
+}
 
 const sidebarSections = [
   {
@@ -70,6 +148,7 @@ export default function Sidebar() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
+  const notifCount = useNotifCount(user?.id);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -109,40 +188,55 @@ export default function Sidebar() {
               </p>
             )}
             <div className="space-y-0.5">
-              {section.links.map(({ href, icon: Icon, label, badge }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  title={collapsed ? label : undefined}
-                  className={cn(
-                    "flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative",
-                    isActive(href)
-                      ? "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-indigo-500 dark:before:bg-indigo-400"
-                      : "text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-foreground hover:bg-blue-100 dark:hover:bg-white/5"
-                  )}
-                >
-                  <Icon
-                    size={17}
+              {section.links.map(({ href, icon: Icon, label, badge }) => {
+                const isNotif = href === "/dashboard/notifications";
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    title={collapsed ? label : undefined}
                     className={cn(
-                      "shrink-0 transition-transform group-hover:scale-110",
-                      isActive(href) ? "text-indigo-600 dark:text-indigo-400" : ""
+                      "flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative",
+                      isActive(href)
+                        ? "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-indigo-500 dark:before:bg-indigo-400"
+                        : "text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-foreground hover:bg-blue-100 dark:hover:bg-white/5"
                     )}
-                  />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 truncate">{label}</span>
-                      {badge && (
-                        <Badge
-                          variant={badge === "AI" ? "violet" : "default"}
-                          className="text-[10px] px-1.5 py-0 h-4"
-                        >
-                          {badge}
-                        </Badge>
+                  >
+                    <span className="relative shrink-0">
+                      <Icon
+                        size={17}
+                        className={cn(
+                          "transition-transform group-hover:scale-110",
+                          isActive(href) ? "text-indigo-600 dark:text-indigo-400" : ""
+                        )}
+                      />
+                      {isNotif && notifCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5 leading-none">
+                          {notifCount > 9 ? "9+" : notifCount}
+                        </span>
                       )}
-                    </>
-                  )}
-                </Link>
-              ))}
+                    </span>
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 truncate">{label}</span>
+                        {badge && (
+                          <Badge
+                            variant={badge === "AI" ? "violet" : "default"}
+                            className="text-[10px] px-1.5 py-0 h-4"
+                          >
+                            {badge}
+                          </Badge>
+                        )}
+                        {isNotif && notifCount > 0 && (
+                          <span className="min-w-[18px] h-4.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none">
+                            {notifCount > 9 ? "9+" : notifCount}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ))}
