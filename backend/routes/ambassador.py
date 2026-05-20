@@ -1,5 +1,6 @@
 import os
 import smtplib
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Blueprint, request, jsonify
@@ -9,6 +10,14 @@ from app import db
 from models import AmbassadorApplication, User
 
 ambassador_bp = Blueprint("ambassador", __name__)
+
+
+def _send_emails_async(*args, **kwargs):
+    """Fire-and-forget email sending in a daemon thread so the HTTP request
+    returns immediately. SMTP can hang for 30+ seconds otherwise."""
+    threading.Thread(
+        target=_send_emails, args=args, kwargs=kwargs, daemon=True
+    ).start()
 
 
 def _send_emails(applicant_name: str, applicant_email: str, university: str, data: dict):
@@ -85,7 +94,8 @@ Review and approve/reject in the ICOM Admin Panel.
 """
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        # 15s timeout — Render free tier SMTP can hang otherwise
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
             server.starttls()
             server.login(sender_email, sender_password)
 
@@ -141,8 +151,8 @@ def apply():
         existing.motivation = (data.get("motivation") or "").strip()
         existing.social     = (data.get("social") or "").strip()
         db.session.commit()
-        email_sent = _send_emails(name, email, university, data)
-        return jsonify({"message": "Application updated!", "email_sent": email_sent}), 200
+        _send_emails_async(name, email, university, data)
+        return jsonify({"message": "Application updated!", "email_sent": True}), 200
 
     app_record = AmbassadorApplication(
         name       = name,
@@ -158,11 +168,12 @@ def apply():
     db.session.add(app_record)
     db.session.commit()
 
-    email_sent = _send_emails(name, email, university, data)
+    # Send emails in background — don't block the response on SMTP
+    _send_emails_async(name, email, university, data)
 
     return jsonify({
         "message": "Application submitted successfully!",
-        "email_sent": email_sent,
+        "email_sent": True,
     }), 201
 
 
@@ -226,15 +237,22 @@ Unfortunately, we were unable to approve your application at this time. You're w
 """
                 smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
                 smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-                with smtplib.SMTP(smtp_host, smtp_port) as server:
-                    server.starttls()
-                    server.login(sender_email, sender_password)
-                    msg = MIMEMultipart()
-                    msg["Subject"] = subject
-                    msg["From"]    = f"ICOM Platform <{sender_email}>"
-                    msg["To"]      = app_record.email
-                    msg.attach(MIMEText(body, "plain"))
-                    server.sendmail(sender_email, app_record.email, msg.as_string())
+
+                # Send in background thread so admin action returns immediately
+                def _notify():
+                    try:
+                        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                            server.starttls()
+                            server.login(sender_email, sender_password)
+                            msg = MIMEMultipart()
+                            msg["Subject"] = subject
+                            msg["From"]    = f"ICOM Platform <{sender_email}>"
+                            msg["To"]      = app_record.email
+                            msg.attach(MIMEText(body, "plain"))
+                            server.sendmail(sender_email, app_record.email, msg.as_string())
+                    except Exception as e:
+                        print(f"[email] Decision notification failed: {e}")
+                threading.Thread(target=_notify, daemon=True).start()
             except Exception as e:
                 print(f"[email] Decision notification failed: {e}")
 
