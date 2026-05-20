@@ -425,14 +425,22 @@ export default function CommunityPage() {
 
   useEffect(() => { fetchClubs(); }, [fetchClubs]);
 
-  // Poll chat unread every 20 seconds
+  // Poll chat unread every 8 seconds
   useEffect(() => {
     if (!user) return;
+    const approved = clubs.filter(c => c.my_status === "approved" || c.is_creator);
     const interval = setInterval(() => {
-      const approved = clubs.filter(c => c.my_status === "approved" || c.is_creator);
       if (approved.length > 0) checkUnread(approved);
-    }, 20000);
-    return () => clearInterval(interval);
+    }, 8000);
+    // Also re-check when the tab becomes visible again
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && approved.length > 0) checkUnread(approved);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [clubs, user, checkUnread]);
 
   // Check news unread on mount and every 30s

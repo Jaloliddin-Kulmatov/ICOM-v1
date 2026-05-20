@@ -48,14 +48,12 @@ export default function ClubChat({ club, onClose }: { club: Club; onClose: () =>
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
-  // Save last-read message ID to localStorage when chat is closed/unmounted
+  // Save last-read message ID to localStorage whenever messages update (mark as read while viewing)
   useEffect(() => {
-    return () => {
-      if (lastIdRef.current > 0) {
-        localStorage.setItem(`chat_lid_${club.id}`, String(lastIdRef.current));
-      }
-    };
-  }, [club.id]);
+    if (lastIdRef.current > 0) {
+      localStorage.setItem(`chat_lid_${club.id}`, String(lastIdRef.current));
+    }
+  }, [messages, club.id]);
 
   // Scroll to bottom on new messages
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);

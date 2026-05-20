@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Send, Trash2, Globe, Building2, Users, ChevronDown,
-  Loader2, MessageSquare, Lock, LogIn,
+  Loader2, MessageSquare, Lock, LogIn, CornerDownRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
@@ -37,12 +37,14 @@ function PostAsIcon({ type }: { type: string }) {
 
 // ── Inline Comments ───────────────────────────────────────────────
 
-function PostComments({ postId, initialCount }: { postId: number; initialCount: number }) {
+function PostComments({ postId }: { postId: number }) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
   const [posting, setPosting] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch(`${API}/posts/${postId}/comments`, {
@@ -51,6 +53,22 @@ function PostComments({ postId, initialCount }: { postId: number; initialCount: 
       .then(r => r.json())
       .then(d => { setComments(d.comments || []); setLoading(false); });
   }, [postId]);
+
+  const focusReply = (c: Comment) => {
+    setReplyTo({ id: c.id, name: c.author_name });
+    setInput(`@${c.author_name} `);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      // move cursor to end
+      const len = `@${c.author_name} `.length;
+      inputRef.current?.setSelectionRange(len, len);
+    }, 50);
+  };
+
+  const cancelReply = () => {
+    setReplyTo(null);
+    setInput("");
+  };
 
   const addComment = async () => {
     const text = input.trim();
@@ -62,7 +80,11 @@ function PostComments({ postId, initialCount }: { postId: number; initialCount: 
       body: JSON.stringify({ content: text }),
     });
     const d = await res.json();
-    if (d.comment) { setComments(prev => [...prev, d.comment]); setInput(""); }
+    if (d.comment) {
+      setComments(prev => [...prev, d.comment]);
+      setInput("");
+      setReplyTo(null);
+    }
     setPosting(false);
   };
 
@@ -79,40 +101,81 @@ function PostComments({ postId, initialCount }: { postId: number; initialCount: 
       {comments.length === 0 && (
         <p className="text-xs text-center text-muted-foreground py-1">No comments yet. Be the first!</p>
       )}
+
       {comments.map(c => (
-        <div key={c.id} className="flex gap-2 items-start">
+        <div key={c.id} className="flex gap-2 items-start group/comment">
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">
             {c.author_name[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="bg-muted rounded-xl px-3 py-2 inline-block max-w-full">
               <span className="text-[10px] font-semibold text-foreground">{c.author_name} </span>
-              <span className="text-xs text-foreground/80 break-words">{c.content}</span>
+              <span className="text-xs text-foreground/80 break-words whitespace-pre-wrap">
+                {/* highlight @mentions */}
+                {c.content.split(/(@\S+)/g).map((part, i) =>
+                  part.startsWith("@")
+                    ? <span key={i} className="text-indigo-500 font-medium">{part}</span>
+                    : part
+                )}
+              </span>
             </div>
-            <p className="text-[9px] text-muted-foreground px-1 mt-0.5">{formatRelativeTime(c.created_at)}</p>
+            <div className="flex items-center gap-3 px-1 mt-0.5">
+              <p className="text-[9px] text-muted-foreground">{formatRelativeTime(c.created_at)}</p>
+              {user && (
+                <button
+                  onClick={() => replyTo?.id === c.id ? cancelReply() : focusReply(c)}
+                  className={`flex items-center gap-0.5 text-[9px] font-medium transition-colors ${
+                    replyTo?.id === c.id
+                      ? "text-indigo-400"
+                      : "text-muted-foreground/60 hover:text-indigo-400 opacity-0 group-hover/comment:opacity-100"
+                  }`}
+                >
+                  <CornerDownRight size={9} />
+                  {replyTo?.id === c.id ? "Cancel" : "Reply"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ))}
 
       {user && (
-        <div className="flex items-center gap-2 pt-1">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-            {user.name?.[0]?.toUpperCase() || "?"}
+        <div className="pt-1 space-y-1.5">
+          {/* Reply-to indicator */}
+          {replyTo && (
+            <div className="flex items-center gap-1.5 pl-8 text-[10px] text-indigo-400">
+              <CornerDownRight size={10} />
+              <span>Replying to <strong>@{replyTo.name}</strong></span>
+              <button onClick={cancelReply} className="ml-1 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+              {user.name?.[0]?.toUpperCase() || "?"}
+            </div>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                // if user deletes the @mention prefix, cancel reply
+                if (replyTo && !e.target.value.startsWith(`@${replyTo.name}`)) setReplyTo(null);
+              }}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addComment(); }
+                if (e.key === "Escape") cancelReply();
+              }}
+              placeholder={replyTo ? `Reply to @${replyTo.name}…` : "Write a comment…"}
+              className="flex-1 bg-muted rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+            />
+            <button
+              onClick={addComment}
+              disabled={posting || !input.trim()}
+              className="p-1.5 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-40 shrink-0"
+            >
+              {posting ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+            </button>
           </div>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && addComment()}
-            placeholder="Write a comment..."
-            className="flex-1 bg-muted rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-          />
-          <button
-            onClick={addComment}
-            disabled={posting || !input.trim()}
-            className="p-1.5 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-40 shrink-0"
-          >
-            {posting ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-          </button>
         </div>
       )}
     </div>
@@ -180,10 +243,7 @@ function PostCard({ post, currentUserId, onDelete }: {
       </div>
 
       {showComments && (
-        <PostComments
-          postId={post.id}
-          initialCount={commentCount}
-        />
+        <PostComments postId={post.id} />
       )}
     </div>
   );
