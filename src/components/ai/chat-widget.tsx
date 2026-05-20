@@ -51,6 +51,38 @@ export default function ChatWidget() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Drag state
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragging = useRef(false);
+  const dragOffset = useRef({ dx: 0, dy: 0 });
+  const didDrag = useRef(false);
+
+  // Set initial position bottom-right after mount
+  useEffect(() => {
+    setPos({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
+  }, []);
+
+  // Global mouse move / up listeners for dragging
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current || !pos) return;
+      didDrag.current = true;
+      setPos({ x: e.clientX - dragOffset.current.dx, y: e.clientY - dragOffset.current.dy });
+    };
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [pos]);
+
+  const startDrag = (e: React.MouseEvent) => {
+    if (!pos) return;
+    dragging.current = true;
+    didDrag.current = false;
+    dragOffset.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
+    e.preventDefault();
+  };
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -91,25 +123,30 @@ export default function ChatWidget() {
   return (
     <>
       {/* FAB */}
-      {!open && (
+      {!open && pos && (
         <button
-          onClick={() => setOpen(true)}
+          onMouseDown={startDrag}
+          onClick={() => { if (!didDrag.current) setOpen(true); }}
           aria-label="Open AI Assistant"
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-[0_4px_24px_rgba(99,102,241,0.5)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.7)] hover:scale-105 active:scale-95 transition-all duration-200 animate-pulse-glow"
+          style={{ left: pos.x, top: pos.y, transform: "translate(-50%, -50%)" }}
+          className="fixed z-50 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-[0_4px_24px_rgba(99,102,241,0.5)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.7)] hover:scale-105 active:scale-95 transition-shadow duration-200 animate-pulse-glow cursor-grab active:cursor-grabbing select-none"
         >
           <Sparkles size={22} />
         </button>
       )}
 
       {/* Panel */}
-      {open && (
+      {open && pos && (
         <div
-          className={`fixed bottom-6 right-6 z-50 w-[360px] rounded-2xl border border-border bg-card shadow-[0_16px_64px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 flex flex-col ${
+          style={{ left: Math.min(pos.x, window.innerWidth - 370), top: Math.min(Math.max(pos.y - 500, 8), window.innerHeight - 520) }}
+          className={`fixed z-50 w-[360px] rounded-2xl border border-border bg-card shadow-[0_16px_64px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col ${
             minimized ? "h-14" : "h-[500px]"
           }`}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0">
+          {/* Header — drag handle */}
+          <div
+            onMouseDown={startDrag}
+            className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0 cursor-grab active:cursor-grabbing select-none">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
                 <Sparkles size={14} className="text-white" />
