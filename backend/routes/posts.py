@@ -63,7 +63,7 @@ def _can_see_post(post: Post, user_id: int | None, club_ids: set) -> bool:
     return True
 
 
-# ── List posts (auth required; club posts filtered by membership) ──
+# ── List posts (auth required; filtered by university + membership) ──
 
 @posts_bp.route("", methods=["GET"])
 def list_posts():
@@ -72,20 +72,31 @@ def list_posts():
     if not user_id:
         return jsonify({"posts": [], "locked": True}), 200
 
+    user = User.query.get(user_id)
     club_ids = _member_club_ids(user_id)
+    user_university = (user.university or "").strip().upper() if user else ""
 
-    if club_ids:
-        posts = Post.query.filter(
-            or_(
-                Post.posted_as_type.in_(["user", "university"]),
-                and_(Post.posted_as_type == "club", Post.club_id.in_(club_ids))
+    conditions = []
+
+    # University posts — only from the user's own university
+    if user_university:
+        conditions.append(
+            and_(
+                Post.posted_as_type == "university",
+                db.func.upper(Post.posted_as_label) == user_university
             )
-        ).order_by(Post.created_at.desc()).limit(50).all()
-    else:
-        # User has no clubs — only show user & university posts
-        posts = Post.query.filter(
-            Post.posted_as_type.in_(["user", "university"])
-        ).order_by(Post.created_at.desc()).limit(50).all()
+        )
+
+    # Club/community posts — only clubs the user is a member of
+    if club_ids:
+        conditions.append(
+            and_(Post.posted_as_type == "club", Post.club_id.in_(club_ids))
+        )
+
+    if not conditions:
+        return jsonify({"posts": [], "locked": False}), 200
+
+    posts = Post.query.filter(or_(*conditions)).order_by(Post.created_at.desc()).limit(50).all()
 
     return jsonify({"posts": [p.to_dict() for p in posts], "locked": False}), 200
 
