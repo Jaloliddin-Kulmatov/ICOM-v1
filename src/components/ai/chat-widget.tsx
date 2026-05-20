@@ -170,7 +170,8 @@ export default function ChatWidget() {
         >
           {/* Header — drag handle */}
           <div
-            onMouseDown={startDrag}
+            onMouseDown={onMouseDown}
+            onTouchStart={onTouchStart}
             className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0 cursor-grab active:cursor-grabbing select-none">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
