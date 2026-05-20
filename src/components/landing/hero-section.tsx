@@ -2,19 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Star, Users, Briefcase, Globe, LayoutDashboard } from "lucide-react";
+import { ArrowRight, Sparkles, Users, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
-
-const avatarCountries = ["🇺🇿", "🇨🇳", "🇻🇳", "🇮🇳", "🇲🇳"];
-
-const highlights = [
-  { icon: Users,     text: "28,000+ students", sub: "active community" },
-  { icon: Briefcase, text: "1,200+ jobs",       sub: "visa-compatible" },
-  { icon: Globe,     text: "89 countries",      sub: "represented" },
-  { icon: Sparkles,  text: "AI assistant",      sub: "always available" },
-];
 
 export default function HeroSection() {
   const { user } = useAuth();
@@ -80,49 +71,6 @@ export default function HeroSection() {
               </Button>
             </>
           )}
-        </div>
-
-        {/* Social proof */}
-        <div className="flex items-center justify-center gap-3 mb-14 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-          <div className="flex -space-x-2">
-            {avatarCountries.map((flag, i) => (
-              <div
-                key={i}
-                className="w-7 h-7 rounded-full ring-2 ring-background bg-gradient-to-br from-indigo-500/30 to-violet-500/30 flex items-center justify-center text-xs"
-                style={{ zIndex: 5 - i }}
-              >
-                {flag}
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            <span className="text-foreground font-semibold">2,400+</span> students joined last month
-          </p>
-          <span className="text-muted-foreground/30 hidden sm:inline">·</span>
-          <div className="hidden sm:flex items-center gap-1">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={12} className="text-amber-400 fill-amber-400" />
-            ))}
-            <span className="text-xs text-muted-foreground ml-1">4.9 / 5</span>
-          </div>
-        </div>
-
-        {/* Highlights grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-          {highlights.map(({ icon: Icon, text, sub }) => (
-            <div
-              key={text}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card/60 dark:bg-white/3 backdrop-blur-sm hover:border-indigo-500/30 hover:-translate-y-0.5 transition-all duration-200"
-            >
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                <Icon size={16} className="text-indigo-500 dark:text-indigo-400" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-foreground">{text}</p>
-                <p className="text-[11px] text-muted-foreground">{sub}</p>
-              </div>
-            </div>
-          ))}
         </div>
 
         {/* JBNU badge */}

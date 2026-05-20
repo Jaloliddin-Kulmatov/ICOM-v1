@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
-  Bell, MessageSquare, Newspaper, CheckCheck,
+  Bell, Newspaper, CheckCheck,
   Loader2, ExternalLink, RefreshCw, UserCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -31,17 +31,9 @@ interface Post {
   created_at: string;
 }
 
-interface ChatMessage {
-  id: number;
-  user_id: number;
-  author_name: string;
-  content: string;
-  created_at: string;
-}
-
 interface Notif {
   id: string;
-  type: "chat" | "news" | "approval";
+  type: "news" | "approval";
   clubId?: number;
   clubName?: string;
   clubType?: "club" | "community";
@@ -107,41 +99,7 @@ export default function NotificationsPage() {
         });
       }
 
-      // 2. Check chat unread per club
-      const chatNotifs: Notif[] = [];
-      await Promise.all(
-        myClubs.map(async (club) => {
-          const lastId = parseInt(
-            localStorage.getItem(`chat_lid_${club.id}`) || "0",
-            10
-          );
-          try {
-            const res = await fetch(`${API}/clubs/${club.id}/chat?after=${lastId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return;
-            const d = await res.json();
-            const msgs: ChatMessage[] = (d.messages || []).filter(
-              (m: ChatMessage) => m.user_id !== user.id   // ignore own messages
-            );
-            if (msgs.length > 0) {
-              const latest = msgs[msgs.length - 1];
-              chatNotifs.push({
-                id: `chat_${club.id}`,
-                type: "chat",
-                clubId: club.id,
-                clubName: club.name,
-                clubType: club.club_type,
-                count: msgs.length,
-                previewText: `${latest.author_name}: ${latest.content}`,
-                timestamp: latest.created_at,
-              });
-            }
-          } catch { /* ignore */ }
-        })
-      );
-
-      // 3. Check news unread
+      // 2. Check news unread
       const newsNotifs: Notif[] = [];
       const lastSeenId = parseInt(
         localStorage.getItem("news_last_post_id") || "0",
@@ -170,7 +128,7 @@ export default function NotificationsPage() {
       } catch { /* ignore */ }
 
       // Sort newest first
-      const all = [...approvalNotifs, ...chatNotifs, ...newsNotifs].sort(
+      const all = [...approvalNotifs, ...newsNotifs].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
       setNotifs(all);
@@ -321,16 +279,12 @@ export default function NotificationsPage() {
                 {/* Type icon */}
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                    notif.type === "chat"
-                      ? "bg-indigo-500/15"
-                      : notif.type === "news"
+                    notif.type === "news"
                       ? "bg-violet-500/15"
                       : "bg-emerald-500/15"
                   }`}
                 >
-                  {notif.type === "chat" ? (
-                    <MessageSquare size={16} className="text-indigo-400" />
-                  ) : notif.type === "news" ? (
+                  {notif.type === "news" ? (
                     <Newspaper size={16} className="text-violet-400" />
                   ) : (
                     <UserCheck size={16} className="text-emerald-400" />
@@ -341,22 +295,18 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <p className="text-sm font-semibold text-foreground">
-                      {notif.type === "chat" ? notif.clubName
-                       : notif.type === "approval" ? "Join request accepted"
-                       : "News Feed"}
+                      {notif.type === "approval" ? "Join request accepted" : "News Feed"}
                     </p>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-tight ${
-                        notif.type === "chat"
-                          ? "bg-indigo-500/15 text-indigo-400"
-                          : notif.type === "news"
+                        notif.type === "news"
                           ? "bg-violet-500/15 text-violet-400"
                           : "bg-emerald-500/15 text-emerald-400"
                       }`}
                     >
                       {notif.type === "approval" ? "accepted ✓" : `${notif.count} new`}
                     </span>
-                    {(notif.type === "chat" || notif.type === "approval") && notif.clubType && (
+                    {notif.type === "approval" && notif.clubType && (
                       <span className="text-[10px] text-muted-foreground/50 capitalize">
                         {notif.clubType}
                       </span>

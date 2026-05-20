@@ -34,7 +34,6 @@ export function useNotifCount(userId: number | undefined): number {
           (c: { my_status: string; is_creator: boolean }) =>
             c.my_status === "approved" || c.is_creator
         );
-        const myClubs = allMyClubs;
 
         let total = 0;
 
@@ -47,28 +46,6 @@ export function useNotifCount(userId: number | undefined): number {
             c.my_status === "approved" && !c.is_creator && !seen.includes(c.id)
         );
         total += newlyApproved.length;
-
-        // Chat unreads — only messages from other people
-        await Promise.all(
-          myClubs.map(async (club: { id: number }) => {
-            const lastId = parseInt(
-              localStorage.getItem(`chat_lid_${club.id}`) || "0",
-              10
-            );
-            try {
-              const r = await fetch(
-                `${API}/clubs/${club.id}/chat?after=${lastId}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              if (!r.ok) return;
-              const d = await r.json();
-              const others = (d.messages || []).filter(
-                (m: { user_id: number }) => m.user_id !== userId
-              );
-              if (others.length > 0) total += 1;
-            } catch { /* ignore */ }
-          })
-        );
 
         // News unreads — only posts from other people
         const lastSeenId = parseInt(

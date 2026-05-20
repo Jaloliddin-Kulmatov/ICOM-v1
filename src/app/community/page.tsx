@@ -242,12 +242,11 @@ function ManageModal({ club, onClose, onUpdate }: { club: Club; onClose: () => v
 
 // ── Club Card ─────────────────────────────────────────────────
 
-function ClubCard({ club, onAction, onManage, onChat, unreadCount = 0 }: {
+function ClubCard({ club, onAction, onManage, onChat }: {
   club: Club;
   onAction: (club: Club, action: "request" | "leave") => Promise<void>;
   onManage: (club: Club) => void;
   onChat: (club: Club) => void;
-  unreadCount?: number;
 }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -338,14 +337,9 @@ function ClubCard({ club, onAction, onManage, onChat, unreadCount = 0 }: {
           {isApproved && (
             <button
               onClick={() => onChat(club)}
-              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition-all"
             >
               <MessageSquare size={12} /> Chat
-              {unreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5 animate-bounce">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </button>
           )}
           {!club.is_creator && user && (
@@ -386,32 +380,9 @@ export default function CommunityPage() {
   const [manageClub, setManageClub] = useState<Club | null>(null);
   const [chatClub, setChatClub] = useState<Club | null>(null);
   const [activeTabMain, setActiveTabMain] = useState<"club" | "community" | "news">("club");
-  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const [newsUnread, setNewsUnread] = useState(0);
   const [toast, setToast] = useState<{ msg: string; clubId?: number } | null>(null);
-  const prevCountsRef = useRef<Record<number, number>>({});
   const prevNewsRef = useRef(0);
-
-  const checkUnread = useCallback(async (approvedClubs: Club[]) => {
-    if (!approvedClubs.length) return;
-    const counts: Record<number, number> = {};
-    await Promise.all(approvedClubs.map(async (c) => {
-      const lastId = parseInt(localStorage.getItem(`chat_lid_${c.id}`) || "0", 10);
-      try {
-        const res = await fetch(`${API}/clubs/${c.id}/chat?after=${lastId}`, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        });
-        if (!res.ok) return;
-        const d = await res.json();
-        // Only count messages from OTHER people (not your own)
-        const msgs = (d.messages || []).filter(
-          (m: { user_id: number }) => m.user_id !== user?.id
-        );
-        if (msgs.length > 0) counts[c.id] = msgs.length;
-      } catch { /* ignore */ }
-    }));
-    setUnreadCounts(counts);
-  }, [user]);
 
   const fetchClubs = useCallback(async () => {
     const token = getToken();
@@ -422,12 +393,7 @@ export default function CommunityPage() {
     const loadedClubs: Club[] = d.clubs || [];
     setClubs(loadedClubs);
     setLoading(false);
-    // Check unread counts for approved clubs
-    if (token) {
-      const approved = loadedClubs.filter(c => c.my_status === "approved" || c.is_creator);
-      checkUnread(approved);
-    }
-  }, [checkUnread]);
+  }, []);
 
   useEffect(() => { fetchClubs(); }, [fetchClubs]);
 
@@ -459,45 +425,7 @@ export default function CommunityPage() {
     }
   }, [clubs, user]);
 
-  // Poll chat unread every 8 seconds
-  useEffect(() => {
-    if (!user) return;
-    const approved = clubs.filter(c => c.my_status === "approved" || c.is_creator);
-    const interval = setInterval(() => {
-      if (approved.length > 0) checkUnread(approved);
-    }, 8000);
-    // Also re-check when the tab becomes visible again
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && approved.length > 0) checkUnread(approved);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [clubs, user, checkUnread]);
-
-  // Check news unread on mount and every 30s
-  // Show toast when unread counts increase
-  useEffect(() => {
-    const prev = prevCountsRef.current;
-    let toastMsg: string | null = null;
-    let toastClubId: number | undefined;
-    for (const [idStr, count] of Object.entries(unreadCounts)) {
-      const id = Number(idStr);
-      if (count > (prev[id] || 0)) {
-        const club = clubs.find(c => c.id === id);
-        toastMsg = `New message in ${club?.name || "a club"}`;
-        toastClubId = id;
-        break;
-      }
-    }
-    prevCountsRef.current = { ...unreadCounts };
-    if (toastMsg) {
-      setToast({ msg: toastMsg, clubId: toastClubId });
-    }
-  }, [unreadCounts, clubs]);
-
+  // Show toast when news unread increases
   useEffect(() => {
     if (newsUnread > prevNewsRef.current && prevNewsRef.current >= 0) {
       setToast({ msg: `${newsUnread} new post${newsUnread !== 1 ? "s" : ""} in News` });
@@ -582,16 +510,7 @@ export default function CommunityPage() {
       )}
       {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {manageClub && <ManageModal club={manageClub} onClose={() => setManageClub(null)} onUpdate={fetchClubs} />}
-      {chatClub && <ClubChat club={chatClub} onClose={() => {
-        setChatClub(null);
-        // After closing chat, re-check unread (slight delay for localStorage to update)
-        setTimeout(() => {
-          const approved = clubs.filter(c => c.my_status === "approved" || c.is_creator);
-          checkUnread(approved);
-          // Clear the unread count for the club we just viewed
-          setUnreadCounts(prev => { const n = {...prev}; delete n[chatClub.id]; return n; });
-        }, 200);
-      }} />}
+      {chatClub && <ClubChat club={chatClub} onClose={() => setChatClub(null)} />}
 
       <main className="pt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -627,53 +546,42 @@ export default function CommunityPage() {
               { key: "club",      label: "Clubs" },
               { key: "community", label: "Community" },
               { key: "news",      label: "News" },
-            ] as const).map(tab => {
-              // Count total unread chat messages across all clubs for the chat tabs
-              const totalChatUnread = tab.key !== "news"
-                ? clubs.filter(c => (c.club_type || "club") === tab.key).reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0)
-                : 0;
-              return (
-                <button key={tab.key}
-                  onClick={() => {
-                    if (tab.key !== "news") setActiveTab(tab.key as "club" | "community");
-                    setActiveCategory("all");
-                    setActiveTabMain(tab.key);
-                    if (tab.key === "news") {
-                      // Mark news as read — save latest seen ID
-                      fetch(`${API}/posts`, { headers: { Authorization: `Bearer ${getToken()}` } })
-                        .then(r => r.json())
-                        .then(d => {
-                          const posts: { id: number }[] = d.posts || [];
-                          if (posts.length > 0) localStorage.setItem("news_last_post_id", String(Math.max(...posts.map(p => p.id))));
-                        }).catch(() => {});
-                      setNewsUnread(0);
-                    }
-                  }}
-                  className={`relative px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-                    activeTabMain === tab.key
-                      ? "bg-background shadow-sm text-foreground border border-border"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}>
-                  {tab.label}
-                  {tab.key !== "news" && (
-                    <span className="ml-1.5 text-[10px] text-muted-foreground">
-                      ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
-                    </span>
-                  )}
-                  {/* Unread badge */}
-                  {tab.key === "news" && newsUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
-                      {newsUnread > 9 ? "9+" : newsUnread}
-                    </span>
-                  )}
-                  {tab.key !== "news" && totalChatUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
-                      {totalChatUnread > 9 ? "9+" : totalChatUnread}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            ] as const).map(tab => (
+              <button key={tab.key}
+                onClick={() => {
+                  if (tab.key !== "news") setActiveTab(tab.key as "club" | "community");
+                  setActiveCategory("all");
+                  setActiveTabMain(tab.key);
+                  if (tab.key === "news") {
+                    // Mark news as read — save latest seen ID
+                    fetch(`${API}/posts`, { headers: { Authorization: `Bearer ${getToken()}` } })
+                      .then(r => r.json())
+                      .then(d => {
+                        const posts: { id: number }[] = d.posts || [];
+                        if (posts.length > 0) localStorage.setItem("news_last_post_id", String(Math.max(...posts.map(p => p.id))));
+                      }).catch(() => {});
+                    setNewsUnread(0);
+                  }
+                }}
+                className={`relative px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+                  activeTabMain === tab.key
+                    ? "bg-background shadow-sm text-foreground border border-border"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}>
+                {tab.label}
+                {tab.key !== "news" && (
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">
+                    ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
+                  </span>
+                )}
+                {/* News unread badge only */}
+                {tab.key === "news" && newsUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                    {newsUnread > 9 ? "9+" : newsUnread}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* News tab */}
@@ -776,7 +684,6 @@ export default function CommunityPage() {
                     onAction={handleAction}
                     onManage={setManageClub}
                     onChat={setChatClub}
-                    unreadCount={unreadCounts[club.id] || 0}
                   />
                 ))}
               </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Star, Quote } from "lucide-react";
+import { Quote } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const testimonials = [
@@ -9,7 +9,6 @@ const testimonials = [
     university: "Seoul National University",
     country: "🇻🇳 Vietnam",
     text: "ICOM helped me find a part-time job within 2 weeks of arriving in Korea. The D-2 visa filter was exactly what I needed — no more scrolling through listings that didn't apply to me.",
-    rating: 5,
     initials: "NL",
   },
   {
@@ -18,7 +17,6 @@ const testimonials = [
     university: "Yonsei University",
     country: "🇺🇿 Uzbekistan",
     text: "Before ICOM, I had no idea how to open a Korean bank account. The step-by-step guide saved me hours. Now I help other Uzbek students through the same process in our campus group.",
-    rating: 5,
     initials: "BT",
   },
   {
@@ -27,7 +25,6 @@ const testimonials = [
     university: "KAIST",
     country: "🇨🇳 China",
     text: "The AI assistant answers my Korean government website questions in seconds. It understands the context of being an international student, not just a tourist. Absolutely indispensable.",
-    rating: 5,
     initials: "CW",
   },
   {
@@ -36,7 +33,6 @@ const testimonials = [
     university: "Hanyang University",
     country: "🇮🇳 India",
     text: "The community feature is what keeps me coming back. I've made real friends through the India-Korea student group, and the ambassador from my department is always posting useful information.",
-    rating: 5,
     initials: "PS",
   },
   {
@@ -45,7 +41,6 @@ const testimonials = [
     university: "Korea University",
     country: "🇪🇬 Egypt",
     text: "I came to Korea knowing almost no Korean. ICOM's translation feature and language resources helped me navigate everything from hospital visits to lease contracts. Game changer.",
-    rating: 5,
     initials: "AE",
   },
   {
@@ -54,7 +49,6 @@ const testimonials = [
     university: "POSTECH",
     country: "🇯🇵 Japan",
     text: "Found a research assistant position through ICOM's jobs platform. The recommendation algorithm actually understood that I wanted research roles, not just any part-time work.",
-    rating: 5,
     initials: "TY",
   },
 ];
@@ -71,13 +65,6 @@ export default function TestimonialsSection() {
             <span className="gradient-text"> worldwide</span>
           </h2>
           <p className="text-muted-foreground">Real stories from real international students in Korea</p>
-          <div className="flex items-center justify-center gap-1.5 mt-3">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
-            ))}
-            <span className="text-sm text-foreground font-medium ml-1">4.9</span>
-            <span className="text-sm text-muted-foreground">/ 5 from 2,400+ reviews</span>
-          </div>
         </div>
 
         <div className="columns-1 md:columns-2 lg:columns-3 gap-5 space-y-5">
@@ -87,12 +74,6 @@ export default function TestimonialsSection() {
               className="break-inside-avoid p-6 rounded-2xl bg-white/3 border border-white/8 hover:border-white/15 transition-all duration-300 group"
             >
               <Quote size={24} className="text-indigo-500/40 mb-3" />
-
-              <div className="flex items-center gap-0.5 mb-3">
-                {[...Array(t.rating)].map((_, i) => (
-                  <Star key={i} size={12} className="text-amber-400 fill-amber-400" />
-                ))}
-              </div>
 
               <p className="text-sm text-muted-foreground leading-relaxed mb-5 group-hover:text-foreground/80 transition-colors">
                 &ldquo;{t.text}&rdquo;

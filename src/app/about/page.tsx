@@ -1,15 +1,8 @@
 import React from "react";
 import Navbar from "@/components/layout/navbar";
 import Link from "next/link";
-import { Users, Globe, GraduationCap, Sparkles, Heart, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-const stats = [
-  { value: "28,000+", label: "International Students", icon: Users },
-  { value: "89", label: "Countries Represented", icon: Globe },
-  { value: "63+", label: "Korean Universities", icon: GraduationCap },
-  { value: "24/7", label: "AI Support Available", icon: Sparkles },
-];
 
 const team = [
   { name: "Kulmatov Jaloliddin", role: "Founder & CEO", country: "🇺🇿 Uzbekistan", bio: "International student at JBNU. Built ICOM because navigating life in Korea was harder than it needed to be." },
@@ -31,17 +24,6 @@ export default function AboutPage() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-16">
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {stats.map(({ value, label, icon: Icon }) => (
-              <div key={label} className="p-5 rounded-2xl border border-border bg-card text-center">
-                <Icon size={20} className="text-indigo-500 mx-auto mb-2" />
-                <p className="text-2xl font-extrabold text-foreground">{value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{label}</p>
-              </div>
-            ))}
-          </div>
 
           {/* Story */}
           <div className="rounded-2xl border border-border bg-card p-8">
