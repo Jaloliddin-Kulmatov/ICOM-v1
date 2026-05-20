@@ -182,12 +182,13 @@ class Post(db.Model):
 
 
 class PostComment(db.Model):
-    """Comments on community feed posts."""
+    """Comments on community feed posts. Supports one-level threaded replies via parent_id."""
     __tablename__ = "post_comments"
 
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey("posts.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey("post_comments.id"), nullable=True, index=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -198,6 +199,7 @@ class PostComment(db.Model):
             "id": self.id,
             "post_id": self.post_id,
             "user_id": self.user_id,
+            "parent_id": self.parent_id,
             "author_name": self.author.name if self.author else "Unknown",
             "content": self.content,
             "created_at": self.created_at.isoformat() + "Z",

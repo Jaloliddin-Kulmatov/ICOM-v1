@@ -209,7 +209,20 @@ def add_comment(post_id):
     if len(content) > 500:
         return jsonify({"error": "Comment too long (max 500 chars)."}), 400
 
-    comment = PostComment(post_id=post_id, user_id=user_id, content=content)
+    # Optional parent_id for threaded replies. Validate that the parent exists
+    # on the same post (no cross-post replies).
+    parent_id = data.get("parent_id")
+    if parent_id is not None:
+        parent = PostComment.query.get(parent_id)
+        if not parent or parent.post_id != post_id:
+            return jsonify({"error": "Invalid parent comment."}), 400
+        # Flatten: if replying to a reply, attach to the top-level parent
+        if parent.parent_id is not None:
+            parent_id = parent.parent_id
+
+    comment = PostComment(
+        post_id=post_id, user_id=user_id, content=content, parent_id=parent_id
+    )
     db.session.add(comment)
     db.session.commit()
     return jsonify({"comment": comment.to_dict()}), 201

@@ -67,7 +67,29 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _run_lightweight_migrations()
 
     return app
+
+
+def _run_lightweight_migrations():
+    """Add columns that were introduced after the table was first created.
+    Runs at startup — safe to call repeatedly (each migration checks first)."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+
+    # parent_id on post_comments (threaded replies)
+    try:
+        if "post_comments" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("post_comments")]
+            if "parent_id" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE post_comments "
+                        "ADD COLUMN parent_id INTEGER REFERENCES post_comments(id)"
+                    ))
+                print("[migration] Added post_comments.parent_id")
+    except Exception as e:
+        print(f"[migration] post_comments.parent_id failed (probably already done): {e}")
 
 app = create_app()

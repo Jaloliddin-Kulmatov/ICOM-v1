@@ -19,6 +19,7 @@ type PostAsOption = { type: "user" | "university" | "club"; label: string; club_
 
 type Comment = {
   id: number; post_id: number; user_id: number;
+  parent_id: number | null;
   author_name: string; content: string; created_at: string;
 };
 
@@ -35,7 +36,87 @@ function PostAsIcon({ type }: { type: string }) {
   return <Globe size={11} />;
 }
 
-// ── Inline Comments ───────────────────────────────────────────────
+// ── Inline Threaded Comments ──────────────────────────────────────
+
+function renderContent(text: string) {
+  return text.split(/(@\S+)/g).map((part, i) =>
+    part.startsWith("@")
+      ? <span key={i} className="text-indigo-500 font-medium">{part}</span>
+      : part
+  );
+}
+
+function CommentItem({
+  comment, replies, currentUserId, replyToId,
+  onReply, onCancelReply, indent = false,
+}: {
+  comment: Comment;
+  replies: Comment[];
+  currentUserId?: number;
+  replyToId: number | null;
+  onReply: (c: Comment) => void;
+  onCancelReply: () => void;
+  indent?: boolean;
+}) {
+  const isReplying = replyToId === comment.id;
+  return (
+    <div className={indent ? "ml-8 mt-2" : ""}>
+      <div className="flex gap-2 items-start">
+        <div className={`rounded-lg bg-gradient-to-br ${
+          comment.user_id === currentUserId
+            ? "from-indigo-500 to-violet-600"
+            : "from-slate-400 to-slate-600"
+        } flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5 ${
+          indent ? "w-5 h-5" : "w-6 h-6"
+        }`}>
+          {comment.author_name[0]?.toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="bg-muted rounded-xl px-3 py-2 inline-block max-w-full">
+            <span className="text-[10px] font-semibold text-foreground">{comment.author_name} </span>
+            <span className="text-xs text-foreground/80 break-words whitespace-pre-wrap">
+              {renderContent(comment.content)}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 px-1 mt-0.5">
+            <p className="text-[9px] text-muted-foreground">{formatRelativeTime(comment.created_at)}</p>
+            {currentUserId && (
+              <button
+                onClick={() => isReplying ? onCancelReply() : onReply(comment)}
+                className={`flex items-center gap-0.5 text-[10px] font-semibold transition-colors ${
+                  isReplying
+                    ? "text-indigo-400"
+                    : "text-muted-foreground hover:text-indigo-400"
+                }`}
+              >
+                <CornerDownRight size={10} />
+                {isReplying ? "Cancel" : "Reply"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Nested replies */}
+      {replies.length > 0 && (
+        <div className="space-y-2 mt-2">
+          {replies.map(r => (
+            <CommentItem
+              key={r.id}
+              comment={r}
+              replies={[]}
+              currentUserId={currentUserId}
+              replyToId={replyToId}
+              onReply={onReply}
+              onCancelReply={onCancelReply}
+              indent
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PostComments({ postId }: { postId: number }) {
   const { user } = useAuth();
@@ -54,12 +135,20 @@ function PostComments({ postId }: { postId: number }) {
       .then(d => { setComments(d.comments || []); setLoading(false); });
   }, [postId]);
 
+  // Group comments: top-level + their replies
+  const topLevel = comments.filter(c => !c.parent_id);
+  const repliesByParent = comments.reduce<Record<number, Comment[]>>((acc, c) => {
+    if (c.parent_id) {
+      (acc[c.parent_id] ||= []).push(c);
+    }
+    return acc;
+  }, {});
+
   const focusReply = (c: Comment) => {
     setReplyTo({ id: c.id, name: c.author_name });
     setInput(`@${c.author_name} `);
     setTimeout(() => {
       inputRef.current?.focus();
-      // move cursor to end
       const len = `@${c.author_name} `.length;
       inputRef.current?.setSelectionRange(len, len);
     }, 50);
@@ -74,10 +163,12 @@ function PostComments({ postId }: { postId: number }) {
     const text = input.trim();
     if (!text || posting) return;
     setPosting(true);
+    const body: { content: string; parent_id?: number } = { content: text };
+    if (replyTo) body.parent_id = replyTo.id;
     const res = await fetch(`${API}/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-      body: JSON.stringify({ content: text }),
+      body: JSON.stringify(body),
     });
     const d = await res.json();
     if (d.comment) {
@@ -97,51 +188,25 @@ function PostComments({ postId }: { postId: number }) {
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-border space-y-2">
+    <div className="mt-3 pt-3 border-t border-border space-y-3">
       {comments.length === 0 && (
         <p className="text-xs text-center text-muted-foreground py-1">No comments yet. Be the first!</p>
       )}
 
-      {comments.map(c => (
-        <div key={c.id} className="flex gap-2 items-start group/comment">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">
-            {c.author_name[0]?.toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="bg-muted rounded-xl px-3 py-2 inline-block max-w-full">
-              <span className="text-[10px] font-semibold text-foreground">{c.author_name} </span>
-              <span className="text-xs text-foreground/80 break-words whitespace-pre-wrap">
-                {/* highlight @mentions */}
-                {c.content.split(/(@\S+)/g).map((part, i) =>
-                  part.startsWith("@")
-                    ? <span key={i} className="text-indigo-500 font-medium">{part}</span>
-                    : part
-                )}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 px-1 mt-0.5">
-              <p className="text-[9px] text-muted-foreground">{formatRelativeTime(c.created_at)}</p>
-              {user && (
-                <button
-                  onClick={() => replyTo?.id === c.id ? cancelReply() : focusReply(c)}
-                  className={`flex items-center gap-0.5 text-[9px] font-medium transition-colors ${
-                    replyTo?.id === c.id
-                      ? "text-indigo-400"
-                      : "text-muted-foreground/60 hover:text-indigo-400 opacity-0 group-hover/comment:opacity-100"
-                  }`}
-                >
-                  <CornerDownRight size={9} />
-                  {replyTo?.id === c.id ? "Cancel" : "Reply"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {topLevel.map(c => (
+        <CommentItem
+          key={c.id}
+          comment={c}
+          replies={repliesByParent[c.id] || []}
+          currentUserId={user?.id}
+          replyToId={replyTo?.id ?? null}
+          onReply={focusReply}
+          onCancelReply={cancelReply}
+        />
       ))}
 
       {user && (
         <div className="pt-1 space-y-1.5">
-          {/* Reply-to indicator */}
           {replyTo && (
             <div className="flex items-center gap-1.5 pl-8 text-[10px] text-indigo-400">
               <CornerDownRight size={10} />
@@ -149,7 +214,7 @@ function PostComments({ postId }: { postId: number }) {
               <button onClick={cancelReply} className="ml-1 text-muted-foreground hover:text-foreground transition-colors">✕</button>
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${replyTo ? "ml-8" : ""}`}>
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
               {user.name?.[0]?.toUpperCase() || "?"}
             </div>
@@ -158,7 +223,6 @@ function PostComments({ postId }: { postId: number }) {
               value={input}
               onChange={e => {
                 setInput(e.target.value);
-                // if user deletes the @mention prefix, cancel reply
                 if (replyTo && !e.target.value.startsWith(`@${replyTo.name}`)) setReplyTo(null);
               }}
               onKeyDown={e => {
