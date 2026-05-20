@@ -1,4 +1,5 @@
-![Uploading Screenshot 2026-05-20 at 6.34.08 PM.png…]()
+<img width="1428" height="779" alt="Screenshot 2026-05-20 at 6 34 54 PM" src="https://github.com/user-attachments/assets/1bbfad44-fc0a-410a-b694-5db67b79a599" />
+
 
 
 # ICOM — International Community in Korea
