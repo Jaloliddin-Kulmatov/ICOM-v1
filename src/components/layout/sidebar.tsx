@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -27,90 +27,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-
-function getToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
-}
-
-function useNotifCount(userId: number | undefined) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    let cancelled = false;
-
-    const check = async () => {
-      const token = getToken();
-      if (!token) return;
-      try {
-        // Chat unreads
-        const clubsRes = await fetch(`${API}/clubs`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!clubsRes.ok) return;
-        const clubsData = await clubsRes.json();
-        const myClubs = (clubsData.clubs || []).filter(
-          (c: { my_status: string; is_creator: boolean }) =>
-            c.my_status === "approved" || c.is_creator
-        );
-
-        let total = 0;
-
-        await Promise.all(
-          myClubs.map(async (club: { id: number }) => {
-            const lastId = parseInt(
-              localStorage.getItem(`chat_lid_${club.id}`) || "0",
-              10
-            );
-            try {
-              const r = await fetch(`${API}/clubs/${club.id}/chat?after=${lastId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (!r.ok) return;
-              const d = await r.json();
-              // Only count messages from OTHER people
-              const others = (d.messages || []).filter(
-                (m: { user_id: number }) => m.user_id !== userId
-              );
-              if (others.length > 0) total += 1;
-            } catch { /* ignore */ }
-          })
-        );
-
-        // News unreads
-        const lastSeenId = parseInt(
-          localStorage.getItem("news_last_post_id") || "0",
-          10
-        );
-        try {
-          const r = await fetch(`${API}/posts`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (r.ok) {
-            const d = await r.json();
-            // Don't count posts you wrote yourself
-            const newPosts = (d.posts || []).filter(
-              (p: { id: number; user_id: number }) =>
-                p.id > lastSeenId && p.user_id !== userId
-            );
-            if (newPosts.length > 0) total += 1;
-          }
-        } catch { /* ignore */ }
-
-        if (!cancelled) setCount(total);
-      } catch { /* ignore */ }
-    };
-
-    check();
-    const interval = setInterval(check, 60000); // re-check every 60s
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [userId]);
-
-  return count;
-}
+import { useNotifCount } from "@/hooks/use-notif-count";
 
 const sidebarSections = [
   {

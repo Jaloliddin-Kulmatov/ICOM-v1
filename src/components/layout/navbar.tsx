@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import SearchModal from "@/components/ui/search-modal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useNotifCount } from "@/hooks/use-notif-count";
 
 const navLinks = [
   { href: "/community", label: "Community", icon: Users },
@@ -29,6 +30,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { user } = useAuth();
+  const notifCount = useNotifCount(user?.id);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -133,6 +135,11 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 <Button variant="ghost" size="icon-sm" className="relative" title="Notifications" asChild>
                   <Link href="/dashboard/notifications">
                     <Bell size={15} />
+                    {notifCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5 leading-none pointer-events-none">
+                        {notifCount > 9 ? "9+" : notifCount}
+                      </span>
+                    )}
                   </Link>
                 </Button>
 

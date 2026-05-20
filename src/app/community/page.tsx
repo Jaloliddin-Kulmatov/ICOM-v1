@@ -400,12 +400,15 @@ export default function CommunityPage() {
         });
         if (!res.ok) return;
         const d = await res.json();
-        const msgs = d.messages || [];
+        // Only count messages from OTHER people (not your own)
+        const msgs = (d.messages || []).filter(
+          (m: { user_id: number }) => m.user_id !== user?.id
+        );
         if (msgs.length > 0) counts[c.id] = msgs.length;
       } catch { /* ignore */ }
     }));
     setUnreadCounts(counts);
-  }, []);
+  }, [user]);
 
   const fetchClubs = useCallback(async () => {
     const token = getToken();
