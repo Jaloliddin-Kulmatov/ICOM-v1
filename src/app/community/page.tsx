@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "@/components/layout/navbar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -342,7 +342,7 @@ function ClubCard({ club, onAction, onManage, onChat, unreadCount = 0 }: {
             >
               <MessageSquare size={12} /> Chat
               {unreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5 animate-bounce">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -388,6 +388,9 @@ export default function CommunityPage() {
   const [activeTabMain, setActiveTabMain] = useState<"club" | "community" | "news">("club");
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const [newsUnread, setNewsUnread] = useState(0);
+  const [toast, setToast] = useState<{ msg: string; clubId?: number } | null>(null);
+  const prevCountsRef = useRef<Record<number, number>>({});
+  const prevNewsRef = useRef(0);
 
   const checkUnread = useCallback(async (approvedClubs: Club[]) => {
     if (!approvedClubs.length) return;
@@ -447,6 +450,40 @@ export default function CommunityPage() {
   }, [clubs, user, checkUnread]);
 
   // Check news unread on mount and every 30s
+  // Show toast when unread counts increase
+  useEffect(() => {
+    const prev = prevCountsRef.current;
+    let toastMsg: string | null = null;
+    let toastClubId: number | undefined;
+    for (const [idStr, count] of Object.entries(unreadCounts)) {
+      const id = Number(idStr);
+      if (count > (prev[id] || 0)) {
+        const club = clubs.find(c => c.id === id);
+        toastMsg = `New message in ${club?.name || "a club"}`;
+        toastClubId = id;
+        break;
+      }
+    }
+    prevCountsRef.current = { ...unreadCounts };
+    if (toastMsg) {
+      setToast({ msg: toastMsg, clubId: toastClubId });
+    }
+  }, [unreadCounts, clubs]);
+
+  useEffect(() => {
+    if (newsUnread > prevNewsRef.current && prevNewsRef.current >= 0) {
+      setToast({ msg: `${newsUnread} new post${newsUnread !== 1 ? "s" : ""} in News` });
+    }
+    prevNewsRef.current = newsUnread;
+  }, [newsUnread]);
+
+  // Auto-dismiss toast after 5 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const checkNewsUnread = useCallback(async () => {
     if (!user) return;
     const lastSeenId = parseInt(localStorage.getItem("news_last_post_id") || "0", 10);
@@ -492,6 +529,29 @@ export default function CommunityPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3 rounded-2xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/30 animate-fade-in cursor-pointer select-none"
+          onClick={() => {
+            setToast(null);
+            if (toast.clubId) {
+              const club = clubs.find(c => c.id === toast.clubId);
+              if (club) setChatClub(club);
+            } else {
+              setActiveTabMain("news");
+            }
+          }}
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0" />
+          <span className="text-sm font-medium">{toast.msg}</span>
+          <button
+            onClick={e => { e.stopPropagation(); setToast(null); }}
+            className="ml-1 text-white/60 hover:text-white text-xs"
+          >✕</button>
+        </div>
+      )}
       {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {manageClub && <ManageModal club={manageClub} onClose={() => setManageClub(null)} onUpdate={fetchClubs} />}
       {chatClub && <ClubChat club={chatClub} onClose={() => {
