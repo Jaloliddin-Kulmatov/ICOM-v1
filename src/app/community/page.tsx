@@ -453,8 +453,9 @@ export default function CommunityPage() {
       });
       if (!res.ok) return;
       const d = await res.json();
-      const posts: { id: number }[] = d.posts || [];
-      const count = posts.filter(p => p.id > lastSeenId).length;
+      const posts: { id: number; user_id: number }[] = d.posts || [];
+      // Don't notify for posts you wrote yourself
+      const count = posts.filter(p => p.id > lastSeenId && p.user_id !== user.id).length;
       setNewsUnread(count);
     } catch { /* ignore */ }
   }, [user]);

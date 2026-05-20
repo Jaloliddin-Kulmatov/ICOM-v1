@@ -25,6 +25,7 @@ interface Club {
 
 interface Post {
   id: number;
+  user_id: number;
   posted_as_label: string;
   content: string;
   created_at: string;
@@ -32,7 +33,8 @@ interface Post {
 
 interface ChatMessage {
   id: number;
-  user_name: string;
+  user_id: number;
+  author_name: string;
   content: string;
   created_at: string;
 }
@@ -96,7 +98,9 @@ export default function NotificationsPage() {
             });
             if (!res.ok) return;
             const d = await res.json();
-            const msgs: ChatMessage[] = d.messages || [];
+            const msgs: ChatMessage[] = (d.messages || []).filter(
+              (m: ChatMessage) => m.user_id !== user.id   // ignore own messages
+            );
             if (msgs.length > 0) {
               const latest = msgs[msgs.length - 1];
               chatNotifs.push({
@@ -106,7 +110,7 @@ export default function NotificationsPage() {
                 clubName: club.name,
                 clubType: club.club_type,
                 count: msgs.length,
-                previewText: `${latest.user_name}: ${latest.content}`,
+                previewText: `${latest.author_name}: ${latest.content}`,
                 timestamp: latest.created_at,
               });
             }
@@ -127,7 +131,7 @@ export default function NotificationsPage() {
         if (res.ok) {
           const d = await res.json();
           const newPosts: Post[] = (d.posts || []).filter(
-            (p: Post) => p.id > lastSeenId
+            (p: Post) => p.id > lastSeenId && p.user_id !== user.id  // ignore own posts
           );
           if (newPosts.length > 0) {
             const latest = newPosts[0];

@@ -71,7 +71,11 @@ function useNotifCount(userId: number | undefined) {
               });
               if (!r.ok) return;
               const d = await r.json();
-              if ((d.messages || []).length > 0) total += 1;
+              // Only count messages from OTHER people
+              const others = (d.messages || []).filter(
+                (m: { user_id: number }) => m.user_id !== userId
+              );
+              if (others.length > 0) total += 1;
             } catch { /* ignore */ }
           })
         );
@@ -87,8 +91,10 @@ function useNotifCount(userId: number | undefined) {
           });
           if (r.ok) {
             const d = await r.json();
+            // Don't count posts you wrote yourself
             const newPosts = (d.posts || []).filter(
-              (p: { id: number }) => p.id > lastSeenId
+              (p: { id: number; user_id: number }) =>
+                p.id > lastSeenId && p.user_id !== userId
             );
             if (newPosts.length > 0) total += 1;
           }

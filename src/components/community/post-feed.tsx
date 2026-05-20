@@ -301,7 +301,12 @@ export default function PostFeed() {
       }),
     });
     const d = await res.json();
-    if (d.post) { setPosts(p => [d.post, ...p]); setContent(""); }
+    if (d.post) {
+      setPosts(p => [d.post, ...p]);
+      setContent("");
+      // Mark your own post as already-seen so it never triggers a notification for you
+      localStorage.setItem("news_last_post_id", String(d.post.id));
+    }
     setPosting(false);
   };
 
