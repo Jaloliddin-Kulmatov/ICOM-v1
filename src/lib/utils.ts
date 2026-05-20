@@ -5,17 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Parse a date string from the backend. Old records used datetime.utcnow().isoformat()
+ * without a timezone marker, which browsers misinterpret as local time. If there's no
+ * Z or +HH:MM suffix, we assume UTC and append "Z".
+ */
+function parseBackendDate(date: string | Date): Date {
+  if (typeof date !== "string") return new Date(date);
+  const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(date);
+  return new Date(hasTz ? date : date + "Z");
+}
+
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(parseBackendDate(date));
 }
 
 export function formatRelativeTime(date: string | Date): string {
   const now = new Date();
-  const target = new Date(date);
+  const target = parseBackendDate(date);
   const diffMs = now.getTime() - target.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);

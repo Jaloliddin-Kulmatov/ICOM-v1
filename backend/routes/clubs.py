@@ -114,7 +114,7 @@ def get_requests(club_id):
                 "university": u.university,
                 "country": u.country,
                 "visa_type": u.visa_type,
-                "requested_at": m.joined_at.isoformat(),
+                "requested_at": m.joined_at.isoformat() + "Z",
             })
     return jsonify({"requests": result}), 200
 
@@ -177,7 +177,7 @@ def get_members(club_id):
                 "university": u.university,
                 "country": u.country,
                 "visa_type": u.visa_type,
-                "joined_at": m.joined_at.isoformat(),
+                "joined_at": m.joined_at.isoformat() + "Z",
             })
     return jsonify({"members": result}), 200
 

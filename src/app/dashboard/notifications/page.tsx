@@ -51,7 +51,9 @@ interface Notif {
 }
 
 function timeAgo(ts: string) {
-  const diff = Date.now() - new Date(ts).getTime();
+  // Backend ISO strings may lack timezone — treat them as UTC
+  const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(ts);
+  const diff = Date.now() - new Date(hasTz ? ts : ts + "Z").getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;

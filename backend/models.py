@@ -27,7 +27,7 @@ class User(db.Model):
             "country": self.country,
             "role": self.role,
             "is_verified": self.is_verified,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
         }
 
 
@@ -95,7 +95,7 @@ class Club(db.Model):
             # Private info — only for approved members & creator
             "kakao_link": self.kakao_link if is_approved_member else None,
             "contact": self.contact if is_approved_member else None,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
             "creator_name": self.creator.name if self.creator else None,
             "club_type": self.club_type or "club",
             "country": self.country,
@@ -146,7 +146,7 @@ class AmbassadorApplication(db.Model):
             "motivation": self.motivation,
             "social": self.social,
             "status": self.status,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
         }
 
 
@@ -176,7 +176,7 @@ class Post(db.Model):
             "posted_as_type": self.posted_as_type,
             "posted_as_label": self.posted_as_label,
             "club_id": self.club_id,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
             "comment_count": comment_count,
         }
 
@@ -200,7 +200,7 @@ class PostComment(db.Model):
             "user_id": self.user_id,
             "author_name": self.author.name if self.author else "Unknown",
             "content": self.content,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
         }
 
 
@@ -224,7 +224,7 @@ class ClubMessage(db.Model):
             "user_id": self.user_id,
             "author_name": self.author.name if self.author else "Unknown",
             "content": self.content,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
         }
 
 
@@ -262,6 +262,6 @@ class Job(db.Model):
             "tags": [t.strip() for t in (self.tags or "").split(",") if t.strip()],
             "apply_link": self.apply_link or "",
             "is_active": self.is_active,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() + "Z",
             "isNew": (datetime.utcnow() - self.created_at).days < 3,
         }
