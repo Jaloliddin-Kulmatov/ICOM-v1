@@ -67,7 +67,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   arts:     "text-pink-400 bg-pink-500/10 border-pink-500/20",
   volunteer:"text-orange-400 bg-orange-500/10 border-orange-500/20",
 };
-const CATEGORIES = ["academic","sports","culture","social","language","tech","arts","volunteer"];
+// Category filters — clubs and communities use different sets
+const CLUB_CATEGORIES      = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
+const COMMUNITY_CATEGORIES = ["national community", "religion & culture", "support & community"];
 
 function getToken() { return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null; }
 
@@ -144,7 +146,7 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
             <div>
               <label className={labelCls}>Category</label>
               <select value={form.category} onChange={e => setForm(p => ({...p, category: e.target.value}))} className={inputCls + " [color-scheme:dark]"}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
+                {(form.club_type === "community" ? COMMUNITY_CATEGORIES : CLUB_CATEGORIES).map((c: string) => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
               </select>
             </div>
             {form.club_type === "community" ? (
@@ -567,9 +569,13 @@ export default function CommunityPage() {
   const handleCreate = (newClub: Club) => setClubs(prev => [newClub, ...prev]);
 
   const tabClubs = clubs.filter(c => (c.club_type || "club") === activeTab);
-  const categories = ["all", ...Array.from(new Set(tabClubs.map(c => c.category)))];
+
+  // Fixed category lists per tab — clubs use subject categories, communities use group types
+  const categoryList = activeTab === "club" ? CLUB_CATEGORIES : COMMUNITY_CATEGORIES;
+  const categories = ["all", ...categoryList];
+
   const filtered = tabClubs.filter(c => {
-    const matchCat = activeCategory === "all" || c.category === activeCategory;
+    const matchCat = activeCategory === "all" || c.category.toLowerCase() === activeCategory.toLowerCase();
     const matchSearch = !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.description || "").toLowerCase().includes(search.toLowerCase());
@@ -645,7 +651,7 @@ export default function CommunityPage() {
               <button key={tab.key}
                 onClick={() => {
                   if (tab.key !== "news") setActiveTab(tab.key as "club" | "community");
-                  setActiveCategory("all");
+                  setActiveCategory("all");  // always reset filter on tab switch
                   setActiveTabMain(tab.key);
                   if (tab.key === "news") {
                     // Mark news as read — save latest seen ID

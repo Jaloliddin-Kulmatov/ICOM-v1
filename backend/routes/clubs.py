@@ -6,6 +6,50 @@ from models import Club, ClubMembership, User, ClubMessage
 
 clubs_bp = Blueprint("clubs", __name__)
 
+# ── University alias table ────────────────────────────────────
+# Maps every canonical short-name to a list of known variants so that
+# "JBNU", "jbnu", "Jeonbuk National University", "전북대" all match.
+_UNI_ALIASES: dict[str, list[str]] = {
+    "jbnu":     ["jbnu", "jeonbuk", "전북대", "전북국립대", "전북대학교"],
+    "snu":      ["snu", "seoul national", "서울대", "서울국립대"],
+    "yonsei":   ["yonsei", "연세", "연세대"],
+    "korea":    ["korea university", "고려대", "고대", "koryo"],
+    "hanyang":  ["hanyang", "한양", "한양대"],
+    "skku":     ["skku", "sungkyunkwan", "성균관", "성균관대"],
+    "ewha":     ["ewha", "이화", "이화여대"],
+    "kyung hee":["kyung hee", "kyunghee", "경희", "경희대"],
+    "sogang":   ["sogang", "서강", "서강대"],
+    "chung-ang":["chung-ang", "chungang", "중앙", "중앙대", "cau"],
+    "inha":     ["inha", "인하", "인하대"],
+    "pnu":      ["pnu", "pusan national", "부산대", "부산국립대"],
+    "konkuk":   ["konkuk", "건국", "건국대"],
+    "hongik":   ["hongik", "홍익", "홍대"],
+    "sejong":   ["sejong", "세종", "세종대"],
+    "dongguk":  ["dongguk", "동국", "동국대"],
+    "cnu":      ["cnu", "chungnam national", "충남대"],
+    "ajou":     ["ajou", "아주", "아주대"],
+}
+
+def _uni_matches(user_uni: str, club_uni: str) -> bool:
+    """Return True if the two university strings refer to the same institution.
+    Handles abbreviations, full names, Korean names, and case differences."""
+    u = user_uni.lower().strip()
+    c = club_uni.lower().strip()
+    if not u or not c:
+        return False
+    if u == c:
+        return True
+    # substring containment (e.g. "jbnu" ⊂ "jbnu international students")
+    if u in c or c in u:
+        return True
+    # alias table lookup
+    for _canonical, variants in _UNI_ALIASES.items():
+        u_hit = any(v in u for v in variants)
+        c_hit = any(v in c for v in variants)
+        if u_hit and c_hit:
+            return True
+    return False
+
 
 def _current_user_id():
     try:
@@ -20,8 +64,8 @@ def _current_user_id():
 # Rules:
 #   club_type == "community"  → visible to every authenticated user
 #   club_type == "club"       → visible only to users whose university
-#                               matches the club's university field
-#   unauthenticated request   → communities only (no private clubs shown)
+#                               matches the club's university field (flexible)
+#   unauthenticated request   → communities only
 
 @clubs_bp.route("", methods=["GET"])
 def list_clubs():
@@ -44,8 +88,8 @@ def list_clubs():
         ctype = (c.club_type or "club").lower()
         if ctype == "community":
             visible.append(c)                             # communities: everyone
-        elif user_uni and (c.university or "").strip() == user_uni:
-            visible.append(c)                             # clubs: same university only
+        elif user_uni and _uni_matches(user_uni, c.university or ""):
+            visible.append(c)                             # clubs: same university
 
     return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in visible]}), 200
 
