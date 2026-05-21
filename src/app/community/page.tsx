@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Search, Users, Globe, MapPin, Clock, Phone, CheckCircle2,
   LogIn, Loader2, Plus, X, Lock, ChevronDown, ChevronUp,
-  Link as LinkIcon, Settings, MessageSquare, UserCheck,
+  Link as LinkIcon, Settings, MessageSquare, UserCheck, Pencil,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
@@ -82,7 +82,7 @@ async function apiFetch(method: string, path: string, body?: object) {
   return res.json();
 }
 
-// ── Create Club Modal ────────────────────────────────────────
+// ── Create Club Modal ────────────────────────────────────────────
 
 function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate: (club: Club) => void }) {
   const { user } = useAuth();
@@ -196,7 +196,124 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
   );
 }
 
-// ── Manage Requests Modal ─────────────────────────────────────
+// ── Edit Club Modal ─────────────────────────────────────────────
+
+function EditClubModal({ club, onClose, onUpdate }: { club: Club; onClose: () => void; onUpdate: (club: Club) => void }) {
+  const [form, setForm] = useState({
+    name: club.name,
+    description: club.description || "",
+    category: club.category || "social",
+    university: club.university || "JBNU",
+    kakao_link: club.kakao_link || "",
+    contact: club.contact || "",
+    meeting_time: club.meeting_time || "",
+    location: club.location || "",
+    club_type: club.club_type,
+    country: club.country || "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const inputCls = "w-full bg-[#1a1a2e] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]";
+  const labelCls = "text-xs font-medium text-white/55 mb-1 block";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const data = await apiFetch("PATCH", `/clubs/${club.id}`, form);
+      if (data.error) throw new Error(data.error);
+      onUpdate(data.club);
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save changes");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg bg-[#0e0e1a] border border-white/12 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+          <h2 className="text-base font-bold text-white flex items-center gap-2"><Pencil size={14} /> Edit — {club.name}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <p className="text-xs text-red-400 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">{error}</p>}
+
+          <div className="grid grid-cols-2 gap-2">
+            {(["club", "community"] as const).map(t => (
+              <button key={t} type="button"
+                onClick={() => setForm(p => ({...p, club_type: t}))}
+                className={`py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                  form.club_type === t
+                    ? t === "club" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" : "bg-violet-500/20 border-violet-500/40 text-violet-300"
+                    : "border-white/10 text-white/40 hover:text-white/70"
+                }`}>
+                {t === "club" ? "🎓 Club" : "🌍 Community"}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className={labelCls}>Name *</label>
+            <input required value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Category</label>
+              <select value={form.category} onChange={e => setForm(p => ({...p, category: e.target.value}))} className={inputCls + " [color-scheme:dark]"}>
+                {(form.club_type === "community" ? COMMUNITY_CATEGORIES : CLUB_CATEGORIES).map((c: string) => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
+              </select>
+            </div>
+            {form.club_type === "community" ? (
+              <div>
+                <label className={labelCls}>Country / Nationality</label>
+                <input value={form.country} onChange={e => setForm(p => ({...p, country: e.target.value}))} placeholder="e.g. Uzbekistan" className={inputCls} />
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>University</label>
+                <input value={form.university} onChange={e => setForm(p => ({...p, university: e.target.value}))} className={inputCls} />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>Description</label>
+            <textarea value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={3} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Meeting Time</label>
+              <input value={form.meeting_time} onChange={e => setForm(p => ({...p, meeting_time: e.target.value}))} placeholder="e.g. Every Sat 2pm" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => setForm(p => ({...p, location: e.target.value}))} placeholder="e.g. Student Union B203" className={inputCls} />
+            </div>
+          </div>
+          <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/15 space-y-3">
+            <p className="text-xs font-semibold text-indigo-400 flex items-center gap-1.5"><Lock size={12} /> Private info — only shown to accepted members</p>
+            <div>
+              <label className={labelCls}>KakaoTalk Group Link / ID</label>
+              <input value={form.kakao_link} onChange={e => setForm(p => ({...p, kakao_link: e.target.value}))} placeholder="e.g. open.kakao.com/o/gXXXXXXXX" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Contact (email / KakaoTalk ID / phone)</label>
+              <input value={form.contact} onChange={e => setForm(p => ({...p, contact: e.target.value}))} placeholder="e.g. kakao: jbnu_hiking" className={inputCls} />
+            </div>
+          </div>
+          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors disabled:opacity-50">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
+            Save Changes
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Manage Requests Modal ─────────────────────────────────────────
 
 function ManageModal({ club, onClose, onUpdate }: { club: Club; onClose: () => void; onUpdate: () => void }) {
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -269,7 +386,7 @@ function ManageModal({ club, onClose, onUpdate }: { club: Club; onClose: () => v
   );
 }
 
-// ── Members Modal ─────────────────────────────────────────────
+// ── Members Modal ─────────────────────────────────────────────────
 
 function MembersModal({ club, onClose }: { club: Club; onClose: () => void }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -324,14 +441,15 @@ function MembersModal({ club, onClose }: { club: Club; onClose: () => void }) {
   );
 }
 
-// ── Club Card ─────────────────────────────────────────────────
+// ── Club Card ─────────────────────────────────────────────────────
 
-function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
+function ClubCard({ club, onAction, onManage, onChat, onMembers, onEdit }: {
   club: Club;
   onAction: (club: Club, action: "request" | "leave") => Promise<void>;
   onManage: (club: Club) => void;
   onChat: (club: Club) => void;
   onMembers: (club: Club) => void;
+  onEdit: (club: Club) => void;
 }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -361,12 +479,17 @@ function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
               : club.university}
           </span>
           {club.is_creator && (
-            <button onClick={() => onManage(club)} title="Manage members" className="p-1 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors relative">
-              <Settings size={13} />
-              {club.pending_count > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center font-bold">{club.pending_count}</span>
-              )}
-            </button>
+            <>
+              <button onClick={() => onEdit(club)} title="Edit club" className="p-1 rounded-lg text-muted-foreground hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors">
+                <Pencil size={13} />
+              </button>
+              <button onClick={() => onManage(club)} title="Manage members" className="p-1 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors relative">
+                <Settings size={13} />
+                {club.pending_count > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center font-bold">{club.pending_count}</span>
+                )}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -464,7 +587,7 @@ function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────
 
 export default function CommunityPage() {
   const { user } = useAuth();
@@ -475,6 +598,7 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState<"club" | "community">("club");
   const [showCreate, setShowCreate] = useState(false);
   const [manageClub, setManageClub] = useState<Club | null>(null);
+  const [editClub, setEditClub] = useState<Club | null>(null);
   const [chatClub, setChatClub] = useState<Club | null>(null);
   const [membersClub, setMembersClub] = useState<Club | null>(null);
   const [activeTabMain, setActiveTabMain] = useState<"club" | "community" | "news">("club");
@@ -609,6 +733,7 @@ export default function CommunityPage() {
         </div>
       )}
       {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {editClub && <EditClubModal club={editClub} onClose={() => setEditClub(null)} onUpdate={updated => { setClubs(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c)); setEditClub(null); }} />}
       {manageClub && <ManageModal club={manageClub} onClose={() => setManageClub(null)} onUpdate={fetchClubs} />}
       {membersClub && <MembersModal club={membersClub} onClose={() => setMembersClub(null)} />}
       {chatClub && <ClubChat club={chatClub} onClose={() => setChatClub(null)} />}
@@ -767,6 +892,7 @@ export default function CommunityPage() {
                     club={club}
                     onAction={handleAction}
                     onManage={setManageClub}
+                    onEdit={setEditClub}
                     onChat={setChatClub}
                     onMembers={setMembersClub}
                   />

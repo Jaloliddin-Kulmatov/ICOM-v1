@@ -6,34 +6,291 @@ import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2 } from "lucide-react";
+import {
+  Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2,
+  Pencil, Trash2, X, Loader2, Plus,
+} from "lucide-react";
 import { JOB_CATEGORIES } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
-
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
+function getToken() { return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null; }
+
+async function apiFetch(method: string, path: string, body?: object) {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
+
+// ── Raw job shape returned by the API ──────────────────────────────────
+interface RawJob {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  type: string;
+  salary: string;
+  description: string;
+  requirements: string[];
+  visa_compatible: string[];
+  deadline: string;
+  tags: string[];
+  isNew: boolean;
+  apply_link: string;
+}
+
+function rawToJob(j: RawJob): Job {
+  return {
+    id: `db-${j.id}`,
+    title: j.title,
+    company: j.company,
+    location: j.location || "",
+    type: "internship" as Job["type"],
+    salary: j.salary || "",
+    description: j.description || "",
+    requirements: j.requirements,
+    visaCompatible: j.visa_compatible,
+    postedAt: new Date().toISOString(),
+    deadline: j.deadline,
+    applications: 0,
+    tags: j.tags,
+    isNew: j.isNew,
+    isHot: false,
+    isBookmarked: false,
+    applyLink: j.apply_link || "",
+  };
+}
+
+// ── Edit Job Modal ──────────────────────────────────────────────────────────
+
+interface EditJobForm {
+  title: string; company: string; location: string; type: string;
+  salary: string; description: string; requirements: string;
+  visa_compatible: string; deadline: string; tags: string; apply_link: string;
+}
+
+function EditJobModal({ job, rawId, onClose, onSave }: {
+  job: Job; rawId: number; onClose: () => void; onSave: (updated: Job) => void;
+}) {
+  const [form, setForm] = useState<EditJobForm>({
+    title: job.title,
+    company: job.company,
+    location: job.location,
+    type: job.type,
+    salary: job.salary,
+    description: job.description,
+    requirements: job.requirements.join("\n"),
+    visa_compatible: job.visaCompatible.join(", "),
+    deadline: job.deadline || "",
+    tags: job.tags.join(", "),
+    apply_link: job.applyLink || "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const inputCls = "w-full bg-[#1a1a2e] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-indigo-500/50 transition-colors";
+  const labelCls = "text-xs font-medium text-white/55 mb-1 block";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const data = await apiFetch("PATCH", `/admin/jobs/${rawId}`, form);
+      if (data.error) throw new Error(data.error);
+      onSave(rawToJob(data.job));
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg bg-[#0e0e1a] border border-white/12 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+          <h2 className="text-base font-bold text-white flex items-center gap-2"><Pencil size={14} /> Edit Internship</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <p className="text-xs text-red-400 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">{error}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Title *</label>
+              <input required value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Company *</label>
+              <input required value={form.company} onChange={e => setForm(p => ({...p, company: e.target.value}))} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => setForm(p => ({...p, location: e.target.value}))} placeholder="e.g. Seoul / Remote" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Salary</label>
+              <input value={form.salary} onChange={e => setForm(p => ({...p, salary: e.target.value}))} placeholder="e.g. 2.5M₩/mo" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Description</label>
+            <textarea rows={4} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Requirements (one per line)</label>
+            <textarea rows={3} value={form.requirements} onChange={e => setForm(p => ({...p, requirements: e.target.value}))} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Visa Compatible (comma-separated)</label>
+              <input value={form.visa_compatible} onChange={e => setForm(p => ({...p, visa_compatible: e.target.value}))} placeholder="D-2, D-4, F-2" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Deadline</label>
+              <input value={form.deadline} onChange={e => setForm(p => ({...p, deadline: e.target.value}))} placeholder="e.g. 2025-06-30" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Tags (comma-separated)</label>
+            <input value={form.tags} onChange={e => setForm(p => ({...p, tags: e.target.value}))} placeholder="e.g. tech, remote, python" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Apply Link</label>
+            <input value={form.apply_link} onChange={e => setForm(p => ({...p, apply_link: e.target.value}))} placeholder="https://careers.company.com/..." className={inputCls} />
+          </div>
+          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors disabled:opacity-50">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
+            Save Changes
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Create Job Modal ──────────────────────────────────────────────────────────
+
+function CreateJobModal({ onClose, onCreate }: { onClose: () => void; onCreate: (job: Job) => void }) {
+  const [form, setForm] = useState<EditJobForm>({
+    title: "", company: "", location: "", type: "internship",
+    salary: "", description: "", requirements: "",
+    visa_compatible: "D-2, D-4", deadline: "", tags: "", apply_link: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const inputCls = "w-full bg-[#1a1a2e] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-indigo-500/50 transition-colors";
+  const labelCls = "text-xs font-medium text-white/55 mb-1 block";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const data = await apiFetch("POST", "/admin/jobs", form);
+      if (data.error) throw new Error(data.error);
+      onCreate(rawToJob(data.job));
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg bg-[#0e0e1a] border border-white/12 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+          <h2 className="text-base font-bold text-white flex items-center gap-2"><Plus size={14} /> Add Internship</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <p className="text-xs text-red-400 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">{error}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Title *</label>
+              <input required value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="e.g. Software Intern" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Company *</label>
+              <input required value={form.company} onChange={e => setForm(p => ({...p, company: e.target.value}))} placeholder="e.g. Kakao" className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => setForm(p => ({...p, location: e.target.value}))} placeholder="e.g. Seoul / Remote" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Salary</label>
+              <input value={form.salary} onChange={e => setForm(p => ({...p, salary: e.target.value}))} placeholder="e.g. 2.5M₩/mo" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Description</label>
+            <textarea rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Role overview..." className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Requirements (one per line)</label>
+            <textarea rows={3} value={form.requirements} onChange={e => setForm(p => ({...p, requirements: e.target.value}))} placeholder="Bachelor's in CS&#10;React experience" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Visa Compatible</label>
+              <input value={form.visa_compatible} onChange={e => setForm(p => ({...p, visa_compatible: e.target.value}))} placeholder="D-2, D-4, F-2" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Deadline</label>
+              <input value={form.deadline} onChange={e => setForm(p => ({...p, deadline: e.target.value}))} placeholder="e.g. 2025-06-30" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Tags (comma-separated)</label>
+            <input value={form.tags} onChange={e => setForm(p => ({...p, tags: e.target.value}))} placeholder="e.g. tech, remote, python" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Apply Link</label>
+            <input value={form.apply_link} onChange={e => setForm(p => ({...p, apply_link: e.target.value}))} placeholder="https://careers.company.com/..." className={inputCls} />
+          </div>
+          <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors disabled:opacity-50">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Add Internship
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────────────
+
 export default function JobsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [visaFilter, setVisaFilter] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [rawIds, setRawIds] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [editJob, setEditJob] = useState<Job | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   React.useEffect(() => {
     fetch(`${API}/admin/jobs`)
       .then(r => r.json())
       .then(d => {
         if (d.jobs?.length) {
-          const mapped: Job[] = d.jobs.map((j: { id: string; title: string; company: string; location: string; type: string; salary: string; description: string; requirements: string[]; visa_compatible: string[]; deadline: string; tags: string[]; isNew: boolean; apply_link: string }) => ({
-            id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
-            type: "internship" as Job["type"], salary: j.salary || "", description: j.description || "",
-            requirements: j.requirements, visaCompatible: j.visa_compatible,
-            postedAt: new Date().toISOString(), deadline: j.deadline, applications: 0,
-            tags: j.tags, isNew: j.isNew, isHot: false, isBookmarked: false,
-            applyLink: j.apply_link || "",
-          }));
+          const mapped: Job[] = d.jobs.map((j: RawJob) => rawToJob(j));
+          const ids: Record<string, number> = {};
+          d.jobs.forEach((j: RawJob) => { ids[`db-${j.id}`] = j.id; });
           setAllJobs(mapped);
+          setRawIds(ids);
         }
         setLoading(false);
       })
@@ -50,9 +307,36 @@ export default function JobsPage() {
     return matchSearch && matchCategory && matchVisa;
   });
 
+  const handleDelete = async (job: Job) => {
+    if (!confirm(`Delete "${job.title}"?`)) return;
+    const rawId = rawIds[job.id];
+    if (!rawId) return;
+    await apiFetch("DELETE", `/admin/jobs/${rawId}`);
+    setAllJobs(prev => prev.filter(j => j.id !== job.id));
+  };
+
+  const handleSave = (updated: Job) => {
+    setAllJobs(prev => prev.map(j => j.id === updated.id ? updated : j));
+    setEditJob(null);
+  };
+
+  const handleCreate = (created: Job) => {
+    setAllJobs(prev => [created, ...prev]);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      {editJob && rawIds[editJob.id] && (
+        <EditJobModal
+          job={editJob}
+          rawId={rawIds[editJob.id]}
+          onClose={() => setEditJob(null)}
+          onSave={handleSave}
+        />
+      )}
+      {showCreate && <CreateJobModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+
       <main className="pt-16">
         {/* Page header */}
         <div className="border-b border-white/8 bg-gradient-to-b from-white/2 to-transparent">
@@ -70,16 +354,26 @@ export default function JobsPage() {
                   Real internship opportunities at top companies — curated for international students
                 </p>
               </div>
-              <div className="hidden sm:flex items-center gap-3">
-                <div className="text-center">
-                  <div className="text-xl font-bold gradient-text-primary">{allJobs.length || "—"}</div>
-                  <div className="text-xs text-muted-foreground">Internships</div>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-3">
+                  <div className="text-center">
+                    <div className="text-xl font-bold gradient-text-primary">{allJobs.length || "—"}</div>
+                    <div className="text-xs text-muted-foreground">Internships</div>
+                  </div>
+                  <div className="h-8 w-px bg-white/10" />
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-emerald-400">Real</div>
+                    <div className="text-xs text-muted-foreground">Apply links</div>
+                  </div>
                 </div>
-                <div className="h-8 w-px bg-white/10" />
-                <div className="text-center">
-                  <div className="text-xl font-bold text-emerald-400">Real</div>
-                  <div className="text-xs text-muted-foreground">Apply links</div>
-                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
+                  >
+                    <Plus size={14} /> Add
+                  </button>
+                )}
               </div>
             </div>
 
@@ -153,7 +447,7 @@ export default function JobsPage() {
                   <p className="text-sm font-medium text-foreground">
                     All listings include <span className="text-indigo-400 font-bold">real apply links</span>
                   </p>
-                  <p className="text-xs text-muted-foreground">Click Apply ↗ to go directly to the company's official careers page</p>
+                  <p className="text-xs text-muted-foreground">Click Apply ↗ to go directly to the company&apos;s official careers page</p>
                 </div>
               </div>
 
@@ -176,7 +470,27 @@ export default function JobsPage() {
                   <div className="py-16 text-center text-muted-foreground text-sm">No internships match your filters.</div>
                 ) : (
                   filteredJobs.map((job) => (
-                    <JobCard key={job.id} job={job} />
+                    <div key={job.id} className="relative group">
+                      <JobCard job={job} />
+                      {isAdmin && (
+                        <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditJob(job)}
+                            className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(job)}
+                            className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))
                 )}
               </div>
