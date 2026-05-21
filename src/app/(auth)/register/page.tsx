@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, Globe, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +16,42 @@ const steps = [
 ];
 
 const VISA_OPTIONS = ["D-2", "D-4", "F-2", "F-4", "E-7", "Other"];
+
+const COUNTRY_OPTIONS = [
+  { flag: "🇺🇿", name: "Uzbekistan" },
+  { flag: "🇨🇳", name: "China" },
+  { flag: "🇻🇳", name: "Vietnam" },
+  { flag: "🇲🇳", name: "Mongolia" },
+  { flag: "🇳🇵", name: "Nepal" },
+  { flag: "🇮🇩", name: "Indonesia" },
+  { flag: "🇷🇺", name: "Russia" },
+  { flag: "🇰🇿", name: "Kazakhstan" },
+  { flag: "🇮🇳", name: "India" },
+  { flag: "🇵🇰", name: "Pakistan" },
+  { flag: "🇧🇩", name: "Bangladesh" },
+  { flag: "🇵🇭", name: "Philippines" },
+  { flag: "🇲🇾", name: "Malaysia" },
+  { flag: "🇹🇭", name: "Thailand" },
+  { flag: "🇲🇲", name: "Myanmar" },
+  { flag: "🇰🇬", name: "Kyrgyzstan" },
+  { flag: "🇹🇯", name: "Tajikistan" },
+  { flag: "🇹🇲", name: "Turkmenistan" },
+  { flag: "🇦🇿", name: "Azerbaijan" },
+  { flag: "🇺🇦", name: "Ukraine" },
+  { flag: "🇳🇬", name: "Nigeria" },
+  { flag: "🇬🇭", name: "Ghana" },
+  { flag: "🇰🇪", name: "Kenya" },
+  { flag: "🇪🇹", name: "Ethiopia" },
+  { flag: "🇸🇦", name: "Saudi Arabia" },
+  { flag: "🇮🇷", name: "Iran" },
+  { flag: "🇹🇷", name: "Turkey" },
+  { flag: "🇫🇷", name: "France" },
+  { flag: "🇩🇪", name: "Germany" },
+  { flag: "🇺🇸", name: "USA" },
+  { flag: "🇬🇧", name: "UK" },
+  { flag: "🇧🇷", name: "Brazil" },
+  { flag: "🌍", name: "Other" },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -174,9 +210,25 @@ export default function RegisterPage() {
           {/* Step 2 — Profile */}
           {step === 2 && (
             <div className="space-y-4 animate-fade-in">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Country of Origin</label>
-                <Input placeholder="e.g. Uzbekistan, Vietnam..." value={form.country} onChange={(e) => set("country", e.target.value)} icon={<Globe size={14} />} />
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-2">Country of Origin</label>
+                <div className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto scrollbar-thin pr-1">
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => set("country", c.name)}
+                      className={`flex items-center gap-1.5 px-2 py-2 rounded-xl border text-xs font-medium transition-all ${
+                        form.country === c.name
+                          ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400"
+                          : "border-border text-muted-foreground hover:border-border-medium hover:text-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <span className="text-base leading-none shrink-0">{c.flag}</span>
+                      <span className="truncate">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="p-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 space-y-2">
                 <p className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
