@@ -168,6 +168,30 @@ export default function AdminPage() {
     try { await apiCall("DELETE", `/admin/jobs/${id}`); loadData(); } catch { /**/ }
   };
 
+  const handleSeedUniversityClubs = async () => {
+    if (!confirm("This will seed all university-specific clubs into the database (safe to run multiple times). Continue?")) return;
+    setBusy(true);
+    try {
+      const data = await apiCall("POST", "/admin/seed-university-clubs");
+      flash(data.message || "Seeded!");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Seed failed", true);
+    } finally { setBusy(false); }
+  };
+
+  const handleSeedCommunities = async () => {
+    if (!confirm("This will seed all international communities (Uzbek, Chinese, Vietnamese, etc.) into the database (safe to run multiple times). Continue?")) return;
+    setBusy(true);
+    try {
+      const data = await apiCall("POST", "/admin/seed-communities");
+      flash(data.message || "Communities seeded!");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Seed failed", true);
+    } finally { setBusy(false); }
+  };
+
   if (authLoading || !user) return null;
 
   const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/50 transition-colors";
@@ -324,6 +348,46 @@ export default function AdminPage() {
                 Add Club
               </Button>
             </form>
+
+            {/* Seed international communities */}
+            <div className="p-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Globe size={15} className="text-violet-400" /> Seed International Communities
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add all nationality communities (Uzbek, Chinese, Vietnamese, Arab, Russian, etc.) to the database. Safe to run multiple times.
+                </p>
+              </div>
+              <button
+                onClick={handleSeedCommunities}
+                disabled={busy}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500 text-white text-xs font-semibold hover:bg-violet-600 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <Globe size={13} />}
+                Run Seed
+              </button>
+            </div>
+
+            {/* Seed university clubs */}
+            <div className="p-4 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <GraduationCap size={15} className="text-indigo-400" /> Seed University Clubs
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add all real university-specific clubs (JBNU, SNU, Yonsei, etc.) to the database. Safe to run multiple times.
+                </p>
+              </div>
+              <button
+                onClick={handleSeedUniversityClubs}
+                disabled={busy}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <GraduationCap size={13} />}
+                Run Seed
+              </button>
+            </div>
 
             {/* Existing clubs list */}
             {clubs.length > 0 && (

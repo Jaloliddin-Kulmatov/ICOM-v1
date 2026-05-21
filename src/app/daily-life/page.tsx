@@ -19,12 +19,48 @@ const transport = [
   { emoji: "🚄", title: "KTX / SRT", body: "Bullet train for city trips. Book 2+ weeks ahead on busy weekends." },
 ];
 
-const foods = [
-  { name: "김밥 (Gimbap)",           price: "1,500–3,000 ₩",       where: "Kimbap Nara",        emoji: "🍙" },
-  { name: "떡볶이 (Tteokbokki)",      price: "2,000–5,000 ₩",       where: "Street stalls",      emoji: "🌶️" },
-  { name: "편의점 도시락",             price: "3,000–5,000 ₩",       where: "CU, GS25, 7-Eleven", emoji: "🍱" },
-  { name: "삼겹살 (Samgyeopsal)",     price: "12,000–18,000 ₩/pp",  where: "Any BBQ spot",       emoji: "🥩" },
-  { name: "치킨 + 맥주 (Chimaek)",    price: "18,000–25,000 ₩",     where: "BHC, BBQ, Kyochon",  emoji: "🍗" },
+// International restaurants & foods available in Korea — grouped by cuisine
+const foreignFoodCategories = [
+  {
+    region: "🌍 Central Asian & Uzbek",
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+    items: [
+      { name: "Plov (Osh)",          price: "10,000–15,000 ₩",  where: "Uzbek restaurants in Itaewon / university districts", emoji: "🍚" },
+      { name: "Samsa & Manti",       price: "5,000–9,000 ₩",    where: "Central Asian eateries near JBNU, Sinchon",           emoji: "🥟" },
+      { name: "Shashlik (BBQ)",      price: "12,000–18,000 ₩",  where: "Uzbek / Halal BBQ spots in major cities",             emoji: "🍢" },
+      { name: "Lagman noodles",      price: "8,000–12,000 ₩",   where: "Central Asian restaurants, Dongdaemun area",          emoji: "🍜" },
+    ],
+  },
+  {
+    region: "🕌 Halal / Middle Eastern",
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    items: [
+      { name: "Shawarma",            price: "6,000–10,000 ₩",   where: "Itaewon Halal Street, Mosque area Seoul",            emoji: "🌯" },
+      { name: "Kebab & hummus",      price: "8,000–14,000 ₩",   where: "Halal restaurants near Dongdaemun, Itaewon",         emoji: "🥙" },
+      { name: "Halal fried chicken", price: "8,000–13,000 ₩",   where: "BBQ Olive, Halal Guys (Seoul)",                      emoji: "🍗" },
+      { name: "Falafel wrap",        price: "7,000–11,000 ₩",   where: "Middle Eastern cafés, Hongdae, Itaewon",             emoji: "🧆" },
+    ],
+  },
+  {
+    region: "🍜 Chinese & Southeast Asian",
+    color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
+    items: [
+      { name: "Chinese jjajangmyeon", price: "7,000–12,000 ₩",  where: "China Town (Incheon), any Chinese restaurant",        emoji: "🍝" },
+      { name: "Vietnamese pho & bánh mì", price: "8,000–13,000 ₩", where: "Pho Bac, Viet chain restaurants, delivery apps",  emoji: "🍲" },
+      { name: "Thai green curry",    price: "10,000–15,000 ₩",  where: "Thai restaurants in Hongdae, Sinchon, Itaewon",       emoji: "🍛" },
+      { name: "Indonesian / Malay rice", price: "9,000–14,000 ₩", where: "Southeast Asian spots near university areas",       emoji: "🌾" },
+    ],
+  },
+  {
+    region: "🍕 Western & Indian",
+    color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
+    items: [
+      { name: "Indian curry & naan", price: "10,000–18,000 ₩",  where: "Everest, Indian Kitchen, Zomato listings in Seoul",   emoji: "🍛" },
+      { name: "Pizza (chain)",       price: "8,000–20,000 ₩",   where: "Domino's, Pizza Alvolo (Korean-style), Mr. Pizza",    emoji: "🍕" },
+      { name: "Burger & fries",      price: "5,000–12,000 ₩",   where: "McDonald's, Lotteria, Five Guys (major cities)",      emoji: "🍔" },
+      { name: "Subway sandwich",     price: "5,500–9,500 ₩",    where: "Subway (most campuses and city centres)",              emoji: "🥖" },
+    ],
+  },
 ];
 
 const shopping = [
@@ -123,21 +159,36 @@ export default function DailyLifePage() {
 
           {/* ── Food ───────────────────────────────────────────── */}
           <section id="food">
-            <SectionHeader icon={Utensils} color="text-orange-500" bg="bg-orange-500/10" title="Food & Eating" />
-            <div className="divide-y divide-border rounded-2xl border border-border bg-card overflow-hidden">
-              {foods.map((f) => (
-                <div key={f.name} className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-lg shrink-0 w-6 text-center">{f.emoji}</span>
-                  <span className="text-sm text-foreground flex-1">{f.name}</span>
-                  <span className="text-xs font-semibold text-emerald-500 shrink-0">{f.price}</span>
-                  <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:block">{f.where}</span>
+            <SectionHeader icon={Utensils} color="text-orange-500" bg="bg-orange-500/10" title="International Food in Korea" />
+            <div className="space-y-4">
+              {foreignFoodCategories.map((cat) => (
+                <div key={cat.region} className="rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className={`px-4 py-2.5 border-b border-border flex items-center gap-2 ${cat.color} bg-opacity-10`}>
+                    <span className="text-sm font-bold text-foreground">{cat.region}</span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {cat.items.map((f) => (
+                      <div key={f.name} className="flex items-start gap-3 px-4 py-3">
+                        <span className="text-lg shrink-0 w-6 text-center mt-0.5">{f.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground font-medium">{f.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{f.where}</p>
+                        </div>
+                        <span className="text-xs font-semibold text-emerald-500 shrink-0 mt-0.5">{f.price}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="mt-3 px-4 py-3 rounded-xl border border-orange-500/20 bg-orange-500/5 flex items-start gap-2">
-              <AlertCircle size={13} className="text-orange-400 mt-0.5 shrink-0" />
+
+            {/* Halal tip */}
+            <div className="mt-3 px-4 py-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-2">
+              <AlertCircle size={13} className="text-emerald-400 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Vegetarian:</span> Say <span className="font-medium">"채식주의자예요"</span> (I'm vegetarian) or <span className="font-medium">"해산물 없이"</span> (no seafood).
+                <span className="font-medium text-foreground">Halal tip:</span>{" "}
+                Search <span className="font-medium">"할랄 음식"</span> on Naver Map or use the{" "}
+                <span className="font-medium">HalalTrip</span> app to find certified halal restaurants near you.
               </p>
             </div>
             <NearbyRestaurants />

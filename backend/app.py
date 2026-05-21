@@ -53,6 +53,7 @@ def create_app():
     from routes.clubs import clubs_bp
     from routes.ambassador import ambassador_bp
     from routes.posts import posts_bp
+    from routes.search import search_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -60,6 +61,7 @@ def create_app():
     app.register_blueprint(clubs_bp, url_prefix="/api/clubs")
     app.register_blueprint(ambassador_bp, url_prefix="/api/ambassador")
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
+    app.register_blueprint(search_bp, url_prefix="/api/search")
 
     @app.route("/")
     def index():
@@ -68,6 +70,8 @@ def create_app():
     with app.app_context():
         db.create_all()
         _run_lightweight_migrations()
+        _seed_communities()
+        _seed_university_clubs()
 
     return app
 
@@ -91,5 +95,146 @@ def _run_lightweight_migrations():
                 print("[migration] Added post_comments.parent_id")
     except Exception as e:
         print(f"[migration] post_comments.parent_id failed (probably already done): {e}")
+
+    # social on ambassador_applications (added after initial table creation)
+    try:
+        if "ambassador_applications" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("ambassador_applications")]
+            if "social" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE ambassador_applications "
+                        "ADD COLUMN social VARCHAR(300)"
+                    ))
+                print("[migration] Added ambassador_applications.social")
+    except Exception as e:
+        print(f"[migration] ambassador_applications.social failed (probably already done): {e}")
+
+    # apply_link on jobs (added after initial table creation)
+    try:
+        if "jobs" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("jobs")]
+            if "apply_link" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE jobs "
+                        "ADD COLUMN apply_link VARCHAR(500)"
+                    ))
+                print("[migration] Added jobs.apply_link")
+    except Exception as e:
+        print(f"[migration] jobs.apply_link failed (probably already done): {e}")
+
+def _seed_communities():
+    """Seed real international communities (nationality-based) on first deploy.
+    Checks by name — safe to call on every startup."""
+    import sys, os
+    from models import User, Club
+
+    try:
+        seed_dir = os.path.dirname(__file__)
+        if seed_dir not in sys.path:
+            sys.path.insert(0, seed_dir)
+        from seed_clubs import SEED_CLUBS  # type: ignore
+
+        system_user = User.query.filter_by(email="system@konect.kr").first()
+        if not system_user:
+            system_user = User(
+                name="ICOM Team",
+                email="system@konect.kr",
+                password_hash=bcrypt.generate_password_hash("ICOM_SYSTEM_NO_LOGIN_9x!").decode(),
+                university="JBNU",
+                role="admin",
+                is_verified=True,
+            )
+            db.session.add(system_user)
+            db.session.commit()
+
+        added = 0
+        for data in SEED_CLUBS:
+            if not Club.query.filter_by(name=data["name"]).first():
+                club = Club(
+                    name         = data["name"],
+                    description  = data["description"],
+                    category     = data["category"],
+                    university   = data.get("university", "JBNU"),
+                    meeting_time = data["meeting_time"],
+                    location     = data["location"],
+                    club_type    = data.get("club_type", "community"),
+                    country      = data.get("country", ""),
+                    contact      = data.get("contact", ""),
+                    kakao_link   = data.get("kakao_link", ""),
+                    created_by   = system_user.id,
+                    is_active    = True,
+                )
+                db.session.add(club)
+                added += 1
+
+        if added:
+            db.session.commit()
+            print(f"[seed] Added {added} international communities.")
+        else:
+            print("[seed] Communities already seeded — nothing to do.")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[seed] Communities seed skipped: {e}")
+
+
+def _seed_university_clubs():
+    """Seed real university-specific clubs on first deploy (and keep them updated).
+    Checks by name — safe to call on every startup (only inserts missing clubs)."""
+    import sys, os
+    from models import User, Club
+
+    try:
+        seed_dir = os.path.dirname(__file__)
+        if seed_dir not in sys.path:
+            sys.path.insert(0, seed_dir)
+        from seed_university_clubs import UNIVERSITY_CLUBS  # type: ignore
+
+        # Ensure system bot user exists
+        system_user = User.query.filter_by(email="system@konect.kr").first()
+        if not system_user:
+            system_user = User(
+                name="ICOM Team",
+                email="system@konect.kr",
+                password_hash=bcrypt.generate_password_hash("ICOM_SYSTEM_NO_LOGIN_9x!").decode(),
+                university="JBNU",
+                role="admin",
+                is_verified=True,
+            )
+            db.session.add(system_user)
+            db.session.commit()
+
+        added = 0
+        for data in UNIVERSITY_CLUBS:
+            if not Club.query.filter_by(name=data["name"]).first():
+                club = Club(
+                    name         = data["name"],
+                    description  = data["description"],
+                    category     = data["category"],
+                    university   = data["university"],
+                    meeting_time = data["meeting_time"],
+                    location     = data["location"],
+                    club_type    = data.get("club_type", "club"),
+                    country      = data.get("country", ""),
+                    contact      = data.get("contact", ""),
+                    kakao_link   = data.get("kakao_link", ""),
+                    created_by   = system_user.id,
+                    is_active    = True,
+                )
+                db.session.add(club)
+                added += 1
+
+        if added:
+            db.session.commit()
+            print(f"[seed] Added {added} university clubs.")
+        else:
+            print("[seed] University clubs already seeded — nothing to do.")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[seed] University clubs seed skipped: {e}")
+
 
 app = create_app()

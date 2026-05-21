@@ -180,15 +180,21 @@ def reject_member(club_id, target_user_id):
     return jsonify({"message": "Request rejected."}), 200
 
 
-# ── Get approved members (creator only) ──────────────────────
+# ── Get approved members (creator or any approved member) ─────
 
 @clubs_bp.route("/<int:club_id>/members", methods=["GET"])
 @jwt_required()
 def get_members(club_id):
     user_id = int(get_jwt_identity())
     club = Club.query.get_or_404(club_id)
-    if club.created_by != user_id:
-        return jsonify({"error": "Only the club creator can view members."}), 403
+
+    is_creator  = club.created_by == user_id
+    is_approved = ClubMembership.query.filter_by(
+        club_id=club_id, user_id=user_id, status="approved"
+    ).first() is not None
+
+    if not is_creator and not is_approved:
+        return jsonify({"error": "Only club members can view the member list."}), 403
 
     approved = ClubMembership.query.filter_by(club_id=club_id, status="approved").all()
     result = []
@@ -204,7 +210,24 @@ def get_members(club_id):
                 "visa_type": u.visa_type,
                 "joined_at": m.joined_at.isoformat() + "Z",
             })
-    return jsonify({"members": result}), 200
+
+    # Also include creator in the list if not already there
+    if is_creator:
+        creator_ids = {r["user_id"] for r in result}
+        if user_id not in creator_ids:
+            u = User.query.get(user_id)
+            if u:
+                result.insert(0, {
+                    "membership_id": None,
+                    "user_id": u.id,
+                    "name": u.name + " (Creator)",
+                    "university": u.university,
+                    "country": u.country,
+                    "visa_type": u.visa_type,
+                    "joined_at": club.created_at.isoformat() + "Z",
+                })
+
+    return jsonify({"members": result, "is_creator": is_creator}), 200
 
 
 # ── My clubs (created + joined) ───────────────────────────────

@@ -1,7 +1,8 @@
+import sys, os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 
-from app import db
+from app import db, bcrypt
 from models import User, Club, Job, ClubMembership
 
 admin_bp = Blueprint("admin", __name__)
@@ -187,6 +188,150 @@ def make_admin():
     target.role = "admin"
     db.session.commit()
     return jsonify({"message": f"{target.name} is now an admin."}), 200
+
+
+# ── Seed international communities (production helper) ────────────────────────
+
+@admin_bp.route("/seed-communities", methods=["POST"])
+@jwt_required()
+def seed_communities():
+    """Seed all nationality-based international communities. Safe to run multiple times."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    try:
+        seed_dir = os.path.join(os.path.dirname(__file__), "..")
+        if seed_dir not in sys.path:
+            sys.path.insert(0, seed_dir)
+        from seed_clubs import SEED_CLUBS  # type: ignore
+
+        system_user = User.query.filter_by(email="system@konect.kr").first()
+        if not system_user:
+            system_user = User(
+                name="ICOM Team",
+                email="system@konect.kr",
+                password_hash=bcrypt.generate_password_hash("ICOM_SYSTEM_NO_LOGIN_9x!").decode(),
+                university="JBNU",
+                role="admin",
+                is_verified=True,
+            )
+            db.session.add(system_user)
+            db.session.commit()
+
+        added = updated = 0
+        for data in SEED_CLUBS:
+            existing = Club.query.filter_by(name=data["name"]).first()
+            if existing:
+                existing.description  = data["description"]
+                existing.contact      = data.get("contact", "")
+                existing.kakao_link   = data.get("kakao_link", "")
+                existing.meeting_time = data["meeting_time"]
+                existing.location     = data["location"]
+                existing.country      = data.get("country", "")
+                updated += 1
+            else:
+                club = Club(
+                    name         = data["name"],
+                    description  = data["description"],
+                    category     = data["category"],
+                    university   = data.get("university", "JBNU"),
+                    meeting_time = data["meeting_time"],
+                    location     = data["location"],
+                    club_type    = data.get("club_type", "community"),
+                    country      = data.get("country", ""),
+                    contact      = data.get("contact", ""),
+                    kakao_link   = data.get("kakao_link", ""),
+                    created_by   = system_user.id,
+                    is_active    = True,
+                )
+                db.session.add(club)
+                added += 1
+
+        db.session.commit()
+        return jsonify({
+            "message": f"Done! Added {added} communities, updated {updated}.",
+            "added": added,
+            "updated": updated,
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Seed university clubs (production helper) ─────────────────────────────────
+
+@admin_bp.route("/seed-university-clubs", methods=["POST"])
+@jwt_required()
+def seed_university_clubs():
+    """Import UNIVERSITY_CLUBS from the seed script and insert/update records.
+    Safe to call multiple times — existing clubs are updated, not duplicated."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    try:
+        # Load seed data from the sibling seed file without spawning a new app
+        seed_dir = os.path.join(os.path.dirname(__file__), "..")
+        if seed_dir not in sys.path:
+            sys.path.insert(0, seed_dir)
+        from seed_university_clubs import UNIVERSITY_CLUBS  # type: ignore
+
+        # Ensure the system bot user exists
+        system_user = User.query.filter_by(email="system@konect.kr").first()
+        if not system_user:
+            system_user = User(
+                name="ICOM Team",
+                email="system@konect.kr",
+                password_hash=bcrypt.generate_password_hash("ICOM_SYSTEM_NO_LOGIN_9x!").decode(),
+                university="JBNU",
+                role="admin",
+                is_verified=True,
+            )
+            db.session.add(system_user)
+            db.session.commit()
+
+        added = updated = 0
+        for data in UNIVERSITY_CLUBS:
+            existing = Club.query.filter_by(name=data["name"]).first()
+            if existing:
+                existing.description  = data["description"]
+                existing.contact      = data.get("contact", "")
+                existing.kakao_link   = data.get("kakao_link", "")
+                existing.meeting_time = data["meeting_time"]
+                existing.location     = data["location"]
+                existing.university   = data["university"]
+                existing.club_type    = data.get("club_type", "club")
+                updated += 1
+            else:
+                club = Club(
+                    name         = data["name"],
+                    description  = data["description"],
+                    category     = data["category"],
+                    university   = data["university"],
+                    meeting_time = data["meeting_time"],
+                    location     = data["location"],
+                    club_type    = data.get("club_type", "club"),
+                    country      = data.get("country", ""),
+                    contact      = data.get("contact", ""),
+                    kakao_link   = data.get("kakao_link", ""),
+                    created_by   = system_user.id,
+                    is_active    = True,
+                )
+                db.session.add(club)
+                added += 1
+
+        db.session.commit()
+        return jsonify({
+            "message": f"Seeded! Added {added} clubs, updated {updated}.",
+            "added": added,
+            "updated": updated,
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 # ── List all users ────────────────────────────────────────────────────────────
