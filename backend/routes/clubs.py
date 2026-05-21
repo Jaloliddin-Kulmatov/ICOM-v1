@@ -16,13 +16,38 @@ def _current_user_id():
         return None
 
 
-# ── List all clubs ────────────────────────────────────────────
+# ── List clubs ────────────────────────────────────────────────
+# Rules:
+#   club_type == "community"  → visible to every authenticated user
+#   club_type == "club"       → visible only to users whose university
+#                               matches the club's university field
+#   unauthenticated request   → communities only (no private clubs shown)
 
 @clubs_bp.route("", methods=["GET"])
 def list_clubs():
     user_id = _current_user_id()
-    clubs = Club.query.filter_by(is_active=True).order_by(Club.created_at.desc()).all()
-    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in clubs]}), 200
+
+    user_uni = None
+    if user_id:
+        u = User.query.get(user_id)
+        if u:
+            user_uni = (u.university or "").strip()
+
+    all_clubs = (
+        Club.query.filter_by(is_active=True)
+        .order_by(Club.created_at.desc())
+        .all()
+    )
+
+    visible = []
+    for c in all_clubs:
+        ctype = (c.club_type or "club").lower()
+        if ctype == "community":
+            visible.append(c)                             # communities: everyone
+        elif user_uni and (c.university or "").strip() == user_uni:
+            visible.append(c)                             # clubs: same university only
+
+    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in visible]}), 200
 
 
 # ── Create a club (any authenticated user) ───────────────────
