@@ -156,6 +156,28 @@ def get_job(job_id):
     return jsonify({"job": job.to_dict()}), 200
 
 
+@admin_bp.route("/jobs/<int:job_id>", methods=["PATCH"])
+@jwt_required()
+def update_job(job_id):
+    user, err = _require_admin()
+    if err:
+        return err
+
+    job = Job.query.get_or_404(job_id)
+    data = request.get_json(silent=True) or {}
+    for field, col in [
+        ("title", "title"), ("company", "company"), ("location", "location"),
+        ("type", "job_type"), ("salary", "salary"), ("description", "description"),
+        ("requirements", "requirements"), ("visa_compatible", "visa_compatible"),
+        ("deadline", "deadline"), ("tags", "tags"), ("apply_link", "apply_link"),
+    ]:
+        if field in data:
+            job.__setattr__(col, (data[field] or "").strip())
+
+    db.session.commit()
+    return jsonify({"job": job.to_dict()}), 200
+
+
 @admin_bp.route("/jobs/<int:job_id>", methods=["DELETE"])
 @jwt_required()
 def delete_job(job_id):
@@ -167,6 +189,54 @@ def delete_job(job_id):
     job.is_active = False
     db.session.commit()
     return jsonify({"message": "Job removed."}), 200
+
+
+# ── Claim ownership of all clubs and jobs ─────────────────────────────────────
+
+@admin_bp.route("/claim-all", methods=["POST"])
+@jwt_required()
+def claim_all():
+    """Admin claims created_by ownership of every club and job in the database."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    clubs_updated = Club.query.filter(Club.created_by != user.id).update({"created_by": user.id})
+    jobs_updated  = Job.query.filter(Job.created_by  != user.id).update({"created_by": user.id})
+    db.session.commit()
+
+    return jsonify({
+        "message": f"Claimed ownership of {clubs_updated} clubs and {jobs_updated} jobs.",
+        "clubs_updated": clubs_updated,
+        "jobs_updated":  jobs_updated,
+    }), 200
+
+
+# ── Admin: edit any club ──────────────────────────────────────────────────────
+
+@admin_bp.route("/clubs/<int:club_id>", methods=["PATCH"])
+@jwt_required()
+def update_club(club_id):
+    user, err = _require_admin()
+    if err:
+        return err
+
+    club = Club.query.get_or_404(club_id)
+    data = request.get_json(silent=True) or {}
+    for field, col in [
+        ("name", "name"), ("description", "description"), ("category", "category"),
+        ("university", "university"), ("kakao_link", "kakao_link"), ("contact", "contact"),
+        ("meeting_time", "meeting_time"), ("location", "location"),
+        ("country", "country"), ("club_type", "club_type"),
+    ]:
+        if field in data:
+            setattr(club, col, (data[field] or "").strip())
+
+    if not club.name:
+        return jsonify({"error": "Club name cannot be empty."}), 400
+
+    db.session.commit()
+    return jsonify({"club": club.to_dict(user_id=user.id)}), 200
 
 
 # ── Make user admin (dev helper) ─────────────────────────────────────────────

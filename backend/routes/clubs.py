@@ -123,6 +123,52 @@ def create_club():
     return jsonify({"club": club.to_dict(user_id=user_id)}), 201
 
 
+# ── Edit a club (creator or admin) ───────────────────────────
+
+@clubs_bp.route("/<int:club_id>", methods=["PATCH"])
+@jwt_required()
+def update_club(club_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+    user = User.query.get(user_id)
+
+    if club.created_by != user_id and (user is None or user.role != "admin"):
+        return jsonify({"error": "Only the creator or an admin can edit this club."}), 403
+
+    data = request.get_json(silent=True) or {}
+    for field, col in [
+        ("name", "name"), ("description", "description"), ("category", "category"),
+        ("university", "university"), ("kakao_link", "kakao_link"), ("contact", "contact"),
+        ("meeting_time", "meeting_time"), ("location", "location"),
+        ("country", "country"), ("club_type", "club_type"),
+    ]:
+        if field in data:
+            setattr(club, col, (data[field] or "").strip())
+
+    if not club.name:
+        return jsonify({"error": "Club name cannot be empty."}), 400
+
+    db.session.commit()
+    return jsonify({"club": club.to_dict(user_id=user_id)}), 200
+
+
+# ── Delete a club (creator or admin) ─────────────────────────
+
+@clubs_bp.route("/<int:club_id>", methods=["DELETE"])
+@jwt_required()
+def delete_club(club_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+    user = User.query.get(user_id)
+
+    if club.created_by != user_id and (user is None or user.role != "admin"):
+        return jsonify({"error": "Only the creator or an admin can delete this club."}), 403
+
+    club.is_active = False
+    db.session.commit()
+    return jsonify({"message": "Club removed."}), 200
+
+
 # ── Request to join ───────────────────────────────────────────
 
 @clubs_bp.route("/<int:club_id>/request", methods=["POST"])
