@@ -38,6 +38,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "isa.jbnu@gmail.com | Tel: +82-63-270-2114",
         "kakao_link": "https://open.kakao.com/o/gJBNUisa",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU Global Buddy Program",
@@ -55,6 +56,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "global.buddy.jbnu@gmail.com | Tel: +82-63-270-3174",
         "kakao_link": "https://open.kakao.com/o/gJBNUBuddy",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU Multicultural Film & Media Club",
@@ -72,6 +74,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "jbnu.filmclub@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gJBNUFilm",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU International Volunteer Corps",
@@ -89,6 +92,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "jbnu.volunteer@gmail.com | Tel: +82-63-270-3300",
         "kakao_link": "https://open.kakao.com/o/gJBNUVolunteer",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU Taekwondo & Martial Arts Club",
@@ -106,6 +110,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "jbnu.taekwondo@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gJBNUTKD",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU Photography & Travel Club",
@@ -123,6 +128,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "jbnu.photo.travel@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gJBNUPhoto",
+        "website": "https://international.jbnu.ac.kr",
     },
     {
         "name": "JBNU International Badminton League",
@@ -139,6 +145,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "jbnu.badminton.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gJBNUBadminton",
+        "website": "https://international.jbnu.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -162,6 +169,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snuisa.official@gmail.com | Tel: +82-2-880-5084",
         "kakao_link": "https://open.kakao.com/o/gSNUisa",
+        "website": "https://oia.snu.ac.kr",
     },
     {
         "name": "SNU Global Leadership Program",
@@ -180,6 +188,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snu.global.lead@gmail.com | Tel: +82-2-880-6971",
         "kakao_link": "https://open.kakao.com/o/gSNUGLP",
+        "website": "https://oia.snu.ac.kr",
     },
     {
         "name": "SNU Korean Language Exchange (KLE)",
@@ -198,6 +207,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snu.kle@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSNUkle",
+        "website": "https://oia.snu.ac.kr",
     },
     {
         "name": "SNU International Entrepreneurs Club",
@@ -216,6 +226,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snu.intl.startup@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSNUStartup",
+        "website": "https://oia.snu.ac.kr",
     },
     {
         "name": "SNU International Sports League",
@@ -233,6 +244,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snu.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSNUSports",
+        "website": "https://oia.snu.ac.kr",
     },
     {
         "name": "SNU Global Research Network",
@@ -251,6 +263,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "snu.global.research@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSNUResearch",
+        "website": "https://oia.snu.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -274,6 +287,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.isc@gmail.com | Tel: +82-2-2123-4160",
         "kakao_link": "https://open.kakao.com/o/gYonseiISC",
+        "website": "https://oia.yonsei.ac.kr",
     },
     {
         "name": "Yonsei Global Buddy (YGB)",
@@ -292,6 +306,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.buddy@gmail.com | Tel: +82-2-2123-6374",
         "kakao_link": "https://open.kakao.com/o/gYonseiGBuddy",
+        "website": "https://oia.yonsei.ac.kr",
     },
     {
         "name": "Yonsei Korean Language Partners",
@@ -310,6 +325,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.klp@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gYonseiKLP",
+        "website": "https://oia.yonsei.ac.kr",
     },
     {
         "name": "Yonsei International Tech & AI Club",
@@ -328,6 +344,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.tech.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gYonseiTech",
+        "website": "https://oia.yonsei.ac.kr",
     },
     {
         "name": "Yonsei International Arts & Photography",
@@ -345,6 +362,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.arts.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gYonseiArts",
+        "website": "https://oia.yonsei.ac.kr",
     },
     {
         "name": "Yonsei Global Soccer Club",
@@ -361,6 +379,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "yonsei.global.soccer@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gYonseiSoccer",
+        "website": "https://oia.yonsei.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -384,6 +403,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "kuiso.official@gmail.com | Tel: +82-2-3290-1232",
         "kakao_link": "https://open.kakao.com/o/gKUISO",
+        "website": "https://international.korea.ac.kr",
     },
     {
         "name": "KU Global Buddy Program",
@@ -401,6 +421,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ku.global.buddy@gmail.com | Tel: +82-2-3290-1366",
         "kakao_link": "https://open.kakao.com/o/gKUBuddy",
+        "website": "https://international.korea.ac.kr",
     },
     {
         "name": "KU Korean–International Language Exchange",
@@ -419,6 +440,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ku.lang.exchange@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKULangEx",
+        "website": "https://international.korea.ac.kr",
     },
     {
         "name": "KU International Entrepreneurs & Innovation",
@@ -437,6 +459,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ku.intl.startup@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKUStartup",
+        "website": "https://international.korea.ac.kr",
     },
     {
         "name": "KU International Sports Association",
@@ -454,6 +477,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ku.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKUSports",
+        "website": "https://international.korea.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -477,6 +501,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hyu.global.isc@gmail.com | Tel: +82-2-2220-1054",
         "kakao_link": "https://open.kakao.com/o/gHYUglobal",
+        "website": "https://global.hanyang.ac.kr",
     },
     {
         "name": "Hanyang International Buddy (HIB)",
@@ -494,6 +519,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hyu.intl.buddy@gmail.com | Tel: +82-2-2220-0245",
         "kakao_link": "https://open.kakao.com/o/gHYUBuddy",
+        "website": "https://global.hanyang.ac.kr",
     },
     {
         "name": "HYU International Korean Language Club",
@@ -511,6 +537,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hyu.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHYULang",
+        "website": "https://global.hanyang.ac.kr",
     },
     {
         "name": "Hanyang International Tech Collective",
@@ -529,6 +556,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hyu.tech.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHYUTech",
+        "website": "https://global.hanyang.ac.kr",
     },
     {
         "name": "HYU International Sports & Recreation",
@@ -545,6 +573,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hyu.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHYUSports",
+        "website": "https://global.hanyang.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -568,6 +597,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "skku.isu@gmail.com | Tel: +82-2-760-1256",
         "kakao_link": "https://open.kakao.com/o/gSKKUisu",
+        "website": "https://oia.skku.edu",
     },
     {
         "name": "SKKU Korean Language & Culture Hub",
@@ -585,6 +615,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "skku.kor.culture@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSKKULang",
+        "website": "https://oia.skku.edu",
     },
     {
         "name": "SKKU Global Tech & Samsung Innovation Club",
@@ -602,6 +633,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "skku.global.tech@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSKKUTech",
+        "website": "https://oia.skku.edu",
     },
     {
         "name": "SKKU Confucian Culture & Tradition Club",
@@ -619,6 +651,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "skku.confucian@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSKKUCulture",
+        "website": "https://oia.skku.edu",
     },
     {
         "name": "SKKU International Sports Federation",
@@ -635,6 +668,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "skku.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSKKUSports",
+        "website": "https://oia.skku.edu",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -658,6 +692,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ewha.isa@gmail.com | Tel: +82-2-3277-3181",
         "kakao_link": "https://open.kakao.com/o/gEWHAisa",
+        "website": "https://international.ewha.ac.kr",
     },
     {
         "name": "EWHA Korean Language Partners",
@@ -675,6 +710,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ewha.kor.partners@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gEWHALang",
+        "website": "https://international.ewha.ac.kr",
     },
     {
         "name": "EWHA Global Arts & Design Collective",
@@ -693,6 +729,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ewha.global.arts@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gEWHAArts",
+        "website": "https://international.ewha.ac.kr",
     },
     {
         "name": "EWHA Women in Tech & Leadership",
@@ -711,6 +748,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ewha.women.tech@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gEWHATech",
+        "website": "https://international.ewha.ac.kr",
     },
     {
         "name": "EWHA International Health & Wellness Circle",
@@ -727,6 +765,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ewha.intl.wellness@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gEWHAWellness",
+        "website": "https://international.ewha.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -750,6 +789,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "khu.kisa@gmail.com | Tel: +82-2-961-0114",
         "kakao_link": "https://open.kakao.com/o/gKHUkisa",
+        "website": "https://oia.khu.ac.kr",
     },
     {
         "name": "KHU Global Peace & Culture Forum",
@@ -768,6 +808,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "khu.peace.forum@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKHUPeace",
+        "website": "https://oia.khu.ac.kr",
     },
     {
         "name": "KHU Korean Traditional Medicine & Wellness",
@@ -785,6 +826,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "khu.korean.medicine@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKHUMedicine",
+        "website": "https://oia.khu.ac.kr",
     },
     {
         "name": "KHU International Music & Performance Club",
@@ -802,6 +844,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "khu.music.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKHUMusic",
+        "website": "https://oia.khu.ac.kr",
     },
     {
         "name": "KHU International Taekwondo & Sports",
@@ -818,6 +861,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "khu.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKHUSports",
+        "website": "https://oia.khu.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -840,6 +884,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sogang.isc@gmail.com | Tel: +82-2-705-8105",
         "kakao_link": "https://open.kakao.com/o/gSogangISC",
+        "website": "https://international.sogang.ac.kr",
     },
     {
         "name": "Sogang Korean Language Exchange",
@@ -857,6 +902,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sogang.kor.ex@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSogangLang",
+        "website": "https://international.sogang.ac.kr",
     },
     {
         "name": "Sogang Global Business & Consulting Club",
@@ -874,6 +920,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sogang.biz.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSogangBiz",
+        "website": "https://international.sogang.ac.kr",
     },
     {
         "name": "Sogang International Film & Media Society",
@@ -890,6 +937,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sogang.film.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSogangFilm",
+        "website": "https://international.sogang.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -913,6 +961,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cau.isc.official@gmail.com | Tel: +82-2-820-5114",
         "kakao_link": "https://open.kakao.com/o/gCAUisc",
+        "website": "https://oia.cau.ac.kr",
     },
     {
         "name": "CAU Global Film & Performing Arts Club",
@@ -930,6 +979,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cau.global.arts@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCAUArts",
+        "website": "https://oia.cau.ac.kr",
     },
     {
         "name": "CAU International Tech & Media Lab",
@@ -947,6 +997,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cau.tech.media@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCAUTech",
+        "website": "https://oia.cau.ac.kr",
     },
     {
         "name": "CAU International Korean Language Club",
@@ -964,6 +1015,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cau.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCAULang",
+        "website": "https://oia.cau.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -987,6 +1039,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "inha.isa@gmail.com | Tel: +82-32-860-7022",
         "kakao_link": "https://open.kakao.com/o/gInhaISA",
+        "website": "https://oia.inha.ac.kr",
     },
     {
         "name": "Inha Aerospace & Engineering International Club",
@@ -1005,6 +1058,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "inha.aerospace.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gInhaAerospace",
+        "website": "https://oia.inha.ac.kr",
     },
     {
         "name": "Inha Korean Language Exchange Circle",
@@ -1022,6 +1076,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "inha.kor.exchange@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gInhaLang",
+        "website": "https://oia.inha.ac.kr",
     },
     {
         "name": "Inha International Sports League",
@@ -1038,6 +1093,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "inha.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gInhaSports",
+        "website": "https://oia.inha.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1061,6 +1117,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "pnu.isa@gmail.com | Tel: +82-51-510-2042",
         "kakao_link": "https://open.kakao.com/o/gPNUisa",
+        "website": "https://oia.pusan.ac.kr",
     },
     {
         "name": "PNU Korean Language & Busan Life Club",
@@ -1079,6 +1136,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "pnu.kor.busan@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gPNULang",
+        "website": "https://oia.pusan.ac.kr",
     },
     {
         "name": "PNU Global Marine & Ocean Science Club",
@@ -1097,6 +1155,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "pnu.marine.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gPNUMarine",
+        "website": "https://oia.pusan.ac.kr",
     },
     {
         "name": "PNU International Beach & Sports Club",
@@ -1113,6 +1172,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "pnu.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gPNUSports",
+        "website": "https://oia.pusan.ac.kr",
     },
     {
         "name": "PNU Global Tech & AI Lab",
@@ -1131,6 +1191,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "pnu.global.tech@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gPNUTech",
+        "website": "https://oia.pusan.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1153,6 +1214,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "kku.isc@gmail.com | Tel: +82-2-450-3114",
         "kakao_link": "https://open.kakao.com/o/gKKUisc",
+        "website": "https://oia.konkuk.ac.kr",
     },
     {
         "name": "KKU Korean Language Exchange Partners",
@@ -1170,6 +1232,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "kku.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKKULang",
+        "website": "https://oia.konkuk.ac.kr",
     },
     {
         "name": "Konkuk Global Veterinary & Life Sciences Club",
@@ -1187,6 +1250,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "kku.vet.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKKUVet",
+        "website": "https://oia.konkuk.ac.kr",
     },
     {
         "name": "KKU International Sports & Recreation",
@@ -1203,6 +1267,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "kku.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gKKUSports",
+        "website": "https://oia.konkuk.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1225,6 +1290,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hongik.arts.intl@gmail.com | Tel: +82-2-320-1114",
         "kakao_link": "https://open.kakao.com/o/gHongikArts",
+        "website": "https://www.hongik.ac.kr/en/index.do",
     },
     {
         "name": "Hongik International Students Circle",
@@ -1243,6 +1309,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hongik.isc@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHongikISC",
+        "website": "https://www.hongik.ac.kr/en/index.do",
     },
     {
         "name": "Hongik Music & K-pop Production Club",
@@ -1261,6 +1328,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hongik.music.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHongikMusic",
+        "website": "https://www.hongik.ac.kr/en/index.do",
     },
     {
         "name": "Hongik Global Tech & Interactive Design",
@@ -1278,6 +1346,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "hongik.tech.design@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gHongikTech",
+        "website": "https://www.hongik.ac.kr/en/index.do",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1300,6 +1369,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sejong.isa@gmail.com | Tel: +82-2-3408-3114",
         "kakao_link": "https://open.kakao.com/o/gSejongISA",
+        "website": "https://oia.sejong.ac.kr",
     },
     {
         "name": "Sejong Global Hotel & Tourism Management Club",
@@ -1318,6 +1388,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sejong.tourism.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSejongTourism",
+        "website": "https://oia.sejong.ac.kr",
     },
     {
         "name": "Sejong Korean Language Exchange & TOPIK Prep",
@@ -1335,6 +1406,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sejong.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSejongLang",
+        "website": "https://oia.sejong.ac.kr",
     },
     {
         "name": "Sejong International Sports Club",
@@ -1351,6 +1423,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "sejong.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gSejongSports",
+        "website": "https://oia.sejong.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1373,6 +1446,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "dongguk.isc@gmail.com | Tel: +82-2-2260-3114",
         "kakao_link": "https://open.kakao.com/o/gDonggukISC",
+        "website": "https://oia.dongguk.edu",
     },
     {
         "name": "Dongguk Buddhist & Mindfulness Club",
@@ -1390,6 +1464,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "dongguk.buddhist.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gDonggukBuddhist",
+        "website": "https://oia.dongguk.edu",
     },
     {
         "name": "Dongguk International Film School Club",
@@ -1408,6 +1483,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "dongguk.film.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gDonggukFilm",
+        "website": "https://oia.dongguk.edu",
     },
     {
         "name": "Dongguk Korean Language & Culture Hub",
@@ -1425,6 +1501,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "dongguk.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gDonggukLang",
+        "website": "https://oia.dongguk.edu",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1447,6 +1524,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cnu.isa.gwangju@gmail.com | Tel: +82-62-530-1114",
         "kakao_link": "https://open.kakao.com/o/gCNUisa",
+        "website": "https://oia.jnu.ac.kr",
     },
     {
         "name": "CNU Korean Language Exchange Circle",
@@ -1465,6 +1543,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cnu.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCNULang",
+        "website": "https://oia.jnu.ac.kr",
     },
     {
         "name": "CNU Biomedical & Life Sciences International Club",
@@ -1481,6 +1560,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cnu.biomed.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCNUBiomed",
+        "website": "https://oia.jnu.ac.kr",
     },
     {
         "name": "CNU International Sports & Outdoor Club",
@@ -1497,6 +1577,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "cnu.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gCNUSports",
+        "website": "https://oia.jnu.ac.kr",
     },
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1519,6 +1600,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ajou.isc@gmail.com | Tel: +82-31-219-2114",
         "kakao_link": "https://open.kakao.com/o/gAjouISC",
+        "website": "https://oia.ajou.ac.kr",
     },
     {
         "name": "Ajou Global Medical & Engineering Club",
@@ -1536,6 +1618,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ajou.med.eng.intl@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gAjouMedEng",
+        "website": "https://oia.ajou.ac.kr",
     },
     {
         "name": "Ajou Korean Language & Suwon Culture Club",
@@ -1553,6 +1636,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ajou.kor.lang@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gAjouLang",
+        "website": "https://oia.ajou.ac.kr",
     },
     {
         "name": "Ajou International Sports Association",
@@ -1569,6 +1653,7 @@ UNIVERSITY_CLUBS = [
         "country": "",
         "contact": "ajou.intl.sports@gmail.com",
         "kakao_link": "https://open.kakao.com/o/gAjouSports",
+        "website": "https://oia.ajou.ac.kr",
     },
 ]
 
@@ -1619,6 +1704,7 @@ def seed():
                 country=data.get("country", ""),
                 contact=data.get("contact", ""),
                 kakao_link=data.get("kakao_link", ""),
+                website=data.get("website", ""),
                 created_by=admin.id,
                 is_active=True,
             )

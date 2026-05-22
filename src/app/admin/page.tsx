@@ -180,6 +180,18 @@ export default function AdminPage() {
     } finally { setBusy(false); }
   };
 
+  const handleTransferClubs = async () => {
+    if (!confirm("Transfer ownership of ALL clubs & communities from the ICOM system account to YOUR account? This makes you the creator who can manage join requests. Continue?")) return;
+    setBusy(true);
+    try {
+      const data = await apiCall("POST", "/admin/transfer-clubs-to-me");
+      flash(data.message || "Ownership transferred!");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Transfer failed", true);
+    } finally { setBusy(false); }
+  };
+
   const handleSeedCommunities = async () => {
     if (!confirm("This will seed all international communities (Uzbek, Chinese, Vietnamese, etc.) into the database (safe to run multiple times). Continue?")) return;
     setBusy(true);
@@ -386,6 +398,26 @@ export default function AdminPage() {
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <GraduationCap size={13} />}
                 Run Seed
+              </button>
+            </div>
+
+            {/* Transfer club ownership */}
+            <div className="p-4 rounded-2xl border border-amber-500/15 bg-amber-500/5 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-amber-400" /> Take Ownership of All Clubs
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Transfer all clubs &amp; communities from the ICOM system account to your account. You&apos;ll become the creator and can manage join requests.
+                </p>
+              </div>
+              <button
+                onClick={handleTransferClubs}
+                disabled={busy}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                Transfer
               </button>
             </div>
 

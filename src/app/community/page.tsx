@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Search, Users, Globe, MapPin, Clock, Phone, CheckCircle2,
   LogIn, Loader2, Plus, X, Lock, ChevronDown, ChevronUp,
-  Link as LinkIcon, Settings, MessageSquare, UserCheck,
+  Link as LinkIcon, Settings, MessageSquare, UserCheck, ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
@@ -22,7 +22,7 @@ interface Club {
   meeting_time: string; location: string; member_count: number;
   pending_count: number; my_status: "pending" | "approved" | null;
   is_creator: boolean; creator_name: string | null; club_type: "club" | "community";
-  country?: string;
+  country?: string; website?: string;
 }
 
 interface JoinRequest {
@@ -382,6 +382,12 @@ function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
       <div className="space-y-1.5 text-[11px] text-muted-foreground mb-3">
         {club.meeting_time && <div className="flex items-center gap-1.5"><Clock size={11} />{club.meeting_time}</div>}
         {club.location     && <div className="flex items-center gap-1.5"><MapPin size={11} />{club.location}</div>}
+        {club.website && (
+          <a href={club.website} target="_blank" rel="noopener noreferrer"
+             className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors w-fit">
+            <ExternalLink size={11} />Official Website →
+          </a>
+        )}
       </div>
 
       {/* Private info — only approved members */}

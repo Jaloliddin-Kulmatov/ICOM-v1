@@ -58,6 +58,7 @@ class Club(db.Model):
     location = db.Column(db.String(150))
     club_type = db.Column(db.String(20), default="club")  # "club" | "community"
     country = db.Column(db.String(100))
+    website = db.Column(db.String(500))   # official university / community website
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -99,6 +100,7 @@ class Club(db.Model):
             "creator_name": self.creator.name if self.creator else None,
             "club_type": self.club_type or "club",
             "country": self.country,
+            "website": self.website or "",
         }
 
 

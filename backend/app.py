@@ -124,6 +124,20 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] jobs.apply_link failed (probably already done): {e}")
 
+    # website on clubs (official university / community website)
+    try:
+        if "clubs" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("clubs")]
+            if "website" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE clubs "
+                        "ADD COLUMN website VARCHAR(500)"
+                    ))
+                print("[migration] Added clubs.website")
+    except Exception as e:
+        print(f"[migration] clubs.website failed (probably already done): {e}")
+
 def _seed_communities():
     """Seed real international communities (nationality-based) on first deploy.
     Checks by name — safe to call on every startup."""
@@ -149,9 +163,15 @@ def _seed_communities():
             db.session.add(system_user)
             db.session.commit()
 
-        added = 0
+        added = updated = 0
         for data in SEED_CLUBS:
-            if not Club.query.filter_by(name=data["name"]).first():
+            existing = Club.query.filter_by(name=data["name"]).first()
+            if existing:
+                # Update website field if newly added to seed data
+                if data.get("website") and not existing.website:
+                    existing.website = data["website"]
+                    updated += 1
+            else:
                 club = Club(
                     name         = data["name"],
                     description  = data["description"],
@@ -163,15 +183,16 @@ def _seed_communities():
                     country      = data.get("country", ""),
                     contact      = data.get("contact", ""),
                     kakao_link   = data.get("kakao_link", ""),
+                    website      = data.get("website", ""),
                     created_by   = system_user.id,
                     is_active    = True,
                 )
                 db.session.add(club)
                 added += 1
 
-        if added:
+        if added or updated:
             db.session.commit()
-            print(f"[seed] Added {added} international communities.")
+            print(f"[seed] Communities: added {added}, updated {updated} with website.")
         else:
             print("[seed] Communities already seeded — nothing to do.")
 
@@ -206,9 +227,15 @@ def _seed_university_clubs():
             db.session.add(system_user)
             db.session.commit()
 
-        added = 0
+        added = updated = 0
         for data in UNIVERSITY_CLUBS:
-            if not Club.query.filter_by(name=data["name"]).first():
+            existing = Club.query.filter_by(name=data["name"]).first()
+            if existing:
+                # Update website field if newly added to seed data
+                if data.get("website") and not existing.website:
+                    existing.website = data["website"]
+                    updated += 1
+            else:
                 club = Club(
                     name         = data["name"],
                     description  = data["description"],
@@ -220,15 +247,16 @@ def _seed_university_clubs():
                     country      = data.get("country", ""),
                     contact      = data.get("contact", ""),
                     kakao_link   = data.get("kakao_link", ""),
+                    website      = data.get("website", ""),
                     created_by   = system_user.id,
                     is_active    = True,
                 )
                 db.session.add(club)
                 added += 1
 
-        if added:
+        if added or updated:
             db.session.commit()
-            print(f"[seed] Added {added} university clubs.")
+            print(f"[seed] University clubs: added {added}, updated {updated} with website.")
         else:
             print("[seed] University clubs already seeded — nothing to do.")
 

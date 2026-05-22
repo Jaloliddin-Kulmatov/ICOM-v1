@@ -229,6 +229,7 @@ def seed_communities():
                 existing.meeting_time = data["meeting_time"]
                 existing.location     = data["location"]
                 existing.country      = data.get("country", "")
+                existing.website      = data.get("website", existing.website or "")
                 updated += 1
             else:
                 club = Club(
@@ -242,6 +243,7 @@ def seed_communities():
                     country      = data.get("country", ""),
                     contact      = data.get("contact", ""),
                     kakao_link   = data.get("kakao_link", ""),
+                    website      = data.get("website", ""),
                     created_by   = system_user.id,
                     is_active    = True,
                 )
@@ -303,6 +305,7 @@ def seed_university_clubs():
                 existing.location     = data["location"]
                 existing.university   = data["university"]
                 existing.club_type    = data.get("club_type", "club")
+                existing.website      = data.get("website", existing.website or "")
                 updated += 1
             else:
                 club = Club(
@@ -316,6 +319,7 @@ def seed_university_clubs():
                     country      = data.get("country", ""),
                     contact      = data.get("contact", ""),
                     kakao_link   = data.get("kakao_link", ""),
+                    website      = data.get("website", ""),
                     created_by   = system_user.id,
                     is_active    = True,
                 )
@@ -332,6 +336,33 @@ def seed_university_clubs():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+# ── Transfer all ICOM-Team-owned clubs/communities to the requesting admin ────
+
+@admin_bp.route("/transfer-clubs-to-me", methods=["POST"])
+@jwt_required()
+def transfer_clubs_to_me():
+    """Transfer ownership of all clubs currently owned by the ICOM system account
+    (system@konect.kr) to the requesting admin user.  Safe to call multiple times."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    system_user = User.query.filter_by(email="system@konect.kr").first()
+    if not system_user:
+        return jsonify({"message": "No ICOM system account found — nothing to transfer.", "transferred": 0}), 200
+
+    clubs = Club.query.filter_by(created_by=system_user.id, is_active=True).all()
+    count = len(clubs)
+    for c in clubs:
+        c.created_by = user.id
+    db.session.commit()
+
+    return jsonify({
+        "message": f"Transferred {count} clubs/communities to {user.name}.",
+        "transferred": count,
+    }), 200
 
 
 # ── List all users ────────────────────────────────────────────────────────────
