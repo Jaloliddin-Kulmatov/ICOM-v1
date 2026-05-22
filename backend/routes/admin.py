@@ -98,6 +98,33 @@ def create_club():
     return jsonify({"club": club.to_dict()}), 201
 
 
+@admin_bp.route("/clubs/<int:club_id>", methods=["PATCH"])
+@jwt_required()
+def edit_club(club_id):
+    """Update any field of a club. Admin only."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    club = Club.query.get_or_404(club_id)
+    data = request.get_json(silent=True) or {}
+
+    if "name"         in data: club.name         = (data["name"]         or "").strip()
+    if "description"  in data: club.description  = (data["description"]  or "").strip()
+    if "category"     in data: club.category     = (data["category"]     or "").strip()
+    if "university"   in data: club.university   = (data["university"]   or "").strip()
+    if "meeting_time" in data: club.meeting_time = (data["meeting_time"] or "").strip()
+    if "location"     in data: club.location     = (data["location"]     or "").strip()
+    if "contact"      in data: club.contact      = (data["contact"]      or "").strip()
+    if "kakao_link"   in data: club.kakao_link   = (data["kakao_link"]   or "").strip()
+    if "website"      in data: club.website      = (data["website"]      or "").strip()
+    if "club_type"    in data: club.club_type    = (data["club_type"]    or "club").strip()
+    if "country"      in data: club.country      = (data["country"]      or "").strip()
+
+    db.session.commit()
+    return jsonify({"club": club.to_dict(user_id=user.id)}), 200
+
+
 @admin_bp.route("/clubs/<int:club_id>", methods=["DELETE"])
 @jwt_required()
 def delete_club(club_id):
@@ -153,6 +180,33 @@ def create_job():
 @admin_bp.route("/jobs/<int:job_id>", methods=["GET"])
 def get_job(job_id):
     job = Job.query.filter_by(id=job_id, is_active=True).first_or_404()
+    return jsonify({"job": job.to_dict()}), 200
+
+
+@admin_bp.route("/jobs/<int:job_id>", methods=["PATCH"])
+@jwt_required()
+def edit_job(job_id):
+    """Update any field of a job posting. Admin only."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    job = Job.query.get_or_404(job_id)
+    data = request.get_json(silent=True) or {}
+
+    if "title"          in data: job.title          = (data["title"]          or "").strip()
+    if "company"        in data: job.company        = (data["company"]        or "").strip()
+    if "location"       in data: job.location       = (data["location"]       or "").strip()
+    if "type"           in data: job.job_type       = (data["type"]           or "").strip()
+    if "salary"         in data: job.salary         = (data["salary"]         or "").strip()
+    if "description"    in data: job.description    = (data["description"]    or "").strip()
+    if "requirements"   in data: job.requirements   = (data["requirements"]   or "").strip()
+    if "visa_compatible" in data: job.visa_compatible = (data["visa_compatible"] or "").strip()
+    if "deadline"       in data: job.deadline       = (data["deadline"]       or "").strip()
+    if "tags"           in data: job.tags           = (data["tags"]           or "").strip()
+    if "apply_link"     in data: job.apply_link     = (data["apply_link"]     or "").strip()
+
+    db.session.commit()
     return jsonify({"job": job.to_dict()}), 200
 
 
@@ -343,25 +397,37 @@ def seed_university_clubs():
 @admin_bp.route("/transfer-clubs-to-me", methods=["POST"])
 @jwt_required()
 def transfer_clubs_to_me():
-    """Transfer ownership of all clubs currently owned by the ICOM system account
-    (system@konect.kr) to the requesting admin user.  Safe to call multiple times."""
+    """Transfer ownership of ALL clubs/communities and ALL internships to the requesting
+    admin user. Clubs transfer from the ICOM system account; all active jobs transfer
+    regardless of their current owner. Safe to call multiple times."""
     user, err = _require_admin()
     if err:
         return err
 
+    # ── Clubs / communities ───────────────────────────────────────────────────
     system_user = User.query.filter_by(email="system@konect.kr").first()
-    if not system_user:
-        return jsonify({"message": "No ICOM system account found — nothing to transfer.", "transferred": 0}), 200
+    club_count = 0
+    if system_user:
+        clubs = Club.query.filter_by(created_by=system_user.id, is_active=True).all()
+        club_count = len(clubs)
+        for c in clubs:
+            c.created_by = user.id
 
-    clubs = Club.query.filter_by(created_by=system_user.id, is_active=True).all()
-    count = len(clubs)
-    for c in clubs:
-        c.created_by = user.id
+    # ── Internships / jobs ────────────────────────────────────────────────────
+    jobs = Job.query.filter(Job.is_active == True, Job.created_by != user.id).all()  # noqa: E712
+    job_count = len(jobs)
+    for j in jobs:
+        j.created_by = user.id
+
     db.session.commit()
 
     return jsonify({
-        "message": f"Transferred {count} clubs/communities to {user.name}.",
-        "transferred": count,
+        "message": (
+            f"Transferred {club_count} clubs/communities and "
+            f"{job_count} internships to {user.name}."
+        ),
+        "clubs_transferred": club_count,
+        "jobs_transferred": job_count,
     }), 200
 
 
