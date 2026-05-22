@@ -105,16 +105,21 @@ def create_club():
     if not name:
         return jsonify({"error": "Club name is required."}), 400
 
+    club_type_val = (data.get("club_type") or "club").strip()
+    # Communities are nationwide — don't default their university to JBNU.
+    # Clubs without a university supplied still default to JBNU.
+    default_uni = "" if club_type_val == "community" else "JBNU"
+
     club = Club(
         name=name,
         description=(data.get("description") or "").strip(),
         category=(data.get("category") or "social").strip(),
-        university=(data.get("university") or "JBNU").strip(),
+        university=(data.get("university") or default_uni).strip(),
         kakao_link=(data.get("kakao_link") or "").strip(),
         contact=(data.get("contact") or "").strip(),
         meeting_time=(data.get("meeting_time") or "").strip(),
         location=(data.get("location") or "").strip(),
-        club_type=(data.get("club_type") or "club").strip(),
+        club_type=club_type_val,
         country=(data.get("country") or "").strip(),
         created_by=user_id,
     )

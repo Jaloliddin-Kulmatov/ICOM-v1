@@ -124,7 +124,14 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
           <div className="grid grid-cols-2 gap-2">
             {(["club", "community"] as const).map(t => (
               <button key={t} type="button"
-                onClick={() => setForm(p => ({...p, club_type: t}))}
+                onClick={() => setForm(p => ({
+                  ...p,
+                  club_type: t,
+                  // Clear university for communities (nationwide); restore for clubs
+                  university: t === "community" ? "" : (user?.university || "JBNU"),
+                  // Switch to sensible default category for each type
+                  category: t === "community" ? "national community" : "social",
+                }))}
                 className={`py-2.5 rounded-xl border text-xs font-semibold transition-all ${
                   form.club_type === t
                     ? t === "club" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" : "bg-violet-500/20 border-violet-500/40 text-violet-300"
@@ -135,7 +142,7 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
             ))}
           </div>
           <p className="text-[10px] text-white/35 -mt-2">
-            {form.club_type === "club" ? "For university-specific groups (sports, academic, arts...)" : "For country or nationality-based communities (Uzbeks at JBNU, Vietnamese Students...)"}
+            {form.club_type === "club" ? "For university-specific groups (sports, academic, arts...)" : "For country or nationality-based communities across South Korea (Uzbek students, Vietnamese Students...)"}
           </p>
 
           <div>
@@ -357,7 +364,7 @@ function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-muted-foreground">
             {club.club_type === "community"
-              ? (UNI_CITY[club.university] || club.university)
+              ? (club.country || club.location || "South Korea")
               : club.university}
           </span>
           {club.is_creator && (
@@ -580,13 +587,22 @@ export default function CommunityPage() {
   const categoryList = activeTab === "club" ? CLUB_CATEGORIES : COMMUNITY_CATEGORIES;
   const categories = ["all", ...categoryList];
 
-  const filtered = tabClubs.filter(c => {
-    const matchCat = activeCategory === "all" || c.category.toLowerCase() === activeCategory.toLowerCase();
-    const matchSearch = !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.description || "").toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
+  const filtered = tabClubs
+    .filter(c => {
+      const matchCat = activeCategory === "all" || c.category.toLowerCase() === activeCategory.toLowerCase();
+      const matchSearch = !search ||
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        (c.description || "").toLowerCase().includes(search.toLowerCase());
+      return matchCat && matchSearch;
+    })
+    .sort((a, b) => {
+      // 1. Joined / created clubs always come first
+      const aJoined = (a.my_status === "approved" || a.is_creator) ? 1 : 0;
+      const bJoined = (b.my_status === "approved" || b.is_creator) ? 1 : 0;
+      if (bJoined !== aJoined) return bJoined - aJoined;
+      // 2. Then sort by member count (most popular first)
+      return b.member_count - a.member_count;
+    });
 
   return (
     <div className="min-h-screen bg-background">
