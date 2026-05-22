@@ -210,9 +210,12 @@ export default function UniversitiesPage() {
           {/* Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(uni => (
-              <div
+              <a
                 key={uni.id}
-                className="group p-5 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all duration-200 hover:-translate-y-0.5"
+                href={uni.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group p-5 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all duration-200 hover:-translate-y-0.5 block"
               >
                 <div className="h-0.5 w-10 rounded-full mb-4" style={{ backgroundColor: uni.color }} />
 
@@ -242,7 +245,7 @@ export default function UniversitiesPage() {
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground/60 mt-1.5">{uni.province}</p>
-              </div>
+              </a>
             ))}
           </div>
 

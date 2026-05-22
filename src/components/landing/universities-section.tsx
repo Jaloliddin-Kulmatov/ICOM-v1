@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Users, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Users, ArrowRight, CheckCircle2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UNIVERSITIES } from "@/lib/constants";
 
@@ -48,9 +48,11 @@ export default function UniversitiesSection() {
           {/* Right: University grid */}
           <div className="lg:w-3/5 grid grid-cols-2 sm:grid-cols-3 gap-3">
             {UNIVERSITIES.filter(u => u.featured).map((uni) => (
-              <Link
+              <a
                 key={uni.id}
-                href={`/universities/${uni.id}`}
+                href={uni.website}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group p-4 rounded-2xl border border-white/8 bg-white/3 hover:border-indigo-500/30 hover:bg-white/6 transition-all duration-300 hover:-translate-y-0.5"
               >
                 {/* Color stripe */}
@@ -61,14 +63,17 @@ export default function UniversitiesSection() {
                 <h3 className="text-sm font-semibold text-foreground mb-0.5 group-hover:text-indigo-300 transition-colors">
                   {uni.shortName}
                 </h3>
-                <p className="text-xs text-muted-foreground mb-3 leading-tight line-clamp-2">
+                <p className="text-xs text-muted-foreground mb-2 leading-tight line-clamp-2">
                   {uni.name}
                 </p>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                  <Users size={10} />
-                  <span>{uni.students.toLocaleString()} students</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                    <Users size={10} />
+                    <span>{uni.students.toLocaleString()} students</span>
+                  </div>
+                  <ExternalLink size={10} className="text-muted-foreground/40 group-hover:text-indigo-400 transition-colors" />
                 </div>
-              </Link>
+              </a>
             ))}
 
             {/* More universities teaser */}

@@ -290,6 +290,28 @@ def my_clubs():
     }), 200
 
 
+# ── Edit a club (creator only) ────────────────────────────────
+
+@clubs_bp.route("/<int:club_id>", methods=["PATCH"])
+@jwt_required()
+def edit_club(club_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+
+    if club.created_by != user_id:
+        return jsonify({"error": "Only the club creator can edit this club."}), 403
+
+    data = request.get_json(silent=True) or {}
+    editable = ["name", "description", "category", "meeting_time",
+                "location", "contact", "kakao_link", "website", "country"]
+    for field in editable:
+        if field in data:
+            setattr(club, field, (data[field] or "").strip())
+
+    db.session.commit()
+    return jsonify({"club": club.to_dict(user_id=user_id)}), 200
+
+
 # ── Club chat: get messages ───────────────────────────────────
 
 @clubs_bp.route("/<int:club_id>/chat", methods=["GET"])
