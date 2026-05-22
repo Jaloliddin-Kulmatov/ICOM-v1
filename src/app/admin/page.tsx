@@ -111,18 +111,20 @@ export default function AdminPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const loadData = useCallback(async () => {
-    try {
-      const [cd, jd, ad, ud] = await Promise.all([
-        apiCall("GET", "/admin/clubs"),
-        apiCall("GET", "/admin/jobs"),
-        apiCall("GET", "/ambassador/applications"),
-        apiCall("GET", "/admin/users"),
-      ]);
-      setClubs(cd.clubs || []);
-      setJobs(jd.jobs || []);
-      setAmbassadors(ad.applications || []);
-      setAppUsers(ud.users || []);
-    } catch { /* ignore on load */ }
+    const [cd, jd, ad, ud] = await Promise.allSettled([
+      apiCall("GET", "/admin/clubs"),
+      apiCall("GET", "/admin/jobs"),
+      apiCall("GET", "/ambassador/applications"),
+      apiCall("GET", "/admin/users"),
+    ]);
+    if (cd.status === "fulfilled") setClubs(cd.value.clubs || []);
+    if (jd.status === "fulfilled") setJobs(jd.value.jobs || []);
+    if (ad.status === "fulfilled") setAmbassadors(ad.value.applications || []);
+    if (ud.status === "fulfilled") setAppUsers(ud.value.users || []);
+
+    // Surface the first error so we can see why data isn't loading
+    const firstErr = [cd, jd, ad, ud].find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
+    if (firstErr) flash(firstErr.reason?.message || "Some data failed to load", true);
   }, []);
 
   useEffect(() => {
@@ -253,6 +255,42 @@ export default function AdminPage() {
         {success && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-400">
             {success}
+          </div>
+        )}
+
+        {/* ── DB-wipe recovery banner ── show when users = 0 (DB was reset) ── */}
+        {appUsers.length === 0 && (
+          <div className="mb-4 p-4 rounded-xl border border-orange-500/20 bg-orange-500/5">
+            <p className="text-xs font-semibold text-orange-400 mb-1">Database was reset</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              The backend restarted and the database is empty. Enter your <code className="text-orange-300">ADMIN_SECRET</code> (set on Render) to re-promote your account to admin. Clubs &amp; communities will auto-seed.
+            </p>
+            <div className="flex gap-2">
+              <input
+                id="bootstrap-secret"
+                type="password"
+                placeholder="ADMIN_SECRET value from Render"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-orange-500/50 transition-colors"
+              />
+              <button
+                onClick={async () => {
+                  const secret = (document.getElementById("bootstrap-secret") as HTMLInputElement)?.value;
+                  if (!secret) return;
+                  setBusy(true);
+                  try {
+                    const data = await apiCall("POST", "/admin/bootstrap", { secret });
+                    flash(data.message || "Promoted to admin!");
+                    loadData();
+                  } catch (err: unknown) {
+                    flash(err instanceof Error ? err.message : "Failed", true);
+                  } finally { setBusy(false); }
+                }}
+                disabled={busy}
+                className="px-4 py-2 rounded-xl bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : "Re-promote"}
+              </button>
+            </div>
           </div>
         )}
 

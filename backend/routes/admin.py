@@ -16,6 +16,27 @@ def _require_admin():
     return user, None
 
 
+# ── Bootstrap: promote self to admin (uses ADMIN_SECRET env var) ─────────────
+# POST /api/admin/bootstrap  { "secret": "..." }
+# If secret matches ADMIN_SECRET env var, promotes the calling user to admin.
+# Safe to leave enabled — wrong secret = 403.
+
+@admin_bp.route("/bootstrap", methods=["POST"])
+@jwt_required()
+def bootstrap_admin():
+    secret = os.environ.get("ADMIN_SECRET", "")
+    if not secret:
+        return jsonify({"error": "ADMIN_SECRET not configured on server."}), 503
+    data = request.get_json(silent=True) or {}
+    if data.get("secret") != secret:
+        return jsonify({"error": "Wrong secret."}), 403
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    user.role = "admin"
+    db.session.commit()
+    return jsonify({"message": f"{user.name} is now admin.", "role": user.role}), 200
+
+
 # ── Clubs ────────────────────────────────────────────────────────────────────
 
 @admin_bp.route("/clubs", methods=["GET"])
