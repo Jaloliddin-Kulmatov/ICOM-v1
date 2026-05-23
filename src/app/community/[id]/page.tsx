@@ -45,6 +45,7 @@ interface Club {
   club_type: "club" | "community";
   country: string | null;
   website: string;
+  cover_image: string;
   kakao_link: string | null;
   contact: string | null;
   created_at: string;
@@ -418,14 +419,19 @@ export default function CommunityDetailPage() {
           </Link>
 
           {/* ── Hero header ── */}
-          <div
-            className={`rounded-2xl border border-border overflow-hidden mb-6 ${
-              isCC
-                ? "bg-gradient-to-br from-violet-950/25 to-indigo-950/15"
-                : "bg-gradient-to-br from-indigo-950/25 to-cyan-950/15"
-            }`}
-          >
-            <div className="p-6 sm:p-8">
+          <div className="rounded-2xl border border-border overflow-hidden mb-6">
+            {/* Cover image */}
+            {(() => {
+              const coverUrl = club.cover_image || `https://picsum.photos/seed/icom-club-${club.id}/800/250`;
+              return (
+                <div className="relative h-36 sm:h-44 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={coverUrl} alt={club.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/70" />
+                </div>
+              );
+            })()}
+            <div className={`p-6 sm:p-8 -mt-0 ${isCC ? "bg-gradient-to-br from-violet-950/40 to-indigo-950/30" : "bg-gradient-to-br from-indigo-950/40 to-cyan-950/30"}`}>
               <div className="flex flex-col sm:flex-row sm:items-start gap-5">
                 {/* Avatar */}
                 <div

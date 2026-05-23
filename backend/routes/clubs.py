@@ -260,21 +260,20 @@ def get_members(club_id):
                 "joined_at": m.joined_at.isoformat() + "Z",
             })
 
-    # Also include creator in the list if not already there
-    if is_creator:
-        creator_ids = {r["user_id"] for r in result}
-        if user_id not in creator_ids:
-            u = User.query.get(user_id)
-            if u:
-                result.insert(0, {
-                    "membership_id": None,
-                    "user_id": u.id,
-                    "name": u.name + " (Creator)",
-                    "university": u.university,
-                    "country": u.country,
-                    "visa_type": u.visa_type,
-                    "joined_at": club.created_at.isoformat() + "Z",
-                })
+    # Always include the creator at the top of the list
+    creator_ids = {r["user_id"] for r in result}
+    if club.created_by not in creator_ids:
+        creator_user = User.query.get(club.created_by)
+        if creator_user:
+            result.insert(0, {
+                "membership_id": None,
+                "user_id": creator_user.id,
+                "name": creator_user.name + " (Creator)",
+                "university": creator_user.university,
+                "country": creator_user.country,
+                "visa_type": creator_user.visa_type,
+                "joined_at": club.created_at.isoformat() + "Z",
+            })
 
     return jsonify({"members": result, "is_creator": is_creator}), 200
 
@@ -319,7 +318,7 @@ def edit_club(club_id):
 
     data = request.get_json(silent=True) or {}
     editable = ["name", "description", "category", "meeting_time",
-                "location", "contact", "kakao_link", "website", "country"]
+                "location", "contact", "kakao_link", "website", "country", "cover_image"]
     for field in editable:
         if field in data:
             setattr(club, field, (data[field] or "").strip())

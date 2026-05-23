@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import ChatWidget from "@/components/ai/chat-widget";
+import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import { AuthProvider } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <AuthProvider>
             {children}
+            <MobileBottomNav />
             <ChatWidget />
           </AuthProvider>
         </ThemeProvider>

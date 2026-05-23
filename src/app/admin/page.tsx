@@ -35,7 +35,7 @@ interface Club {
   id: number; name: string; category: string; university: string;
   description: string; contact: string; kakao_link: string;
   meeting_time: string; location: string; website: string;
-  club_type: string; country: string;
+  club_type: string; country: string; cover_image: string;
 }
 
 interface Job {
@@ -100,7 +100,7 @@ export default function AdminPage() {
   const [editClubForm, setEditClubForm] = useState({
     name: "", category: "", university: "", description: "",
     contact: "", kakao_link: "", meeting_time: "", location: "",
-    website: "", club_type: "club", country: "",
+    website: "", club_type: "club", country: "", cover_image: "",
   });
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [editJobForm, setEditJobForm] = useState({
@@ -169,6 +169,7 @@ export default function AdminPage() {
       kakao_link: club.kakao_link || "", meeting_time: club.meeting_time || "",
       location: club.location || "", website: club.website || "",
       club_type: club.club_type || "club", country: club.country || "",
+      cover_image: club.cover_image || "",
     });
   };
 
@@ -642,6 +643,10 @@ export default function AdminPage() {
               <div>
                 <label className="text-[11px] font-medium text-white/50 mb-1 block">Country (for communities)</label>
                 <input value={editClubForm.country} onChange={e => setEditClubForm(p => ({ ...p, country: e.target.value }))} placeholder="e.g. Uzbekistan" className={mInputCls} />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-white/50 mb-1 block">Cover Photo URL <span className="text-white/25 font-normal">(optional)</span></label>
+                <input value={editClubForm.cover_image} onChange={e => setEditClubForm(p => ({ ...p, cover_image: e.target.value }))} placeholder="https://... (leave blank for auto-generated)" className={mInputCls} />
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setEditingClub(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-white/60 hover:bg-white/5 transition-colors">Cancel</button>

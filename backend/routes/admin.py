@@ -141,6 +141,7 @@ def edit_club(club_id):
     if "website"      in data: club.website      = (data["website"]      or "").strip()
     if "club_type"    in data: club.club_type    = (data["club_type"]    or "club").strip()
     if "country"      in data: club.country      = (data["country"]      or "").strip()
+    if "cover_image"  in data: club.cover_image  = (data["cover_image"]  or "").strip()
 
     db.session.commit()
     return jsonify({"club": club.to_dict(user_id=user.id)}), 200

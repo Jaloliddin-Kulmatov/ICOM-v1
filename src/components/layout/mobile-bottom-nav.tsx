@@ -16,7 +16,7 @@ import { useNotifCount } from "@/hooks/use-notif-count";
 const tabs = [
   { href: "/dashboard",    icon: LayoutDashboard, label: "Home"      },
   { href: "/community",    icon: Users,           label: "Community" },
-  { href: "/jobs",         icon: Briefcase,       label: "Jobs"      },
+  { href: "/jobs",         icon: Briefcase,       label: "Internships"},
   { href: "/dashboard/ai", icon: Sparkles,        label: "AI"        },
   { href: "/dashboard/settings", icon: User,      label: "Profile"   },
 ];

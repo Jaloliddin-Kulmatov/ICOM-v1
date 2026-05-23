@@ -20,7 +20,7 @@ interface Club {
   meeting_time: string; location: string; member_count: number;
   pending_count: number; my_status: "pending" | "approved" | null;
   is_creator: boolean; creator_name: string | null; club_type: "club" | "community";
-  country?: string; website?: string;
+  country?: string; website?: string; cover_image?: string;
 }
 
 interface JoinRequest {
@@ -82,7 +82,7 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
   const [form, setForm] = useState({
     name: "", category: "social", university: user?.university || "JBNU",
     description: "", kakao_link: "", contact: "", meeting_time: "", location: "",
-    club_type: "club" as "club" | "community", country: "",
+    club_type: "club" as "club" | "community", country: "", cover_image: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -164,6 +164,11 @@ function CreateClubModal({ onClose, onCreate }: { onClose: () => void; onCreate:
           <div>
             <label className={labelCls}>Description</label>
             <textarea value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={3} placeholder="What does your club do?" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Cover Photo URL <span className="text-white/25 font-normal">(optional)</span></label>
+            <input value={form.cover_image} onChange={e => setForm(p => ({...p, cover_image: e.target.value}))} placeholder="https://... (leave blank for auto-generated)" className={inputCls} />
+            <p className="text-[10px] text-white/30 mt-1">Paste any image URL. Leave blank for a beautiful auto-generated cover.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -297,10 +302,12 @@ function ClubCard({ club, onAction, onManage }: {
     onManage(club);
   };
 
+  const coverUrl = club.cover_image || `https://picsum.photos/seed/icom-club-${club.id}/600/200`;
+
   return (
     <Link
       href={`/community/${club.id}`}
-      className={`group block rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 ${
+      className={`group block rounded-2xl border overflow-hidden transition-all duration-200 hover:-translate-y-0.5 ${
         isApproved
           ? "border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50 hover:shadow-[0_4px_20px_rgba(99,102,241,0.12)]"
           : isPending
@@ -308,34 +315,46 @@ function ClubCard({ club, onAction, onManage }: {
           : "border-border bg-card hover:border-indigo-500/25 hover:shadow-sm"
       }`}
     >
-      {/* Card body */}
-      <div className="p-5">
-        {/* Top row: category + location/manage */}
-        <div className="flex items-start justify-between mb-3">
-          <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${colorCls} capitalize`}>
+      {/* Cover image banner */}
+      <div className="relative h-28 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={coverUrl}
+          alt={club.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/fallback-${club.id}/600/200`; }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
+        {/* Category badge overlaid */}
+        <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border backdrop-blur-sm ${colorCls} capitalize`}>
             {club.category}
           </span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground">
-              {isCC ? (club.country || "South Korea") : club.university}
-            </span>
-            {club.is_creator && (
-              <button
-                onClick={handleManage}
-                title="Manage members"
-                className="relative p-1 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
-              >
-                <Settings size={13} />
-                {club.pending_count > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center font-bold">
-                    {club.pending_count}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
+          {club.is_creator && (
+            <button
+              onClick={handleManage}
+              title="Manage members"
+              className="relative p-1 rounded-lg bg-black/40 text-white/80 hover:text-amber-400 hover:bg-black/60 transition-colors backdrop-blur-sm"
+            >
+              <Settings size={11} />
+              {club.pending_count > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 text-white text-[7px] flex items-center justify-center font-bold">
+                  {club.pending_count}
+                </span>
+              )}
+            </button>
+          )}
         </div>
+        {/* Location overlay top-right */}
+        <div className="absolute top-2 right-3">
+          <span className="text-[10px] text-white/80 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+            {isCC ? (club.country || "South Korea") : club.university}
+          </span>
+        </div>
+      </div>
 
+      {/* Card body */}
+      <div className="p-4">
         {/* Name */}
         <h3 className="text-sm font-bold text-foreground mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
           {club.name}

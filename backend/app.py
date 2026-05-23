@@ -138,6 +138,17 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] clubs.website failed (probably already done): {e}")
 
+    # cover_image on clubs (optional user-set cover photo URL)
+    try:
+        if "clubs" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("clubs")]
+            if "cover_image" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE clubs ADD COLUMN cover_image VARCHAR(500)"))
+                print("[migration] Added clubs.cover_image")
+    except Exception as e:
+        print(f"[migration] clubs.cover_image failed (probably already done): {e}")
+
     # reply threading columns on club_messages
     for col_name, col_def in [
         ("reply_to_id",      "INTEGER REFERENCES club_messages(id)"),

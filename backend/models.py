@@ -59,6 +59,7 @@ class Club(db.Model):
     club_type = db.Column(db.String(20), default="club")  # "club" | "community"
     country = db.Column(db.String(100))
     website = db.Column(db.String(500))   # official university / community website
+    cover_image = db.Column(db.String(500))  # optional cover photo URL (user-set or blank = picsum default)
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -101,6 +102,7 @@ class Club(db.Model):
             "club_type": self.club_type or "club",
             "country": self.country,
             "website": self.website or "",
+            "cover_image": self.cover_image or "",
         }
 
 
