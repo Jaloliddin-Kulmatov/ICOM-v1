@@ -206,12 +206,18 @@ export default function AdminPage() {
     finally { setEditBusy(false); }
   };
 
+  const deleteAmbassador = async (id: number) => {
+    if (!confirm("Permanently delete this ambassador application?")) return;
+    try { await apiCall("DELETE", `/ambassador/applications/${id}`); flash("Application deleted."); loadData(); }
+    catch (err: unknown) { flash(err instanceof Error ? err.message : "Delete failed", true); }
+  };
+
   if (authLoading || !user) return null;
 
   const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/50 transition-colors";
   const labelCls = "text-xs font-medium text-muted-foreground mb-1.5 block";
   // Modal inputs need explicit white text since the modal has a forced dark background
-  const mInputCls = "w-full bg-white/8 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/60 transition-colors";
+  const mInputCls = "w-full bg-white/8 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white [color-scheme:dark] placeholder:text-white/30 focus:outline-none focus:border-indigo-500/60 transition-colors";
 
   const pendingAmbassadors = ambassadors.filter(a => a.status === "pending").length;
   const clubsOnly = clubs.filter(c => c.club_type === "club");
@@ -255,42 +261,6 @@ export default function AdminPage() {
         {success && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-400">
             {success}
-          </div>
-        )}
-
-        {/* ── DB-wipe recovery banner ── show when users = 0 (DB was reset) ── */}
-        {appUsers.length === 0 && (
-          <div className="mb-4 p-4 rounded-xl border border-orange-500/20 bg-orange-500/5">
-            <p className="text-xs font-semibold text-orange-400 mb-1">Database was reset</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              The backend restarted and the database is empty. Enter your <code className="text-orange-300">ADMIN_SECRET</code> (set on Render) to re-promote your account to admin. Clubs &amp; communities will auto-seed.
-            </p>
-            <div className="flex gap-2">
-              <input
-                id="bootstrap-secret"
-                type="password"
-                placeholder="ADMIN_SECRET value from Render"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-orange-500/50 transition-colors"
-              />
-              <button
-                onClick={async () => {
-                  const secret = (document.getElementById("bootstrap-secret") as HTMLInputElement)?.value;
-                  if (!secret) return;
-                  setBusy(true);
-                  try {
-                    const data = await apiCall("POST", "/admin/bootstrap", { secret });
-                    flash(data.message || "Promoted to admin!");
-                    loadData();
-                  } catch (err: unknown) {
-                    flash(err instanceof Error ? err.message : "Failed", true);
-                  } finally { setBusy(false); }
-                }}
-                disabled={busy}
-                className="px-4 py-2 rounded-xl bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 shrink-0"
-              >
-                {busy ? <Loader2 size={13} className="animate-spin" /> : "Re-promote"}
-              </button>
-            </div>
           </div>
         )}
 
@@ -573,22 +543,31 @@ export default function AdminPage() {
                       <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3 italic">&ldquo;{app.motivation}&rdquo;</p>
                     )}
                   </div>
-                  {app.status === "pending" && (
-                    <div className="flex gap-2 sm:flex-col sm:gap-1.5 shrink-0">
-                      <button
-                        onClick={async () => { await apiCall("PATCH", `/ambassador/applications/${app.id}`, { status: "approved" }); loadData(); }}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-medium hover:bg-emerald-500/25 transition-colors"
-                      >
-                        <CheckCircle2 size={12} /> Accept
-                      </button>
-                      <button
-                        onClick={async () => { await apiCall("PATCH", `/ambassador/applications/${app.id}`, { status: "rejected" }); loadData(); }}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
-                      >
-                        <XCircle size={12} /> Reject
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-2 sm:flex-col sm:gap-1.5 shrink-0">
+                    {app.status === "pending" && (
+                      <>
+                        <button
+                          onClick={async () => { await apiCall("PATCH", `/ambassador/applications/${app.id}`, { status: "approved" }); loadData(); }}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-medium hover:bg-emerald-500/25 transition-colors"
+                        >
+                          <CheckCircle2 size={12} /> Accept
+                        </button>
+                        <button
+                          onClick={async () => { await apiCall("PATCH", `/ambassador/applications/${app.id}`, { status: "rejected" }); loadData(); }}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
+                        >
+                          <XCircle size={12} /> Reject
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => deleteAmbassador(app.id)}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
+                      title="Delete application"
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

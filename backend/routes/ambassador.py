@@ -272,3 +272,18 @@ You're welcome to apply again in the future.</p>
             threading.Thread(target=_notify, daemon=True).start()
 
     return jsonify({"application": app_record.to_dict()}), 200
+
+
+# ── Admin: delete application ──────────────────────────────────────────────────
+
+@ambassador_bp.route("/applications/<int:app_id>", methods=["DELETE"])
+@jwt_required()
+def delete_application(app_id):
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    if user.role != "admin":
+        return jsonify({"error": "Admin only."}), 403
+    app_record = AmbassadorApplication.query.get_or_404(app_id)
+    db.session.delete(app_record)
+    db.session.commit()
+    return jsonify({"message": "Application deleted."}), 200
