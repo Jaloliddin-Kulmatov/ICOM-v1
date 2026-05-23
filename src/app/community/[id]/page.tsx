@@ -451,7 +451,7 @@ export default function CommunityDetailPage() {
         />
       )}
 
-      <main className="pt-16">
+      <main className="pt-16 pb-24 md:pb-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           {/* Back */}
           <Link
@@ -634,7 +634,8 @@ export default function CommunityDetailPage() {
               className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col"
               style={{
                 height: "calc(100vh - 360px)",
-                minHeight: "480px",
+                minHeight: "320px",
+                maxHeight: "600px",
               }}
             >
               {!isApproved ? (
