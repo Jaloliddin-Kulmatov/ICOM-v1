@@ -328,6 +328,41 @@ def edit_club(club_id):
     return jsonify({"club": club.to_dict(user_id=user_id)}), 200
 
 
+# ── Delete a club (creator only, soft-delete) ─────────────────
+
+@clubs_bp.route("/<int:club_id>", methods=["DELETE"])
+@jwt_required()
+def delete_club(club_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+    if club.created_by != user_id:
+        return jsonify({"error": "Only the club creator can delete this club."}), 403
+    club.is_active = False
+    db.session.commit()
+    return jsonify({"message": "Club deleted."}), 200
+
+
+# ── Kick a member (creator only) ─────────────────────────────
+
+@clubs_bp.route("/<int:club_id>/kick/<int:target_user_id>", methods=["DELETE"])
+@jwt_required()
+def kick_member(club_id, target_user_id):
+    user_id = int(get_jwt_identity())
+    club = Club.query.get_or_404(club_id)
+    if club.created_by != user_id:
+        return jsonify({"error": "Only the club creator can remove members."}), 403
+    if target_user_id == user_id:
+        return jsonify({"error": "You cannot remove yourself."}), 400
+    membership = ClubMembership.query.filter_by(
+        club_id=club_id, user_id=target_user_id
+    ).first()
+    if not membership:
+        return jsonify({"error": "User is not a member."}), 404
+    db.session.delete(membership)
+    db.session.commit()
+    return jsonify({"message": "Member removed."}), 200
+
+
 # ── Club chat: get messages ───────────────────────────────────
 
 @clubs_bp.route("/<int:club_id>/chat", methods=["GET"])
