@@ -25,6 +25,7 @@ interface AuthCtx {
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
+  loginWithGoogle: (accessToken: string) => Promise<string | null>;
   logout: () => void;
   refreshUser: () => void;
 }
@@ -43,6 +44,7 @@ const AuthContext = createContext<AuthCtx>({
   loading: true,
   login: async () => null,
   register: async () => null,
+  loginWithGoogle: async () => null,
   logout: () => {},
   refreshUser: () => {},
 });
@@ -83,13 +85,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
+  const loginWithGoogle = async (accessToken: string) => {
+    const { data, error } = await api.post<{ token: string; user: UserProfile }>(
+      "/auth/google",
+      { access_token: accessToken }
+    );
+    if (error) return error;
+    localStorage.setItem("icon_token", data!.token);
+    setUser(data!.user);
+    return null;
+  };
+
   const logout = () => {
     localStorage.removeItem("icon_token");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser: fetchMe }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, refreshUser: fetchMe }}>
       {children}
     </AuthContext.Provider>
   );

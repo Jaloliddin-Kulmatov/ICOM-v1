@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
+import requests as http_requests
 
 from app import db, bcrypt
 from models import User
@@ -81,6 +82,75 @@ def login():
     return jsonify({
         "message": "Login successful.",
         "token": access_token,
+        "user": user.to_dict(),
+    }), 200
+
+
+@auth_bp.route("/google", methods=["POST"])
+def google_auth():
+    """Sign in / sign up with a Google OAuth access token.
+    Frontend sends {access_token} obtained from @react-oauth/google.
+    We verify by calling Google's userinfo endpoint, then find-or-create the user.
+    """
+    data = request.get_json(silent=True) or {}
+    access_token = (data.get("access_token") or "").strip()
+
+    if not access_token:
+        return jsonify({"error": "Google access token is required."}), 400
+
+    # ── Verify token with Google ──────────────────────────────────────────────
+    try:
+        resp = http_requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+    except Exception:
+        return jsonify({"error": "Could not reach Google servers. Try again."}), 503
+
+    if resp.status_code != 200:
+        return jsonify({"error": "Invalid or expired Google token."}), 401
+
+    info = resp.json()
+    email = (info.get("email") or "").strip().lower()
+    name  = (info.get("name") or info.get("given_name") or "").strip()
+    if not name:
+        name = email.split("@")[0]
+
+    if not email:
+        return jsonify({"error": "Could not retrieve email from Google."}), 400
+
+    # ── Email verified check ──────────────────────────────────────────────────
+    if not info.get("email_verified", False):
+        return jsonify({
+            "error": "Your Google email is not verified. "
+                     "Please verify your Google account first, then try again."
+        }), 400
+
+    # ── Find or create user ───────────────────────────────────────────────────
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(
+            name=name,
+            email=email,
+            password_hash="",        # no password — Google-only account
+            is_verified=True,        # Google has already verified the email
+        )
+        db.session.add(user)
+        db.session.commit()
+    else:
+        # Update last seen
+        if hasattr(user, "last_seen"):
+            user.last_seen = datetime.utcnow()
+            db.session.commit()
+
+    jwt_token = create_access_token(
+        identity=str(user.id),
+        expires_delta=timedelta(days=30),
+    )
+    return jsonify({
+        "message": f"Welcome, {user.name}!",
+        "token": jwt_token,
         "user": user.to_dict(),
     }), 200
 

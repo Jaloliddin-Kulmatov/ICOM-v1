@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
   Users, Briefcase, BookOpen, Globe,
-  LayoutDashboard, LogIn, Home,
+  LayoutDashboard, LogIn, Home, LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,10 +26,11 @@ const navLinks = [
 
 export default function Navbar({ transparent = false }: { transparent?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const notifCount = useNotifCount(user?.id);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
+          <Link href={user ? "/dashboard" : "/"} prefetch className="flex items-center gap-2 group shrink-0">
             <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow">
               <span className="text-white font-black text-sm leading-none select-none">IC</span>
             </div>
@@ -204,12 +205,21 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 {label}
               </Link>
             ))}
-            <div className="pt-2 border-t border-border">
+            <div className="pt-2 border-t border-border space-y-1">
               {user ? (
-                <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
-                  <LayoutDashboard size={17} />
-                  Dashboard
-                </Link>
+                <>
+                  <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
+                    <LayoutDashboard size={17} />
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => { logout(); setMobileOpen(false); router.push("/"); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut size={17} />
+                    Sign out
+                  </button>
+                </>
               ) : (
                 <div className="flex flex-col gap-2 mt-1">
                   <Button className="w-full gap-2" asChild>

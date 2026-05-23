@@ -17,6 +17,53 @@ function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
 }
 
+function getClubCoverUrl(club: { id: number; name: string; category: string; club_type?: string; country?: string | null }): string {
+  const name = club.name.toLowerCase();
+  const matchers: [RegExp, string][] = [
+    [/guitar|music|band|choir|piano|drum|jazz|rock|kpop|k-pop|orchestra|instrument/i, "music,concert"],
+    [/badminton/i, "badminton,sport"],
+    [/basketball/i, "basketball"],
+    [/soccer|football|futsal/i, "soccer,football"],
+    [/volleyball/i, "volleyball,sport"],
+    [/swimming|aqua/i, "swimming,pool"],
+    [/cycling|bicycle|bike/i, "cycling,bicycle"],
+    [/tennis|table.tennis|ping.pong/i, "tennis,sport"],
+    [/hiking|mountain|outdoor|trekking|climbing/i, "hiking,mountain"],
+    [/running|marathon|jogging|track/i, "running,marathon"],
+    [/yoga|wellness|meditation|mindful|pilates/i, "yoga,wellness"],
+    [/dance|dancing|ballet|choreograph/i, "dance,performance"],
+    [/cooking|culinary|food|baking|chef|gastro/i, "cooking,food"],
+    [/photo|photography|camera|film|cinema|video/i, "photography,camera"],
+    [/art|painting|drawing|sketch|craft|ceramic|sculpt/i, "art,painting"],
+    [/design|graphic|ui|ux|visual|illustration/i, "design,creative"],
+    [/tech|coding|programming|developer|software|ai|robot|computer|hack/i, "technology,coding"],
+    [/environment|eco|green|sustainability|nature|forest|recycle/i, "nature,environment"],
+    [/volunteer|service|charity|community.service|welfare/i, "volunteer,community"],
+    [/language|english|korean|chinese|japanese|arabic|french|spanish|learn/i, "language,study"],
+    [/book|reading|literature|writing|poetry|story|library/i, "books,reading"],
+    [/business|entrepreneur|startup|finance|invest|market/i, "business,office"],
+    [/journalism|media|news|broadcast|radio|press/i, "journalism,media"],
+    [/debate|public.speak|model.un|diplomacy|speech/i, "debate,speech"],
+    [/chess|board.game|gaming|esport|game.club/i, "chess,strategy"],
+    [/science|research|lab|engineering|math|physics|chemistry|biology/i, "science,laboratory"],
+    [/culture|cultural|tradition|heritage|festival/i, "culture,tradition"],
+    [/prayer|faith|religion|church|mosque|temple/i, "faith,community"],
+  ];
+  for (const [regex, kw] of matchers) {
+    if (regex.test(name)) return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
+  }
+  const catKw: Record<string, string> = {
+    sports: "sports,stadium", academic: "university,studying",
+    culture: "culture,art", social: "people,friends",
+    language: "language,study", tech: "technology,computer",
+    arts: "art,creative", volunteer: "volunteer,community",
+    "national community": club.country ? `${club.country.toLowerCase().split(" ")[0]},culture` : "international,flag",
+    "religion & culture": "culture,tradition", "support & community": "community,people",
+  };
+  const kw = catKw[club.category?.toLowerCase()] || "students,university,korea";
+  return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
+}
+
 async function apiFetch(method: string, path: string, body?: object) {
   const res = await fetch(`${API}${path}`, {
     method,
@@ -422,11 +469,16 @@ export default function CommunityDetailPage() {
           <div className="rounded-2xl border border-border overflow-hidden mb-6">
             {/* Cover image */}
             {(() => {
-              const coverUrl = club.cover_image || `https://picsum.photos/seed/icom-club-${club.id}/800/250`;
+              const coverUrl = club.cover_image || getClubCoverUrl(club);
               return (
                 <div className="relative h-36 sm:h-44 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={coverUrl} alt={club.name} className="w-full h-full object-cover" />
+                  <img
+                    src={coverUrl}
+                    alt={club.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/icom-${club.id}/800/250`; }}
+                  />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/70" />
                 </div>
               );

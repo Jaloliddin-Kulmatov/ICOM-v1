@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 
+from app import db
 from models import Club, Job
 
 search_bp = Blueprint("search", __name__)
@@ -10,9 +11,8 @@ search_bp = Blueprint("search", __name__)
 def search():
     """
     GET /api/search?q=<query>&limit=<n>
-
-    Returns matched clubs (communities + clubs), jobs/internships.
-    No auth required — private fields (kakao_link, contact) are never returned here.
+    Returns matched clubs, communities, and jobs.
+    No auth required — private fields never returned here.
     """
     q = (request.args.get("q") or "").strip()
     limit = min(int(request.args.get("limit", 10)), 30)
@@ -20,44 +20,83 @@ def search():
     if not q or len(q) < 2:
         return jsonify({"results": []}), 200
 
-    pattern = f"%{q}%"
+    q_lower = q.lower()
 
     # ── Clubs & communities ───────────────────────────────────────
-    clubs = (
-        Club.query
-        .filter(
-            Club.is_active == True,
-            or_(
-                func.lower(Club.name).contains(q.lower()),
-                func.lower(Club.description).contains(q.lower()),
-                func.lower(Club.category).contains(q.lower()),
-                func.lower(Club.university).contains(q.lower()),
-                func.lower(Club.country).contains(q.lower()),
+    # Use ilike for PostgreSQL (index-friendly) and LIKE fallback for SQLite
+    try:
+        clubs = (
+            Club.query
+            .filter(
+                Club.is_active == True,
+                or_(
+                    Club.name.ilike(f"%{q}%"),
+                    Club.description.ilike(f"%{q}%"),
+                    Club.category.ilike(f"%{q}%"),
+                    Club.university.ilike(f"%{q}%"),
+                    Club.country.ilike(f"%{q}%"),
+                )
             )
+            .order_by(Club.member_count.desc(), Club.created_at.desc())
+            .limit(limit)
+            .all()
         )
-        .order_by(Club.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    except Exception:
+        # SQLite fallback (no ilike support in older versions)
+        clubs = (
+            Club.query
+            .filter(
+                Club.is_active == True,
+                or_(
+                    func.lower(Club.name).contains(q_lower),
+                    func.lower(Club.description).contains(q_lower),
+                    func.lower(Club.category).contains(q_lower),
+                    func.lower(Club.university).contains(q_lower),
+                    func.lower(Club.country).contains(q_lower),
+                )
+            )
+            .order_by(Club.member_count.desc(), Club.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
     # ── Jobs / internships ────────────────────────────────────────
-    jobs = (
-        Job.query
-        .filter(
-            Job.is_active == True,
-            or_(
-                func.lower(Job.title).contains(q.lower()),
-                func.lower(Job.company).contains(q.lower()),
-                func.lower(Job.description).contains(q.lower()),
-                func.lower(Job.location).contains(q.lower()),
-                func.lower(Job.tags).contains(q.lower()),
-                func.lower(Job.visa_compatible).contains(q.lower()),
+    try:
+        jobs = (
+            Job.query
+            .filter(
+                Job.is_active == True,
+                or_(
+                    Job.title.ilike(f"%{q}%"),
+                    Job.company.ilike(f"%{q}%"),
+                    Job.description.ilike(f"%{q}%"),
+                    Job.location.ilike(f"%{q}%"),
+                    Job.tags.ilike(f"%{q}%"),
+                    Job.visa_compatible.ilike(f"%{q}%"),
+                )
             )
+            .order_by(Job.created_at.desc())
+            .limit(limit)
+            .all()
         )
-        .order_by(Job.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    except Exception:
+        jobs = (
+            Job.query
+            .filter(
+                Job.is_active == True,
+                or_(
+                    func.lower(Job.title).contains(q_lower),
+                    func.lower(Job.company).contains(q_lower),
+                    func.lower(Job.description).contains(q_lower),
+                    func.lower(Job.location).contains(q_lower),
+                    func.lower(Job.tags).contains(q_lower),
+                    func.lower(Job.visa_compatible).contains(q_lower),
+                )
+            )
+            .order_by(Job.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
     results = []
 
@@ -67,11 +106,12 @@ def search():
             "type": "community" if ctype == "community" else "club",
             "id": c.id,
             "label": c.name,
-            "sub": c.description[:80] if c.description else (c.university or ""),
+            "sub": (c.description[:80] if c.description else None) or c.university or "",
             "category": c.category,
             "university": c.university,
             "country": c.country,
-            "href": "/community",
+            "member_count": getattr(c, "member_count", 0),
+            "href": f"/community/{c.id}",   # direct link to club page
         })
 
     for j in jobs:
@@ -83,7 +123,7 @@ def search():
             "company": j.company,
             "location": j.location,
             "job_type": j.job_type,
-            "href": "/jobs",
+            "href": f"/jobs/{j.id}",          # direct link to job page
         })
 
     return jsonify({"results": results, "query": q}), 200

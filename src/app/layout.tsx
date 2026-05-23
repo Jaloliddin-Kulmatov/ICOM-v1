@@ -5,6 +5,7 @@ import "./globals.css";
 import ChatWidget from "@/components/ai/chat-widget";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import { AuthProvider } from "@/lib/auth";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -36,18 +37,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          storageKey="icon-theme"
-        >
-          <AuthProvider>
-            {children}
-            <MobileBottomNav />
-            <ChatWidget />
-          </AuthProvider>
-        </ThemeProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            storageKey="icon-theme"
+          >
+            <AuthProvider>
+              {children}
+              <MobileBottomNav />
+              <ChatWidget />
+            </AuthProvider>
+          </ThemeProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

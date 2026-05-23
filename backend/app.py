@@ -149,6 +149,41 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] clubs.cover_image failed (probably already done): {e}")
 
+    # ── Search indexes for fast LIKE/ILIKE queries ───────────────────────────
+    # PostgreSQL only — silently skipped on SQLite
+    try:
+        dialect = db.engine.dialect.name
+        if dialect == "postgresql":
+            with db.engine.begin() as conn:
+                conn.execute(text(
+                    "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clubs_name_trgm "
+                    "ON clubs USING gin (lower(name) gin_trgm_ops)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_title_trgm "
+                    "ON jobs USING gin (lower(title) gin_trgm_ops)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_company_trgm "
+                    "ON jobs USING gin (lower(company) gin_trgm_ops)"
+                ))
+            print("[migration] Search trigram indexes created/verified")
+    except Exception as e:
+        # pg_trgm extension may not be enabled — fall back to regular B-tree indexes
+        try:
+            dialect = db.engine.dialect.name
+            if dialect == "postgresql":
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS idx_clubs_name ON clubs (lower(name))"
+                    ))
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS idx_jobs_title ON jobs (lower(title))"
+                    ))
+                print("[migration] Basic search indexes created/verified")
+        except Exception:
+            pass  # SQLite or already exists — no-op
+
     # reply threading columns on club_messages
     for col_name, col_def in [
         ("reply_to_id",      "INTEGER REFERENCES club_messages(id)"),

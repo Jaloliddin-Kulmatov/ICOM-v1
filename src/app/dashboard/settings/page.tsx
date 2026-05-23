@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 import {
   Settings, Loader2, CheckCircle2, Users, Pencil, Trash2,
-  LogOut, ChevronDown, ChevronUp, UserX, Globe, GraduationCap,
-  MapPin, Clock, ExternalLink, Plus, Crown,
+  LogOut, UserX, Globe, GraduationCap,
+  ExternalLink, Plus, Crown,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -364,7 +365,8 @@ function JoinedClubCard({ club, onLeft }: { club: Club; onLeft: () => void }) {
 
 // ── Main page ─────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<"profile" | "clubs">("profile");
 
   // Profile form
@@ -447,13 +449,22 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+          {/* Sign out */}
+          <button
+            onClick={() => { logout(); router.push("/"); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors shrink-0"
+            title="Sign out"
+          >
+            <LogOut size={13} />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
         </div>
 
         {/* ── Tabs ── */}
         <div className="flex gap-1 p-1 rounded-xl bg-muted/50 border border-border mb-6 w-fit">
           {([
             { key: "profile", icon: Settings, label: "Profile" },
-            { key: "clubs",   icon: Users,    label: `My Clubs & Communities (${createdClubs.length + joinedClubs.length})` },
+            { key: "clubs",   icon: Users,    label: `My Clubs & Communities (${createdClubs.length + joinedClubs.length})` as string },
           ] as const).map(t => (
             <button
               key={t.key}
@@ -525,93 +536,120 @@ export default function ProfilePage() {
               {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle2 size={14} /> : <Settings size={14} />}
               {saved ? "Saved!" : "Save Changes"}
             </button>
+
+            {/* Sign out */}
+            <button
+              type="button"
+              onClick={() => { logout(); router.push("/"); }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-500/25 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors"
+            >
+              <LogOut size={14} /> Sign out
+            </button>
           </form>
         )}
 
         {/* ═══════════════════════════════
              MY CLUBS TAB
         ═══════════════════════════════ */}
-        {tab === "clubs" && (
-          <div className="space-y-6">
-            {clubsLoading ? (
-              <div className="flex justify-center py-16">
-                <Loader2 size={20} className="animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <>
-                {/* ── Clubs/communities you own ── */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Crown size={14} className="text-amber-400" />
-                      Your Clubs &amp; Communities
-                      <span className="text-xs font-normal text-muted-foreground">({createdClubs.length})</span>
-                    </h2>
-                    <Link
-                      href="/community"
-                      className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-                    >
-                      <Plus size={11} /> Create new
-                    </Link>
+        {tab === "clubs" && (() => {
+          // Split by type
+          const ownedClubs  = createdClubs.filter(c => c.club_type === "club");
+          const ownedComms  = createdClubs.filter(c => c.club_type === "community");
+          const joinedClubsOnly = joinedClubs.filter(c => c.club_type === "club");
+          const joinedComms = joinedClubs.filter(c => c.club_type === "community");
+
+          const SectionHeader = ({ emoji, title, count, createLink }: { emoji: string; title: string; count: number; createLink?: boolean }) => (
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span>{emoji}</span>{title}
+                <span className="text-xs font-normal text-muted-foreground">({count})</span>
+              </h2>
+              {createLink && (
+                <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                  <Plus size={11} /> Create
+                </Link>
+              )}
+            </div>
+          );
+
+          const EmptyState = ({ msg, link }: { msg: string; link: string }) => (
+            <div className="py-5 rounded-2xl border border-dashed border-border text-center">
+              <p className="text-xs text-muted-foreground">{msg}</p>
+              <Link href={link} className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                Browse →
+              </Link>
+            </div>
+          );
+
+          return (
+            <div className="space-y-8">
+              {clubsLoading ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {/* ── 🎓 CLUBS ── */}
+                  <div>
+                    <SectionHeader emoji="🎓" title="Clubs" count={ownedClubs.length + joinedClubsOnly.length} createLink />
+
+                    {/* Owned clubs */}
+                    {ownedClubs.length > 0 && (
+                      <div className="space-y-3 mb-3">
+                        {ownedClubs.map(club => (
+                          <OwnedClubCard key={club.id} club={club} onSaved={loadClubs} onDeleted={loadClubs} />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Joined clubs */}
+                    {joinedClubsOnly.length > 0 && (
+                      <div className="space-y-2">
+                        {joinedClubsOnly.map(club => (
+                          <JoinedClubCard key={club.id} club={club} onLeft={loadClubs} />
+                        ))}
+                      </div>
+                    )}
+
+                    {ownedClubs.length === 0 && joinedClubsOnly.length === 0 && (
+                      <EmptyState msg="No clubs yet." link="/community" />
+                    )}
                   </div>
 
-                  {createdClubs.length === 0 ? (
-                    <div className="p-8 rounded-2xl border border-dashed border-border text-center">
-                      <Crown size={24} className="text-muted-foreground/30 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">You haven&apos;t created any clubs yet.</p>
-                      <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                        Create a club or community →
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {createdClubs.map(club => (
-                        <OwnedClubCard
-                          key={club.id}
-                          club={club}
-                          onSaved={loadClubs}
-                          onDeleted={loadClubs}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  {/* Divider */}
+                  <div className="h-px bg-border" />
 
-                {/* Divider */}
-                <div className="h-px bg-border" />
+                  {/* ── 🌍 COMMUNITIES ── */}
+                  <div>
+                    <SectionHeader emoji="🌍" title="Communities" count={ownedComms.length + joinedComms.length} createLink />
 
-                {/* ── Clubs/communities you joined ── */}
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                    <Users size={14} className="text-indigo-400" />
-                    Joined
-                    <span className="text-xs font-normal text-muted-foreground">({joinedClubs.length})</span>
-                  </h2>
+                    {/* Owned communities */}
+                    {ownedComms.length > 0 && (
+                      <div className="space-y-3 mb-3">
+                        {ownedComms.map(club => (
+                          <OwnedClubCard key={club.id} club={club} onSaved={loadClubs} onDeleted={loadClubs} />
+                        ))}
+                      </div>
+                    )}
 
-                  {joinedClubs.length === 0 ? (
-                    <div className="p-8 rounded-2xl border border-dashed border-border text-center">
-                      <Users size={24} className="text-muted-foreground/30 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">You haven&apos;t joined any clubs yet.</p>
-                      <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                        Browse communities →
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {joinedClubs.map(club => (
-                        <JoinedClubCard
-                          key={club.id}
-                          club={club}
-                          onLeft={loadClubs}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                    {/* Joined communities */}
+                    {joinedComms.length > 0 && (
+                      <div className="space-y-2">
+                        {joinedComms.map(club => (
+                          <JoinedClubCard key={club.id} club={club} onLeft={loadClubs} />
+                        ))}
+                      </div>
+                    )}
+
+                    {ownedComms.length === 0 && joinedComms.length === 0 && (
+                      <EmptyState msg="No communities yet." link="/community" />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </DashboardLayout>
   );

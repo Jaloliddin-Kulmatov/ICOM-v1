@@ -146,18 +146,7 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* ── Mobile FAB (fixed, no drag) ── */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Open AI Assistant"
-          className="fixed bottom-20 right-4 z-50 md:hidden w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-[0_4px_24px_rgba(99,102,241,0.5)] hover:scale-105 active:scale-95 transition-transform animate-pulse-glow"
-        >
-          <Sparkles size={22} />
-        </button>
-      )}
-
-      {/* ── Desktop FAB (draggable) ── */}
+      {/* ── Desktop / tablet FAB (draggable, hidden on phones) ── */}
       {!open && pos && (
         <button
           onMouseDown={onMouseDown}
@@ -171,97 +160,7 @@ export default function ChatWidget() {
         </button>
       )}
 
-      {/* ── Mobile panel (full-width bottom sheet) ── */}
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40 md:hidden bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className={`fixed inset-x-0 bottom-0 z-50 md:hidden bg-card border-t border-border shadow-[0_-8px_40px_rgba(0,0,0,0.35)] flex flex-col rounded-t-2xl overflow-hidden ${
-          minimized ? "h-14" : "h-[85svh]"
-        }`}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0 select-none">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
-                <Sparkles size={14} className="text-white" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground leading-tight">ICOM AI</p>
-                <p className="text-[10px] text-emerald-500 leading-tight">Your Korea guide</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {messages.length > 0 && (
-                <button onClick={() => { setMessages([]); setError(""); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Clear chat">
-                  <RefreshCw size={12} />
-                </button>
-              )}
-              <button onClick={() => setMinimized(!minimized)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-                <Minimize2 size={13} />
-              </button>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-          {!minimized && (
-            <>
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
-                {messages.length === 0 && (
-                  <div className="text-center py-4 animate-fade-in">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
-                      <Sparkles size={22} className="text-indigo-500" />
-                    </div>
-                    <p className="text-sm font-semibold text-foreground mb-1">Hi! I&apos;m ICOM AI</p>
-                    <p className="text-xs text-muted-foreground max-w-[240px] mx-auto leading-relaxed">
-                      Ask me anything about life in Korea — visa, banking, housing, jobs, or translation.
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-1.5 justify-center">
-                      {QUICK.map((q) => (
-                        <button key={q} onClick={() => send(q)} className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/8 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-500/15 transition-colors">
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {messages.map((m) => (
-                  <div key={m.id} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${m.role === "assistant" ? "bg-gradient-to-br from-indigo-500 to-violet-600" : "bg-muted border border-border"}`}>
-                      {m.role === "assistant" ? <Bot size={12} className="text-white" /> : <User size={11} className="text-muted-foreground" />}
-                    </div>
-                    <div className={`max-w-[80%] rounded-2xl px-3 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${m.role === "user" ? "bg-indigo-500 text-white rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm border border-border"}`}>
-                      {m.content}
-                    </div>
-                  </div>
-                ))}
-                {loading && (
-                  <div className="flex gap-2">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0"><Bot size={12} className="text-white" /></div>
-                    <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2.5 flex items-center gap-1">
-                      {[0,1,2].map((i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}
-                    </div>
-                  </div>
-                )}
-                {error && <div className="flex-1 px-3 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 whitespace-pre-wrap leading-relaxed">{error}</div>}
-                <div ref={bottomRef} />
-              </div>
-              <div className="px-3 pb-4 pt-2 border-t border-border shrink-0" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-                <div className="flex items-center gap-2 bg-muted rounded-xl border border-border px-3 py-2 focus-within:border-indigo-500/40 transition-colors">
-                  <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Ask anything about Korea..." disabled={loading} className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50" />
-                  <button onClick={() => send(input)} disabled={!input.trim() || loading} className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0">
-                    <Send size={12} className="text-white" />
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-          </div>
-        </>
-      )}
-
-      {/* ── Desktop panel (floating, draggable anchor) ── */}
+      {/* ── Desktop / tablet panel (floating, draggable anchor) ── */}
       {open && pos && (
         <div
           style={{ left: Math.min(pos.x, window.innerWidth - 370), top: Math.min(Math.max(pos.y - 500, 8), window.innerHeight - 520) }}

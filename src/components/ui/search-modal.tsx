@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, X, Briefcase, Users, GraduationCap, Globe,
@@ -20,7 +20,7 @@ interface Result {
   icon: React.ReactNode;
 }
 
-// ── Static data ───────────────────────────────────────────────────────────────
+// ── Static data (built once, never fetched) ───────────────────────────────────
 
 const STATIC_PAGES: Result[] = [
   {
@@ -84,7 +84,7 @@ const UNI_RESULTS: Result[] = UNIVERSITIES.map((u) => ({
 
 const ALL_STATIC: Result[] = [...STATIC_PAGES, ...UNI_RESULTS];
 
-// ── Icon helpers ──────────────────────────────────────────────────────────────
+// ── Icon / label helpers ──────────────────────────────────────────────────────
 
 function iconForType(type: Result["type"]): React.ReactNode {
   switch (type) {
@@ -110,6 +110,15 @@ function labelForType(type: Result["type"]): string {
   }
 }
 
+function scoreMatch(text: string, q: string): number {
+  const t = text.toLowerCase();
+  const query = q.toLowerCase();
+  if (t === query) return 3;
+  if (t.startsWith(query)) return 2;
+  if (t.includes(query)) return 1;
+  return 0;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SearchModal({
@@ -121,10 +130,11 @@ export default function SearchModal({
 }) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
-  const [liveResults, setLiveResults] = useState<Result[]>([]);
+  const [apiResults, setApiResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const router = useRouter();
 
   // Reset on open
@@ -132,40 +142,55 @@ export default function SearchModal({
     if (open) {
       setQuery("");
       setCursor(0);
-      setLiveResults([]);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setApiResults([]);
+      setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open]);
 
   useEffect(() => { setCursor(0); }, [query]);
 
-  // Debounced search against backend
+  // ── Instant static filter (no delay, runs on every keystroke) ────────────────
+  const staticMatches = useMemo((): Result[] => {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    return ALL_STATIC
+      .map((r) => {
+        const s1 = scoreMatch(r.label, trimmed);
+        const s2 = scoreMatch(r.sub || "", trimmed);
+        return { r, score: Math.max(s1, s2) };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ r }) => r);
+  }, [query]);
+
+  // ── Debounced API search (100ms — much faster than before) ────────────────────
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) abortRef.current.abort();
 
     const trimmed = query.trim();
     if (trimmed.length < 2) {
-      setLiveResults([]);
+      setApiResults([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
       try {
         const res = await fetch(
-          `${API}/search?q=${encodeURIComponent(trimmed)}&limit=12`
+          `${API}/search?q=${encodeURIComponent(trimmed)}&limit=12`,
+          { signal: ctrl.signal }
         );
         if (!res.ok) throw new Error("search failed");
         const data = await res.json();
 
         const mapped: Result[] = (data.results || []).map(
-          (r: {
-            type: string;
-            label: string;
-            sub?: string;
-            href: string;
-          }) => ({
+          (r: { type: string; label: string; sub?: string; href: string }) => ({
             type: r.type as Result["type"],
             label: r.label,
             sub: r.sub,
@@ -173,38 +198,34 @@ export default function SearchModal({
             icon: iconForType(r.type as Result["type"]),
           })
         );
-        setLiveResults(mapped);
-      } catch {
-        setLiveResults([]);
+        setApiResults(mapped);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setApiResults([]);
       } finally {
         setLoading(false);
       }
-    }, 280);
+    }, 100); // ← 100ms debounce (was 280ms)
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query]);
 
-  // Build display results: live DB results first, then static matches, deduplicated by href
-  const results: Result[] = (() => {
+  // ── Merged results: API first (DB data), then deduplicated static extras ──────
+  const results: Result[] = useMemo(() => {
     const trimmed = query.trim();
     if (!trimmed) return STATIC_PAGES.slice(0, 6);
 
-    const staticMatches = ALL_STATIC.filter(
-      (r) =>
-        r.label.toLowerCase().includes(trimmed.toLowerCase()) ||
-        (r.sub || "").toLowerCase().includes(trimmed.toLowerCase())
-    );
+    const seen = new Set(apiResults.map((r) => r.href + r.label));
+    const extraStatic = staticMatches.filter((r) => !seen.has(r.href + r.label));
 
-    // Merge: live results first, then non-duplicate static results
-    const seen = new Set(liveResults.map((r) => r.href + r.label));
-    const deduped = staticMatches.filter(
-      (r) => !seen.has(r.href + r.label)
-    );
+    return [...apiResults, ...extraStatic].slice(0, 10);
+  }, [query, apiResults, staticMatches]);
 
-    return [...liveResults, ...deduped].slice(0, 10);
-  })();
+  // Visible results: if API hasn't loaded yet, show static matches immediately
+  const displayResults = apiResults.length > 0 || !loading
+    ? results
+    : staticMatches.slice(0, 6);
 
   const go = useCallback(
     (href: string) => {
@@ -217,17 +238,19 @@ export default function SearchModal({
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setCursor((c) => Math.min(c + 1, results.length - 1));
+      setCursor((c) => Math.min(c + 1, displayResults.length - 1));
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
       setCursor((c) => Math.max(c - 1, 0));
     }
-    if (e.key === "Enter" && results[cursor]) go(results[cursor].href);
+    if (e.key === "Enter" && displayResults[cursor]) go(displayResults[cursor].href);
     if (e.key === "Escape") onClose();
   };
 
   if (!open) return null;
+
+  const showSpinner = loading && apiResults.length === 0 && staticMatches.length === 0;
 
   return (
     <div
@@ -243,8 +266,8 @@ export default function SearchModal({
       >
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-blue-100 dark:border-white/8">
-          {loading ? (
-            <Loader2 size={16} className="text-indigo-400 dark:text-indigo-400 shrink-0 animate-spin" />
+          {showSpinner ? (
+            <Loader2 size={16} className="text-indigo-400 shrink-0 animate-spin" />
           ) : (
             <Search size={16} className="text-indigo-400 dark:text-white/40 shrink-0" />
           )}
@@ -258,7 +281,7 @@ export default function SearchModal({
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              onClick={() => { setQuery(""); setApiResults([]); }}
               className="text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white transition-colors"
             >
               <X size={14} />
@@ -271,12 +294,12 @@ export default function SearchModal({
 
         {/* Results */}
         <div className="py-1.5 max-h-80 overflow-y-auto">
-          {results.length === 0 && query.trim().length >= 2 && !loading && (
+          {displayResults.length === 0 && query.trim().length >= 2 && !loading && (
             <p className="px-4 py-6 text-center text-sm text-gray-400 dark:text-white/50">
               No results for &quot;{query}&quot;
             </p>
           )}
-          {results.map((r, i) => (
+          {displayResults.map((r, i) => (
             <button
               key={r.href + r.label + i}
               onClick={() => go(r.href)}
@@ -313,6 +336,10 @@ export default function SearchModal({
                       {labelForType(r.type)}
                     </span>
                   )}
+                  {/* Loading indicator: spinner on last item while API is fetching */}
+                  {loading && i === displayResults.length - 1 && apiResults.length === 0 && (
+                    <Loader2 size={10} className="text-indigo-400 animate-spin shrink-0 ml-auto" />
+                  )}
                 </div>
                 {r.sub && (
                   <p className="text-[11px] text-gray-400 dark:text-white/45 truncate">
@@ -334,18 +361,14 @@ export default function SearchModal({
 
         {/* Footer */}
         <div className="px-4 py-2.5 border-t border-blue-100 dark:border-white/8 flex items-center gap-4 text-[10px] text-gray-400 dark:text-white/30 bg-blue-50/50 dark:bg-transparent">
-          <span>
-            <kbd className="font-mono">↑↓</kbd> navigate
-          </span>
-          <span>
-            <kbd className="font-mono">↵</kbd> open
-          </span>
-          <span>
-            <kbd className="font-mono">Esc</kbd> close
-          </span>
+          <span><kbd className="font-mono">↑↓</kbd> navigate</span>
+          <span><kbd className="font-mono">↵</kbd> open</span>
+          <span><kbd className="font-mono">Esc</kbd> close</span>
           {query.trim().length >= 2 && (
             <span className="ml-auto">
-              {loading ? "Searching..." : `${results.length} result${results.length !== 1 ? "s" : ""}`}
+              {loading && apiResults.length === 0
+                ? "Searching…"
+                : `${displayResults.length} result${displayResults.length !== 1 ? "s" : ""}`}
             </span>
           )}
         </div>

@@ -66,6 +66,67 @@ const COMMUNITY_CATEGORIES = ["national community", "religion & culture", "suppo
 
 function getToken() { return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null; }
 
+// ── Keyword-based cover image ─────────────────────────────────────────────────
+function getClubCoverUrl(club: { id: number; name: string; category: string; club_type?: string; country?: string }): string {
+  const name = club.name.toLowerCase();
+
+  // Name-specific patterns → relevant loremflickr keywords
+  const matchers: [RegExp, string][] = [
+    [/guitar|music|band|choir|piano|drum|jazz|rock|kpop|k-pop|orchestra|instrument/i, "music,concert"],
+    [/badminton/i, "badminton,sport"],
+    [/basketball/i, "basketball"],
+    [/soccer|football|futsal/i, "soccer,football"],
+    [/volleyball/i, "volleyball,sport"],
+    [/swimming|aqua/i, "swimming,pool"],
+    [/cycling|bicycle|bike/i, "cycling,bicycle"],
+    [/tennis|table.tennis|ping.pong/i, "tennis,sport"],
+    [/hiking|mountain|outdoor|trekking|climbing/i, "hiking,mountain"],
+    [/running|marathon|jogging|track/i, "running,marathon"],
+    [/yoga|wellness|meditation|mindful|pilates/i, "yoga,wellness"],
+    [/dance|dancing|ballet|choreograph/i, "dance,performance"],
+    [/cooking|culinary|food|baking|chef|gastro/i, "cooking,food"],
+    [/photo|photography|camera|film|cinema|video/i, "photography,camera"],
+    [/art|painting|drawing|sketch|craft|ceramic|sculpt/i, "art,painting"],
+    [/design|graphic|ui|ux|visual|illustration/i, "design,creative"],
+    [/tech|coding|programming|developer|software|ai|robot|computer|hack/i, "technology,coding"],
+    [/environment|eco|green|sustainability|nature|forest|recycle/i, "nature,environment"],
+    [/volunteer|service|charity|community.service|welfare/i, "volunteer,community"],
+    [/language|english|korean|chinese|japanese|arabic|french|spanish|learn/i, "language,study"],
+    [/book|reading|literature|writing|poetry|story|library/i, "books,reading"],
+    [/business|entrepreneur|startup|finance|invest|market/i, "business,office"],
+    [/journalism|media|news|broadcast|radio|press/i, "journalism,media"],
+    [/debate|public.speak|model.un|diplomacy|speech/i, "debate,speech"],
+    [/chess|board.game|gaming|esport|game.club/i, "chess,strategy"],
+    [/science|research|lab|engineering|math|physics|chemistry|biology/i, "science,laboratory"],
+    [/culture|cultural|tradition|heritage|festival/i, "culture,tradition"],
+    [/prayer|faith|religion|church|mosque|temple/i, "faith,community"],
+  ];
+
+  for (const [regex, kw] of matchers) {
+    if (regex.test(name)) {
+      return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
+    }
+  }
+
+  // Category fallback
+  const catKw: Record<string, string> = {
+    sports:               "sports,stadium",
+    academic:             "university,studying",
+    culture:              "culture,art",
+    social:               "people,friends",
+    language:             "language,study",
+    tech:                 "technology,computer",
+    arts:                 "art,creative",
+    volunteer:            "volunteer,community",
+    "national community": club.country ? `${club.country.toLowerCase().split(" ")[0]},culture` : "international,flag",
+    "religion & culture": "culture,tradition",
+    "support & community":"community,people",
+  };
+
+  const kw = catKw[club.category?.toLowerCase()] || "students,university,korea";
+  return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
+}
+
 async function apiFetch(method: string, path: string, body?: object) {
   const res = await fetch(`${API}${path}`, {
     method,
@@ -302,7 +363,7 @@ function ClubCard({ club, onAction, onManage }: {
     onManage(club);
   };
 
-  const coverUrl = club.cover_image || `https://picsum.photos/seed/icom-club-${club.id}/600/200`;
+  const coverUrl = club.cover_image || getClubCoverUrl(club);
 
   return (
     <Link
@@ -322,7 +383,7 @@ function ClubCard({ club, onAction, onManage }: {
           src={coverUrl}
           alt={club.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/fallback-${club.id}/600/200`; }}
+          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/icom-${club.id}/600/200`; }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
         {/* Category badge overlaid */}
@@ -559,11 +620,11 @@ export default function CommunityPage() {
       return matchCat && matchSearch;
     })
     .sort((a, b) => {
-      // 1. Joined / created clubs always come first
-      const aJoined = (a.my_status === "approved" || a.is_creator) ? 1 : 0;
-      const bJoined = (b.my_status === "approved" || b.is_creator) ? 1 : 0;
-      if (bJoined !== aJoined) return bJoined - aJoined;
-      // 2. Then sort by member count (most popular first)
+      // Priority: creator (2) > joined (1) > pending (0.5) > none (0)
+      const rank = (c: Club) => c.is_creator ? 3 : c.my_status === "approved" ? 2 : c.my_status === "pending" ? 1 : 0;
+      const diff = rank(b) - rank(a);
+      if (diff !== 0) return diff;
+      // Within same rank: most members first
       return b.member_count - a.member_count;
     });
 
