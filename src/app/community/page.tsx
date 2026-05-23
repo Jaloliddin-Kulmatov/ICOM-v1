@@ -5,14 +5,12 @@ import Navbar from "@/components/layout/navbar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Search, Users, Globe, MapPin, Clock, Phone, CheckCircle2,
-  LogIn, Loader2, Plus, X, Lock, ChevronDown, ChevronUp,
-  Link as LinkIcon, Settings, MessageSquare, UserCheck, ExternalLink,
+  Search, Users, Globe, MapPin, Clock, CheckCircle2,
+  LogIn, Loader2, Plus, X, Lock, Settings, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import PostFeed from "@/components/community/post-feed";
-import ClubChat from "@/components/community/club-chat";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -28,11 +26,6 @@ interface Club {
 interface JoinRequest {
   membership_id: number; user_id: number; name: string;
   university: string; country: string; visa_type: string; requested_at: string;
-}
-
-interface Member {
-  membership_id: number | null; user_id: number; name: string;
-  university: string; country: string; visa_type: string; joined_at: string;
 }
 
 // Map university short-name → city (used on community cards instead of uni name)
@@ -276,206 +269,157 @@ function ManageModal({ club, onClose, onUpdate }: { club: Club; onClose: () => v
   );
 }
 
-// ── Members Modal ─────────────────────────────────────────────
-
-function MembersModal({ club, onClose }: { club: Club; onClose: () => void }) {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch("GET", `/clubs/${club.id}/members`).then(d => {
-      setMembers(d.members || []);
-      setLoading(false);
-    });
-  }, [club.id]);
-
-  const AVATAR_COLORS = [
-    "bg-indigo-500","bg-violet-500","bg-emerald-500","bg-cyan-500",
-    "bg-rose-500","bg-amber-500","bg-sky-500","bg-fuchsia-500",
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-[#0e0e1a] border border-white/12 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
-          <div>
-            <h2 className="text-sm font-bold text-white">Members — {club.name}</h2>
-            <p className="text-[11px] text-white/40 mt-0.5">{members.length} approved member{members.length !== 1 ? "s" : ""}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8"><X size={15} /></button>
-        </div>
-        <div className="overflow-y-auto p-5 space-y-2.5">
-          {loading && <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-white/40" /></div>}
-          {!loading && members.length === 0 && (
-            <p className="text-sm text-white/50 text-center py-8">No members yet.</p>
-          )}
-          {members.map((m, i) => (
-            <div key={m.user_id} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
-              <div className={`w-9 h-9 rounded-xl ${AVATAR_COLORS[m.user_id % AVATAR_COLORS.length]} flex items-center justify-center shrink-0`}>
-                <span className="text-xs font-bold text-white">
-                  {m.name.trim().split(/\s+/).map((p: string) => p[0]).slice(0, 2).join("").toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{m.name}</p>
-                <p className="text-[11px] text-white/45 truncate">
-                  {[m.university, m.country, m.visa_type].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <span className="text-[10px] text-white/30 shrink-0">#{i + 1}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Club Card ─────────────────────────────────────────────────
 
-function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
+function ClubCard({ club, onAction, onManage }: {
   club: Club;
   onAction: (club: Club, action: "request" | "leave") => Promise<void>;
   onManage: (club: Club) => void;
-  onChat: (club: Club) => void;
-  onMembers: (club: Club) => void;
 }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [showPrivate, setShowPrivate] = useState(false);
   const colorCls = CATEGORY_COLORS[club.category] || CATEGORY_COLORS.social;
   const isApproved = club.my_status === "approved" || club.is_creator;
   const isPending = club.my_status === "pending";
+  const isCC = club.club_type === "community";
 
-  const handleClick = async () => {
+  const handleAction = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setBusy(true);
     await onAction(club, isApproved ? "leave" : "request");
     setBusy(false);
   };
 
+  const handleManage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onManage(club);
+  };
+
   return (
-    <div className={`p-5 rounded-2xl border transition-all ${
-      isApproved ? "border-indigo-500/25 bg-indigo-500/5" :
-      isPending  ? "border-amber-500/20 bg-amber-500/5" :
-      "border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5"
-    }`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${colorCls} capitalize`}>{club.category}</div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground">
-            {club.club_type === "community"
-              ? (club.country || club.location || "South Korea")
-              : club.university}
+    <Link
+      href={`/community/${club.id}`}
+      className={`group block rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 ${
+        isApproved
+          ? "border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50 hover:shadow-[0_4px_20px_rgba(99,102,241,0.12)]"
+          : isPending
+          ? "border-amber-500/20 bg-amber-500/5 hover:border-amber-500/35"
+          : "border-border bg-card hover:border-indigo-500/25 hover:shadow-sm"
+      }`}
+    >
+      {/* Card body */}
+      <div className="p-5">
+        {/* Top row: category + location/manage */}
+        <div className="flex items-start justify-between mb-3">
+          <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${colorCls} capitalize`}>
+            {club.category}
           </span>
-          {club.is_creator && (
-            <button onClick={() => onManage(club)} title="Manage members" className="p-1 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors relative">
-              <Settings size={13} />
-              {club.pending_count > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center font-bold">{club.pending_count}</span>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">
+              {isCC ? (club.country || "South Korea") : club.university}
+            </span>
+            {club.is_creator && (
+              <button
+                onClick={handleManage}
+                title="Manage members"
+                className="relative p-1 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+              >
+                <Settings size={13} />
+                {club.pending_count > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center font-bold">
+                    {club.pending_count}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <Link href={`/community/${club.id}`} className="group/name inline-block mb-1">
-        <h3 className="text-sm font-bold text-foreground group-hover/name:text-indigo-500 dark:group-hover/name:text-indigo-400 transition-colors">{club.name}</h3>
-      </Link>
-      {club.creator_name && !club.is_creator && (
-        <p className="text-[11px] text-muted-foreground mb-2">by {club.creator_name}</p>
-      )}
-      {club.description && (
-        <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{club.description}</p>
-      )}
-
-      <div className="space-y-1.5 text-[11px] text-muted-foreground mb-3">
-        {club.meeting_time && <div className="flex items-center gap-1.5"><Clock size={11} />{club.meeting_time}</div>}
-        {club.location     && <div className="flex items-center gap-1.5"><MapPin size={11} />{club.location}</div>}
-        {club.website && (
-          <a href={club.website} target="_blank" rel="noopener noreferrer"
-             className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors w-fit">
-            <ExternalLink size={11} />Official Website →
-          </a>
+        {/* Name */}
+        <h3 className="text-sm font-bold text-foreground mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+          {club.name}
+        </h3>
+        {club.creator_name && !club.is_creator && (
+          <p className="text-[11px] text-muted-foreground mb-2">by {club.creator_name}</p>
         )}
-      </div>
+        {club.description && (
+          <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">
+            {club.description}
+          </p>
+        )}
 
-      {/* Private info — only approved members */}
-      {isApproved && (club.kakao_link || club.contact) && (
-        <div className="mb-3">
-          <button onClick={() => setShowPrivate(v => !v)} className="flex items-center gap-1.5 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors">
-            <Lock size={10} /> Members-only info {showPrivate ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
-          </button>
-          {showPrivate && (
-            <div className="mt-2 p-3 rounded-xl bg-indigo-500/8 border border-indigo-500/15 space-y-1.5 text-[11px]">
-              {club.kakao_link && (
-                <div className="flex items-center gap-1.5 text-indigo-300">
-                  <LinkIcon size={11} />
-                  <a href={club.kakao_link.startsWith("http") ? club.kakao_link : `https://${club.kakao_link}`}
-                     target="_blank" rel="noopener noreferrer"
-                     className="truncate hover:underline">
-                    KakaoTalk Group →
-                  </a>
-                </div>
-              )}
-              {club.contact && (
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Phone size={11} />{club.contact}
-                </div>
-              )}
-            </div>
+        {/* Meta */}
+        <div className="space-y-1 text-[11px] text-muted-foreground">
+          {club.meeting_time && (
+            <div className="flex items-center gap-1.5"><Clock size={11} />{club.meeting_time}</div>
+          )}
+          {club.location && (
+            <div className="flex items-center gap-1.5"><MapPin size={11} />{club.location}</div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-white/6">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className={`flex items-center justify-between px-5 py-3 border-t ${
+        isApproved ? "border-indigo-500/15" : isPending ? "border-amber-500/10" : "border-border"
+      }`}>
+        {/* Left: member count + status */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Users size={12} />
           <span>{club.member_count} member{club.member_count !== 1 ? "s" : ""}</span>
-          {isApproved && <span className="flex items-center gap-1 text-indigo-400 ml-1"><CheckCircle2 size={11}/> Joined</span>}
-          {isPending  && <span className="text-amber-400 ml-1">Pending…</span>}
-          {club.is_creator && <span className="text-amber-400 ml-1">Your club</span>}
+          {isApproved && (
+            <span className="flex items-center gap-1 text-indigo-400">
+              <CheckCircle2 size={11} /> Joined
+            </span>
+          )}
+          {isPending && <span className="text-amber-400">Pending…</span>}
+          {club.is_creator && <span className="text-amber-400">Owner</span>}
         </div>
 
+        {/* Right: CTA */}
         <div className="flex items-center gap-2">
-          {isApproved && (
-            <button
-              onClick={() => onMembers(club)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-white/12 text-white/60 hover:bg-white/8 transition-all"
-            >
-              <UserCheck size={12} /> Members
-            </button>
-          )}
-          {isApproved && (
-            <button
-              onClick={() => onChat(club)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition-all"
-            >
-              <MessageSquare size={12} /> Chat
-            </button>
-          )}
+          {/* Open button — always visible */}
+          <span className="flex items-center gap-1 text-xs text-indigo-500 dark:text-indigo-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+            Open →
+          </span>
+
+          {/* Join / Leave / Request */}
           {!club.is_creator && user && (
             <button
-              onClick={handleClick}
+              onClick={handleAction}
               disabled={busy || isPending}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-60 ${
-                isApproved ? "border border-white/10 text-muted-foreground hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5" :
-                isPending  ? "border border-amber-500/20 text-amber-400 cursor-default" :
-                "bg-indigo-500 text-white hover:bg-indigo-600"
+                isApproved
+                  ? "border border-border text-muted-foreground hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5"
+                  : isPending
+                  ? "border border-amber-500/20 text-amber-400 cursor-default"
+                  : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm"
               }`}
             >
-              {busy ? <Loader2 size={12} className="animate-spin" /> :
-               isApproved ? "Leave" : isPending ? "Pending" : "Request to Join"}
+              {busy ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : isApproved ? (
+                "Leave"
+              ) : isPending ? (
+                "Pending"
+              ) : (
+                "Join"
+              )}
             </button>
           )}
+          {!user && (
+            <Link
+              href="/login"
+              onClick={e => e.stopPropagation()}
+              className="px-3 py-1.5 rounded-xl text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
-        {!user && (
-          <Link href="/login" className="px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-muted-foreground hover:text-indigo-400 hover:border-indigo-500/30 transition-all">
-            Sign in to join
-          </Link>
-        )}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -490,8 +434,6 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState<"club" | "community">("club");
   const [showCreate, setShowCreate] = useState(false);
   const [manageClub, setManageClub] = useState<Club | null>(null);
-  const [chatClub, setChatClub] = useState<Club | null>(null);
-  const [membersClub, setMembersClub] = useState<Club | null>(null);
   const [activeTabMain, setActiveTabMain] = useState<"club" | "community" | "news">("club");
   const [newsUnread, setNewsUnread] = useState(0);
   const [toast, setToast] = useState<{ msg: string; clubId?: number } | null>(null);
@@ -617,8 +559,8 @@ export default function CommunityPage() {
           onClick={() => {
             setToast(null);
             if (toast.clubId) {
-              const club = clubs.find(c => c.id === toast.clubId);
-              if (club) setChatClub(club);
+              // Navigate to the club's detail page chat tab
+              window.location.href = `/community/${toast.clubId}`;
             } else {
               setActiveTabMain("news");
             }
@@ -634,8 +576,6 @@ export default function CommunityPage() {
       )}
       {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {manageClub && <ManageModal club={manageClub} onClose={() => setManageClub(null)} onUpdate={fetchClubs} />}
-      {membersClub && <MembersModal club={membersClub} onClose={() => setMembersClub(null)} />}
-      {chatClub && <ClubChat club={chatClub} onClose={() => setChatClub(null)} />}
 
       <main className="pt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -791,8 +731,6 @@ export default function CommunityPage() {
                     club={club}
                     onAction={handleAction}
                     onManage={setManageClub}
-                    onChat={setChatClub}
-                    onMembers={setMembersClub}
                   />
                 ))}
               </div>
