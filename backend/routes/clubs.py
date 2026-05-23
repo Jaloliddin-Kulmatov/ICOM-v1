@@ -295,6 +295,17 @@ def my_clubs():
     }), 200
 
 
+# ── Get a single club (public) ───────────────────────────────
+
+@clubs_bp.route("/<int:club_id>", methods=["GET"])
+def get_club(club_id):
+    user_id = _current_user_id()
+    club = Club.query.get_or_404(club_id)
+    if not club.is_active:
+        return jsonify({"error": "Club not found."}), 404
+    return jsonify({"club": club.to_dict(user_id=user_id)}), 200
+
+
 # ── Edit a club (creator only) ────────────────────────────────
 
 @clubs_bp.route("/<int:club_id>", methods=["PATCH"])
@@ -354,7 +365,23 @@ def send_chat(club_id):
         return jsonify({"error": "Message cannot be empty."}), 400
     if len(content) > 1000:
         return jsonify({"error": "Message too long."}), 400
-    msg = ClubMessage(club_id=club_id, user_id=user_id, content=content)
+
+    # Optional reply threading
+    reply_to_id = data.get("reply_to_id")
+    reply_to_name = None
+    reply_to_content = None
+    if reply_to_id:
+        parent = ClubMessage.query.get(int(reply_to_id))
+        if parent and parent.club_id == club_id:
+            reply_to_name = parent.author.name if parent.author else "Unknown"
+            reply_to_content = parent.content[:150]
+
+    msg = ClubMessage(
+        club_id=club_id, user_id=user_id, content=content,
+        reply_to_id=reply_to_id if reply_to_id else None,
+        reply_to_name=reply_to_name,
+        reply_to_content=reply_to_content,
+    )
     db.session.add(msg)
     db.session.commit()
     return jsonify({"message": msg.to_dict()}), 201

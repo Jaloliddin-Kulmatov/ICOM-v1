@@ -90,7 +90,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-16 bottom-0 z-40 flex flex-col bg-blue-50/80 dark:bg-[#0a0a12] border-r border-blue-100 dark:border-white/8 transition-all duration-300 scrollbar-thin overflow-y-auto",
+        "fixed left-0 top-16 bottom-0 z-40 hidden md:flex flex-col bg-blue-50/80 dark:bg-[#0a0a12] border-r border-blue-100 dark:border-white/8 transition-all duration-300 scrollbar-thin overflow-y-auto",
         collapsed ? "w-16" : "w-60"
       )}
     >

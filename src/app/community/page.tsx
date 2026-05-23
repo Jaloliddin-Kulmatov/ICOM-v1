@@ -378,7 +378,9 @@ function ClubCard({ club, onAction, onManage, onChat, onMembers }: {
         </div>
       </div>
 
-      <h3 className="text-sm font-bold text-foreground mb-1">{club.name}</h3>
+      <Link href={`/community/${club.id}`} className="group/name inline-block mb-1">
+        <h3 className="text-sm font-bold text-foreground group-hover/name:text-indigo-500 dark:group-hover/name:text-indigo-400 transition-colors">{club.name}</h3>
+      </Link>
       {club.creator_name && !club.is_creator && (
         <p className="text-[11px] text-muted-foreground mb-2">by {club.creator_name}</p>
       )}

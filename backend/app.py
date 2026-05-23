@@ -138,6 +138,24 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] clubs.website failed (probably already done): {e}")
 
+    # reply threading columns on club_messages
+    for col_name, col_def in [
+        ("reply_to_id",      "INTEGER REFERENCES club_messages(id)"),
+        ("reply_to_name",    "VARCHAR(150)"),
+        ("reply_to_content", "VARCHAR(200)"),
+    ]:
+        try:
+            if "club_messages" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("club_messages")]
+                if col_name not in cols:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(
+                            f"ALTER TABLE club_messages ADD COLUMN {col_name} {col_def}"
+                        ))
+                    print(f"[migration] Added club_messages.{col_name}")
+        except Exception as e:
+            print(f"[migration] club_messages.{col_name} failed (probably already done): {e}")
+
 def _seed_communities():
     """Seed real international communities (nationality-based) on first deploy.
     Checks by name — safe to call on every startup."""

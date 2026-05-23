@@ -216,6 +216,10 @@ class ClubMessage(db.Model):
     club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    # Reply threading (nullable — not all messages are replies)
+    reply_to_id      = db.Column(db.Integer, db.ForeignKey("club_messages.id"), nullable=True)
+    reply_to_name    = db.Column(db.String(150), nullable=True)   # denormalized author name
+    reply_to_content = db.Column(db.String(200), nullable=True)   # preview of original msg
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     author = db.relationship("User", foreign_keys=[user_id])
@@ -228,6 +232,9 @@ class ClubMessage(db.Model):
             "user_id": self.user_id,
             "author_name": self.author.name if self.author else "Unknown",
             "content": self.content,
+            "reply_to_id": self.reply_to_id,
+            "reply_to_name": self.reply_to_name,
+            "reply_to_content": self.reply_to_content,
             "created_at": self.created_at.isoformat() + "Z",
         }
 
