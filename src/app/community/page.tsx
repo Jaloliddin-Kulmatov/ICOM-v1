@@ -769,8 +769,14 @@ export default function CommunityPage() {
             {/* Main */}
             <div className="lg:col-span-3 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${activeTab === "club" ? "clubs" : "communities"}...`} icon={<Search size={15} />} />
+                <div className="relative flex-1">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={`Search ${activeTab === "club" ? "clubs" : "communities"}...`}
+                    className="w-full pl-9 h-10 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
+                  />
                 </div>
               </div>
 

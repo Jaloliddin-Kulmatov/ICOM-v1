@@ -37,10 +37,15 @@ def _get_post_as_options(user: User):
         if user.university:
             options.append({"type": "university", "label": user.university, "club_id": None})
 
-    # Club/community creators can post as their club
+    # Club/community creators can post as their club or community
     created = Club.query.filter_by(created_by=user.id, is_active=True).all()
     for c in created:
-        options.append({"type": "club", "label": c.name, "club_id": c.id})
+        ctype = (c.club_type or "club").lower()
+        options.append({
+            "type": "community" if ctype == "community" else "club",
+            "label": c.name,
+            "club_id": c.id,
+        })
 
     return options
 
@@ -58,7 +63,7 @@ def _can_see_post(post: Post, user_id: int | None, club_ids: set) -> bool:
     """Return True if user is allowed to see this post."""
     if post.posted_as_type in ("user", "university"):
         return True  # public posts visible to all logged-in users
-    if post.posted_as_type == "club" and post.club_id:
+    if post.posted_as_type in ("club", "community") and post.club_id:
         return post.club_id in club_ids
     return True
 
@@ -87,10 +92,10 @@ def list_posts():
             )
         )
 
-    # Club/community posts — only clubs the user is a member of
+    # Club/community posts — only clubs/communities the user is a member of
     if club_ids:
         conditions.append(
-            and_(Post.posted_as_type == "club", Post.club_id.in_(club_ids))
+            and_(Post.posted_as_type.in_(["club", "community"]), Post.club_id.in_(club_ids))
         )
 
     if not conditions:
@@ -137,20 +142,19 @@ def create_post():
     if posted_as_type == "university":
         if not _is_ambassador(user):
             return jsonify({"error": "Only ambassadors can post as a university."}), 403
-    elif posted_as_type == "club" and club_id:
+    elif posted_as_type in ("club", "community") and club_id:
         club = Club.query.get(club_id)
         if not club:
-            return jsonify({"error": "Club not found."}), 404
-        is_creator = club.created_by == user_id
-        if not is_creator:
-            return jsonify({"error": "Only the club/community owner can post News on behalf of the club."}), 403
+            return jsonify({"error": "Club/community not found."}), 404
+        if club.created_by != user_id:
+            return jsonify({"error": "Only the owner can post News on behalf of this club/community."}), 403
 
     post = Post(
         user_id=user_id,
         content=content,
         posted_as_type=posted_as_type,
         posted_as_label=posted_as_label,
-        club_id=club_id if posted_as_type == "club" else None,
+        club_id=club_id if posted_as_type in ("club", "community") else None,
     )
     db.session.add(post)
     db.session.commit()

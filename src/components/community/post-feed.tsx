@@ -15,7 +15,7 @@ function token() {
   return typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
 }
 
-type PostAsOption = { type: "user" | "university" | "club"; label: string; club_id: number | null };
+type PostAsOption = { type: "user" | "university" | "club" | "community"; label: string; club_id: number | null };
 
 type Comment = {
   id: number; post_id: number; user_id: number;
@@ -25,7 +25,7 @@ type Comment = {
 
 type Post = {
   id: number; user_id: number; author_name: string;
-  content: string; posted_as_type: "user" | "university" | "club";
+  content: string; posted_as_type: "user" | "university" | "club" | "community";
   posted_as_label: string | null; club_id: number | null;
   created_at: string; comment_count: number;
 };
@@ -33,6 +33,7 @@ type Post = {
 function PostAsIcon({ type }: { type: string }) {
   if (type === "university") return <Building2 size={11} />;
   if (type === "club") return <Users size={11} />;
+  if (type === "community") return <Globe size={11} />;
   return <Globe size={11} />;
 }
 
@@ -260,6 +261,7 @@ function PostCard({ post, currentUserId, onDelete }: {
   const gradients: Record<string, string> = {
     university: "from-indigo-500 to-violet-600",
     club: "from-emerald-500 to-cyan-600",
+    community: "from-violet-500 to-purple-600",
     user: "from-slate-500 to-slate-700",
   };
 
@@ -275,6 +277,7 @@ function PostCard({ post, currentUserId, onDelete }: {
             <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium border ${
               post.posted_as_type === "university" ? "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" :
               post.posted_as_type === "club"       ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" :
+              post.posted_as_type === "community"  ? "text-violet-500 bg-violet-500/10 border-violet-500/20" :
                                                     "text-muted-foreground bg-muted border-border"
             }`}>
               <PostAsIcon type={post.posted_as_type} />
@@ -444,9 +447,17 @@ export default function PostFeed() {
                     onClick={() => { setSelectedOption(o); setShowPicker(false); }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left hover:bg-muted transition-colors ${selectedOption.label === o.label ? "text-indigo-500 bg-indigo-500/5" : "text-foreground"}`}
                   >
-                    <PostAsIcon type={o.type} />
+                    <span className={
+                      o.type === "university" ? "text-indigo-400" :
+                      o.type === "community"  ? "text-violet-400" :
+                      o.type === "club"       ? "text-emerald-400" : "text-muted-foreground"
+                    }><PostAsIcon type={o.type} /></span>
                     <span className="font-medium">{o.label}</span>
-                    <span className="text-muted-foreground ml-auto capitalize">{o.type}</span>
+                    <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                      o.type === "university" ? "bg-indigo-500/10 text-indigo-400" :
+                      o.type === "community"  ? "bg-violet-500/10 text-violet-400" :
+                      o.type === "club"       ? "bg-emerald-500/10 text-emerald-400" : ""
+                    }`}>{o.type}</span>
                   </button>
                 ))}
               </div>
