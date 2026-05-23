@@ -6,17 +6,17 @@ import NearbyRestaurants from "@/components/daily-life/nearby-restaurants";
 import {
   Train, ShoppingBag, Utensils, Wifi,
   Moon, Sun, Smartphone, DollarSign, Heart,
-  Sparkles, Users, ArrowRight, AlertCircle,
+  Sparkles, Users, ArrowRight, AlertCircle, ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 /* ── Data ───────────────────────────────────────────────────── */
 
 const transport = [
-  { emoji: "💳", title: "T-money card", body: "Buy at any CU/GS25 for ₩2,500. Works on all subways, buses, and taxis." },
-  { emoji: "🗺️", title: "Naver Maps", body: "Better than Google in Korea. Real-time arrivals, bus stops, walking routes." },
-  { emoji: "🎓", title: "Student discount", body: "Show your enrollment certificate (재학증명서) for 30–50% off monthly passes." },
-  { emoji: "🚄", title: "KTX / SRT", body: "Bullet train for city trips. Book 2+ weeks ahead on busy weekends." },
+  { emoji: "💳", title: "T-money card",     body: "Buy at any CU/GS25 for ₩2,500. Works on all subways, buses, and taxis.",             link: "https://www.t-money.co.kr/ncs/pct/tmnyIntd/ReadTmnyIntd.nt" },
+  { emoji: "🗺️", title: "Naver Maps",       body: "Better than Google in Korea. Real-time arrivals, bus stops, walking routes.",          link: "https://map.naver.com" },
+  { emoji: "🎓", title: "Student discount", body: "Show your enrollment certificate (재학증명서) for 30–50% off monthly passes.",          link: "https://www.seoulmetro.co.kr/en/page.do?menuIdx=354" },
+  { emoji: "🚄", title: "KTX / SRT",        body: "Bullet train for city trips. Book 2+ weeks ahead on busy weekends.",                   link: "https://www.letskorail.com" },
 ];
 
 // International restaurants & foods available in Korea — grouped by cuisine
@@ -64,23 +64,23 @@ const foreignFoodCategories = [
 ];
 
 const shopping = [
-  { emoji: "🏪", name: "Daiso",           note: "₩1,000–5,000 store. Everything you need to set up a dorm room." },
-  { emoji: "📦", name: "Coupang",         note: "Order at night, arrives next morning. Korea's Amazon." },
-  { emoji: "🛒", name: "Emart / Homeplus", note: "Full supermarket for groceries, snacks, and bulk supplies." },
-  { emoji: "🥕", name: "Daangn (당근마켓)", note: "Second-hand app. Great for furniture when moving in or out." },
+  { emoji: "🏪", name: "Daiso",            note: "₩1,000–5,000 store. Everything you need to set up a dorm room.", link: "https://www.daiso-industries.com/en/" },
+  { emoji: "📦", name: "Coupang",          note: "Order at night, arrives next morning. Korea's Amazon.",          link: "https://www.coupang.com" },
+  { emoji: "🛒", name: "Emart / Homeplus", note: "Full supermarket for groceries, snacks, and bulk supplies.",     link: "https://emart.ssg.com" },
+  { emoji: "🥕", name: "Daangn (당근마켓)", note: "Second-hand app. Great for furniture when moving in or out.",   link: "https://www.daangn.com" },
 ];
 
 const simSteps = [
-  { step: "1", title: "Airport SIM", body: "KT/SKT booths in Incheon arrivals. ~₩30–50K for 30-day unlimited data. Passport only." },
-  { step: "2", title: "Switch to MVNO", body: "After your ARC card: KT M-mobile or LG Hello Mobile from ₩10,000/mo. Same tower speed." },
-  { step: "3", title: "Campus & café Wi-Fi", body: "Nearly every café and all campuses have free fast Wi-Fi. eduroam works at most Korean universities." },
+  { step: "1", title: "Airport SIM",       body: "KT/SKT booths in Incheon arrivals. ~₩30–50K for 30-day unlimited data. Passport only.",             link: "https://www.kt.com/eng/personal/mobile/roaming/roaming_usim_00.jsp" },
+  { step: "2", title: "Switch to MVNO",    body: "After your ARC card: KT M-mobile or LG Hello Mobile from ₩10,000/mo. Same tower speed.",            link: "https://www.ktmmobile.com" },
+  { step: "3", title: "Campus & café Wi-Fi", body: "Nearly every café and all campuses have free fast Wi-Fi. eduroam works at most Korean universities.", link: "https://eduroam.org" },
 ];
 
 const nightlife = [
-  { emoji: "🎤", name: "Norebang (노래방)", note: "Private karaoke rooms. ₩10–20K/hr. Most essential Korea experience." },
-  { emoji: "🍗", name: "Chimaek (치맥)",    note: "Fried chicken + beer. BHC, BBQ, Kyochon. Delivery via Baemin." },
-  { emoji: "🏮", name: "Pojangmacha",       note: "Street tent bars. Tteokbokki + makgeolli from ₩3,000. Open late." },
-  { emoji: "🏪", name: "Convenience store", note: "CU/GS25 outdoor tables. Beer ₩1,800. '4캔 만원' (4 cans ₩10K) deal." },
+  { emoji: "🎤", name: "Norebang (노래방)", note: "Private karaoke rooms. ₩10–20K/hr. Most essential Korea experience.", link: "https://www.naver.com/search.naver?query=노래방+near+me" },
+  { emoji: "🍗", name: "Chimaek (치맥)",    note: "Fried chicken + beer. BHC, BBQ, Kyochon. Delivery via Baemin.",    link: "https://www.baemin.com" },
+  { emoji: "🏮", name: "Pojangmacha",       note: "Street tent bars. Tteokbokki + makgeolli from ₩3,000. Open late.",  link: "https://map.naver.com/v5/search/포장마차" },
+  { emoji: "🏪", name: "Convenience store", note: "CU/GS25 outdoor tables. Beer ₩1,800. '4캔 만원' (4 cans ₩10K) deal.", link: "https://www.cu.co.kr" },
 ];
 
 const seasons = [
@@ -108,12 +108,12 @@ const culturalTips = [
 ];
 
 const apps = [
-  { icon: "🗺️", name: "Naver Map",   note: "Navigation. Far better than Google Maps in Korea." },
-  { icon: "🚕", name: "Kakao T",     note: "Taxis, bikes, and scooters in one app." },
-  { icon: "🍜", name: "Baemin",      note: "Food delivery. English interface available." },
-  { icon: "📦", name: "Coupang",     note: "Shopping. Next-day delivery on almost everything." },
-  { icon: "💳", name: "Kakao Bank",  note: "Open a bank account 100% from your phone." },
-  { icon: "🈳", name: "Papago",      note: "Translation. Often better than Google for Korean." },
+  { icon: "🗺️", name: "Naver Map",  note: "Navigation. Far better than Google Maps in Korea.", link: "https://map.naver.com",              appstore: "https://apps.apple.com/kr/app/naver-map-navigation/id311867728",   playstore: "https://play.google.com/store/apps/details?id=com.nhn.android.nmap" },
+  { icon: "🚕", name: "Kakao T",    note: "Taxis, bikes, and scooters in one app.",            link: "https://www.kakaomobility.com",     appstore: "https://apps.apple.com/kr/app/kakao-t/id981110422",               playstore: "https://play.google.com/store/apps/details?id=com.kakao.taxi" },
+  { icon: "🍜", name: "Baemin",     note: "Food delivery. English interface available.",       link: "https://www.baemin.com",            appstore: "https://apps.apple.com/kr/app/배달의민족/id586332709",            playstore: "https://play.google.com/store/apps/details?id=com.bgpworks.partybanjang" },
+  { icon: "📦", name: "Coupang",    note: "Shopping. Next-day delivery on almost everything.", link: "https://www.coupang.com",           appstore: "https://apps.apple.com/kr/app/쿠팡-coupang/id454434967",         playstore: "https://play.google.com/store/apps/details?id=com.coupang.mobile" },
+  { icon: "💳", name: "Kakao Bank", note: "Open a bank account 100% from your phone.",        link: "https://www.kakaobank.com",         appstore: "https://apps.apple.com/kr/app/kakaobank/id1258016944",            playstore: "https://play.google.com/store/apps/details?id=com.kakaobank.channel" },
+  { icon: "🈳", name: "Papago",     note: "Translation. Often better than Google for Korean.", link: "https://papago.naver.com",          appstore: "https://apps.apple.com/kr/app/papago/id1147874819",               playstore: "https://play.google.com/store/apps/details?id=com.naver.labs.translator" },
 ];
 
 /* ── Page ───────────────────────────────────────────────────── */
@@ -146,11 +146,23 @@ export default function DailyLifePage() {
             <SectionHeader icon={Train} color="text-blue-500" bg="bg-blue-500/10" title="Getting Around" />
             <div className="grid sm:grid-cols-2 gap-3">
               {transport.map((t) => (
-                <div key={t.title} className="flex gap-3 p-4 rounded-2xl border border-border bg-card">
+                <div key={t.title} className="flex gap-3 p-4 rounded-2xl border border-border bg-card hover:border-blue-500/30 transition-colors group">
                   <span className="text-xl shrink-0">{t.emoji}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-0.5">{t.title}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="text-sm font-semibold text-foreground">{t.title}</p>
+                      {t.link && (
+                        <a href={t.link} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity" title="Official website">
+                          <ExternalLink size={11} className="text-blue-400" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">{t.body}</p>
+                    {t.link && (
+                      <a href={t.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                        Official site <ExternalLink size={9} />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -199,11 +211,23 @@ export default function DailyLifePage() {
             <SectionHeader icon={ShoppingBag} color="text-pink-500" bg="bg-pink-500/10" title="Shopping" />
             <div className="grid sm:grid-cols-2 gap-3">
               {shopping.map((s) => (
-                <div key={s.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card">
+                <div key={s.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card hover:border-pink-500/30 transition-colors group">
                   <span className="text-xl shrink-0">{s.emoji}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-0.5">{s.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="text-sm font-semibold text-foreground">{s.name}</p>
+                      {s.link && (
+                        <a href={s.link} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity" title="Official website">
+                          <ExternalLink size={11} className="text-pink-400" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">{s.note}</p>
+                    {s.link && (
+                      <a href={s.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium text-pink-400 hover:text-pink-300 transition-colors">
+                        Official site <ExternalLink size={9} />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -215,11 +239,23 @@ export default function DailyLifePage() {
             <SectionHeader icon={Wifi} color="text-cyan-500" bg="bg-cyan-500/10" title="SIM & Wi-Fi" />
             <div className="space-y-3">
               {simSteps.map((s) => (
-                <div key={s.step} className="flex gap-3 p-4 rounded-2xl border border-border bg-card">
+                <div key={s.step} className="flex gap-3 p-4 rounded-2xl border border-border bg-card hover:border-cyan-500/30 transition-colors group">
                   <div className="w-6 h-6 rounded-lg bg-cyan-500/10 text-cyan-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{s.step}</div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-0.5">{s.title}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="text-sm font-semibold text-foreground">{s.title}</p>
+                      {s.link && (
+                        <a href={s.link} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity" title="Official website">
+                          <ExternalLink size={11} className="text-cyan-400" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">{s.body}</p>
+                    {s.link && (
+                      <a href={s.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                        Official site <ExternalLink size={9} />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -231,11 +267,23 @@ export default function DailyLifePage() {
             <SectionHeader icon={Moon} color="text-violet-500" bg="bg-violet-500/10" title="Evenings & Nightlife" />
             <div className="grid sm:grid-cols-2 gap-3">
               {nightlife.map((n) => (
-                <div key={n.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card">
+                <div key={n.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card hover:border-violet-500/30 transition-colors group">
                   <span className="text-xl shrink-0">{n.emoji}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-0.5">{n.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="text-sm font-semibold text-foreground">{n.name}</p>
+                      {n.link && (
+                        <a href={n.link} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity" title="Open link">
+                          <ExternalLink size={11} className="text-violet-400" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">{n.note}</p>
+                    {n.link && (
+                      <a href={n.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium text-violet-400 hover:text-violet-300 transition-colors">
+                        Find nearby <ExternalLink size={9} />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -247,11 +295,31 @@ export default function DailyLifePage() {
             <SectionHeader icon={Smartphone} color="text-emerald-500" bg="bg-emerald-500/10" title="Essential Apps" />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {apps.map((a) => (
-                <div key={a.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card">
+                <div key={a.name} className="flex gap-3 p-4 rounded-2xl border border-border bg-card hover:border-emerald-500/30 transition-colors">
                   <span className="text-xl shrink-0">{a.icon}</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground mb-0.5">{a.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.note}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{a.note}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {a.link && (
+                        <a href={a.link} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors">
+                          <ExternalLink size={8} /> Web
+                        </a>
+                      )}
+                      {a.appstore && (
+                        <a href={a.appstore} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-medium text-blue-400 hover:bg-blue-500/20 transition-colors">
+                          iOS
+                        </a>
+                      )}
+                      {a.playstore && (
+                        <a href={a.playstore} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-400 hover:bg-amber-500/20 transition-colors">
+                          Android
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

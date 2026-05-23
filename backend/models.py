@@ -89,7 +89,7 @@ class Club(db.Model):
             "meeting_time": self.meeting_time,
             "location": self.location,
             "is_active": self.is_active,
-            "member_count": approved_count,
+            "member_count": approved_count + 1,  # +1 for creator (not in ClubMembership)
             "pending_count": pending_count,
             "my_status": my_status,           # None / "pending" / "approved"
             "is_creator": is_creator,
