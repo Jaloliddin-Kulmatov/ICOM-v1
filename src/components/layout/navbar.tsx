@@ -211,12 +211,19 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                   Dashboard
                 </Link>
               ) : (
-                <Button className="w-full mt-1 gap-2" asChild>
-                  <Link href="/register">
-                    <LogIn size={14} />
-                    Create free account
-                  </Link>
-                </Button>
+                <div className="flex flex-col gap-2 mt-1">
+                  <Button className="w-full gap-2" asChild>
+                    <Link href="/register">
+                      <LogIn size={14} />
+                      Create free account
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/login">
+                      Sign in
+                    </Link>
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -73,6 +73,16 @@ export default function HeroSection() {
           )}
         </div>
 
+        {/* Sign-in nudge for logged-out users */}
+        {!user && (
+          <p className="text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            Already have an account?{" "}
+            <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2 transition-colors">
+              Sign in
+            </Link>
+          </p>
+        )}
+
         {/* JBNU badge */}
         <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.4s" }}>
           <Badge variant="violet" className="text-xs px-3 py-1 gap-1.5">
