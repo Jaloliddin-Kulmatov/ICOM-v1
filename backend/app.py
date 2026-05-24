@@ -54,6 +54,7 @@ def create_app():
     from routes.ambassador import ambassador_bp
     from routes.posts import posts_bp
     from routes.search import search_bp
+    from routes.feedback import feedback_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -62,6 +63,7 @@ def create_app():
     app.register_blueprint(ambassador_bp, url_prefix="/api/ambassador")
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
     app.register_blueprint(search_bp, url_prefix="/api/search")
+    app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
 
     @app.route("/")
     def index():

@@ -283,3 +283,33 @@ class Job(db.Model):
             "created_at": self.created_at.isoformat() + "Z",
             "isNew": (datetime.utcnow() - self.created_at).days < 3,
         }
+
+
+class Feedback(db.Model):
+    __tablename__ = "feedback"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # null = anonymous
+    name       = db.Column(db.String(120))   # filled for anon submissions
+    email      = db.Column(db.String(200))   # filled for anon submissions
+    rating     = db.Column(db.Integer)       # 1-5 stars (nullable)
+    message    = db.Column(db.Text, nullable=False)
+    page_url   = db.Column(db.String(500))   # captured client-side for context
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self):
+        # Prefer the authenticated user's profile info when available
+        author_name = self.user.name if self.user else (self.name or "Anonymous")
+        author_email = self.user.email if self.user else (self.email or "")
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "name": author_name,
+            "email": author_email,
+            "rating": self.rating,
+            "message": self.message,
+            "page_url": self.page_url or "",
+            "created_at": self.created_at.isoformat() + "Z",
+        }

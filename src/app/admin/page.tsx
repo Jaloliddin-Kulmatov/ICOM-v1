@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import {
   ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2,
   AlertCircle, Star, CheckCircle2, XCircle, GraduationCap,
-  Globe, Calendar, Search, Pencil, X,
+  Globe, Calendar, Search, Pencil, X, MessageSquarePlus, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,6 +56,11 @@ interface AmbassadorApp {
   motivation: string; social: string; status: string; created_at: string;
 }
 
+interface FeedbackItem {
+  id: number; user_id: number | null; name: string; email: string;
+  rating: number | null; message: string; page_url: string; created_at: string;
+}
+
 const CLUB_CATEGORIES = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
 const JOB_TYPES = ["part-time", "internship", "research", "full-time", "volunteer"];
 
@@ -78,11 +83,12 @@ function initials(name: string) {
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"clubs" | "communities" | "jobs" | "ambassadors" | "users">("clubs");
+  const [tab, setTab] = useState<"clubs" | "communities" | "jobs" | "ambassadors" | "users" | "feedback">("clubs");
   const [clubs, setClubs] = useState<Club[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [ambassadors, setAmbassadors] = useState<AmbassadorApp[]>([]);
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -111,21 +117,34 @@ export default function AdminPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [cd, jd, ad, ud] = await Promise.allSettled([
+    const [cd, jd, ad, ud, fd] = await Promise.allSettled([
       apiCall("GET", "/admin/clubs"),
       apiCall("GET", "/admin/jobs"),
       apiCall("GET", "/ambassador/applications"),
       apiCall("GET", "/admin/users"),
+      apiCall("GET", "/feedback"),
     ]);
     if (cd.status === "fulfilled") setClubs(cd.value.clubs || []);
     if (jd.status === "fulfilled") setJobs(jd.value.jobs || []);
     if (ad.status === "fulfilled") setAmbassadors(ad.value.applications || []);
     if (ud.status === "fulfilled") setAppUsers(ud.value.users || []);
+    if (fd.status === "fulfilled") setFeedback(fd.value.feedback || []);
 
     // Surface the first error so we can see why data isn't loading
-    const firstErr = [cd, jd, ad, ud].find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
+    const firstErr = [cd, jd, ad, ud, fd].find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
     if (firstErr) flash(firstErr.reason?.message || "Some data failed to load", true);
   }, []);
+
+  const deleteFeedback = async (id: number) => {
+    if (!confirm("Delete this feedback?")) return;
+    try {
+      await apiCall("DELETE", `/feedback/${id}`);
+      setFeedback(prev => prev.filter(f => f.id !== id));
+      flash("Feedback deleted.");
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Failed to delete", true);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -225,11 +244,12 @@ export default function AdminPage() {
   const communitiesOnly = clubs.filter(c => c.club_type === "community");
 
   const tabs = [
-    { id: "clubs"       as const, Icon: GraduationCap, label: `Clubs (${clubsOnly.length})` },
-    { id: "communities" as const, Icon: Globe,         label: `Communities (${communitiesOnly.length})` },
-    { id: "jobs"        as const, Icon: Briefcase,     label: `Internships (${jobs.length})` },
-    { id: "ambassadors" as const, Icon: Star,          label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
-    { id: "users"       as const, Icon: Users,         label: `Users (${appUsers.length})` },
+    { id: "clubs"       as const, Icon: GraduationCap,   label: `Clubs (${clubsOnly.length})` },
+    { id: "communities" as const, Icon: Globe,           label: `Communities (${communitiesOnly.length})` },
+    { id: "jobs"        as const, Icon: Briefcase,       label: `Internships (${jobs.length})` },
+    { id: "ambassadors" as const, Icon: Star,            label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
+    { id: "users"       as const, Icon: Users,           label: `Users (${appUsers.length})` },
+    { id: "feedback"    as const, Icon: MessageSquarePlus, label: `Feedback (${feedback.length})` },
   ];
 
   const filteredUsers = appUsers.filter(u =>
@@ -570,6 +590,79 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══════════════════ FEEDBACK TAB ══════════════════ */}
+        {tab === "feedback" && (
+          <div className="space-y-3">
+            {feedback.length === 0 && (
+              <div className="text-center py-12">
+                <MessageSquarePlus size={32} className="text-muted-foreground/25 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No feedback yet. When users submit feedback it will appear here.</p>
+              </div>
+            )}
+            {feedback.map(f => (
+              <div
+                key={f.id}
+                className="p-4 sm:p-5 rounded-2xl border border-border bg-card hover:border-emerald-500/20 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {(f.name || "?")[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground truncate">{f.name}</p>
+                        {f.user_id === null && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-amber-500/30 text-amber-400 bg-amber-500/10 uppercase font-bold">
+                            Anonymous
+                          </span>
+                        )}
+                        {f.rating && (
+                          <span className="flex items-center gap-0.5">
+                            {[1,2,3,4,5].map(n => (
+                              <Star
+                                key={n}
+                                size={11}
+                                className={n <= (f.rating || 0) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                        {f.email && (
+                          <a href={`mailto:${f.email}`} className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
+                            <Mail size={9} /> {f.email}
+                          </a>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar size={9} />
+                          {new Date(f.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteFeedback(f.id)}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                    title="Delete feedback"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pl-12">
+                  {f.message}
+                </p>
+                {f.page_url && (
+                  <p className="text-[10px] text-muted-foreground mt-2 pl-12 truncate">
+                    From: <a href={f.page_url} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">{f.page_url}</a>
+                  </p>
+                )}
               </div>
             ))}
           </div>
