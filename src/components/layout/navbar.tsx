@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
   Users, Briefcase, BookOpen, Globe,
-  LayoutDashboard, LogIn, Home, LogOut,
+  LayoutDashboard, LogIn, Home, LogOut, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -212,6 +212,16 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                     <LayoutDashboard size={17} />
                     Dashboard
                   </Link>
+                  {user.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-amber-500 hover:bg-amber-500/10 transition-colors"
+                    >
+                      <ShieldCheck size={17} />
+                      Admin Panel
+                    </Link>
+                  )}
                   <button
                     onClick={() => { logout(); setMobileOpen(false); router.push("/"); }}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
