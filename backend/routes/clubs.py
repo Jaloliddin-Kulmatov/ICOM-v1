@@ -250,17 +250,20 @@ def get_members(club_id):
     for m in approved:
         u = User.query.get(m.user_id)
         if u:
+            # If this approved member is also the creator, tag them so the
+            # frontend can render the crown badge.
+            is_owner = u.id == club.created_by
             result.append({
                 "membership_id": m.id,
                 "user_id": u.id,
-                "name": u.name,
+                "name": u.name + (" (Creator)" if is_owner else ""),
                 "university": u.university,
                 "country": u.country,
                 "visa_type": u.visa_type,
                 "joined_at": m.joined_at.isoformat() + "Z",
             })
 
-    # Always include the creator at the top of the list
+    # Always include the creator at the top of the list (if not already in it)
     creator_ids = {r["user_id"] for r in result}
     if club.created_by not in creator_ids:
         creator_user = User.query.get(club.created_by)
@@ -274,6 +277,9 @@ def get_members(club_id):
                 "visa_type": creator_user.visa_type,
                 "joined_at": club.created_at.isoformat() + "Z",
             })
+    else:
+        # Creator is already in the list — move them to the top
+        result.sort(key=lambda r: 0 if r["user_id"] == club.created_by else 1)
 
     return jsonify({"members": result, "is_creator": is_creator}), 200
 

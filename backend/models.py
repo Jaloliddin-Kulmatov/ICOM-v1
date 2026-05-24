@@ -68,6 +68,10 @@ class Club(db.Model):
 
     def to_dict(self, user_id=None):
         approved_count = ClubMembership.query.filter_by(club_id=self.id, status="approved").count()
+        # Avoid double-counting if the creator joined their own club via ClubMembership
+        creator_in_memberships = ClubMembership.query.filter_by(
+            club_id=self.id, user_id=self.created_by, status="approved"
+        ).first() is not None
         pending_count = 0
         my_status = None  # None | "pending" | "approved"
 
@@ -90,7 +94,8 @@ class Club(db.Model):
             "meeting_time": self.meeting_time,
             "location": self.location,
             "is_active": self.is_active,
-            "member_count": approved_count + 1,  # +1 for creator (not in ClubMembership)
+            # +1 for creator, unless creator also has a membership row (don't double-count)
+            "member_count": approved_count + (0 if creator_in_memberships else 1),
             "pending_count": pending_count,
             "my_status": my_status,           # None / "pending" / "approved"
             "is_creator": is_creator,
