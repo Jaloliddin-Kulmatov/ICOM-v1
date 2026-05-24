@@ -34,23 +34,31 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  const tree = (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem={false}
+      storageKey="icon-theme"
+    >
+      <AuthProvider>
+        {children}
+        <MobileBottomNav />
+        <ChatWidget />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            storageKey="icon-theme"
-          >
-            <AuthProvider>
-              {children}
-              <MobileBottomNav />
-              <ChatWidget />
-            </AuthProvider>
-          </ThemeProvider>
-        </GoogleOAuthProvider>
+        {googleClientId ? (
+          <GoogleOAuthProvider clientId={googleClientId}>{tree}</GoogleOAuthProvider>
+        ) : (
+          tree
+        )}
       </body>
     </html>
   );
