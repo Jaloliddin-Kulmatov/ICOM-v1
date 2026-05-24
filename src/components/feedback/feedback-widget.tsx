@@ -80,15 +80,16 @@ export default function FeedbackWidget() {
 
   return (
     <>
-      {/* Floating button — hidden on phones (mobile users have bottom nav + can use /feedback) */}
+      {/* Floating button — pill on desktop, compact circle on phones (above bottom nav) */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
           aria-label="Send feedback"
-          className="fixed bottom-6 left-6 z-40 hidden md:flex items-center gap-2 h-11 px-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-sm font-semibold shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.65)] hover:scale-105 active:scale-95 transition-all"
+          className="fixed left-4 bottom-20 md:left-6 md:bottom-6 z-40 flex items-center gap-0 md:gap-2 w-12 h-12 md:w-auto md:h-11 md:px-4 justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-sm font-semibold shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.65)] hover:scale-105 active:scale-95 transition-all"
+          title="Send feedback"
         >
-          <MessageSquarePlus size={16} />
-          Feedback
+          <MessageSquarePlus size={18} />
+          <span className="hidden md:inline">Feedback</span>
         </button>
       )}
 
