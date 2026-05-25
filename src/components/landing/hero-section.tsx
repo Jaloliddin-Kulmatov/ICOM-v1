@@ -77,7 +77,7 @@ export default function HeroSection() {
         {!user && (
           <p className="text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.2s" }}>
             Already have an account?{" "}
-            <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2 transition-colors">
+            <Link href="/login?force=1" className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2 transition-colors">
               Sign in
             </Link>
           </p>

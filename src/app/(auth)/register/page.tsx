@@ -295,7 +295,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-5">
           Already have an account?{" "}
-          <Link href="/login" className="text-indigo-500 hover:text-indigo-400 font-medium">Sign in</Link>
+          <Link href="/login?force=1" className="text-indigo-500 hover:text-indigo-400 font-medium">Sign in</Link>
         </p>
       </div>
     </div>

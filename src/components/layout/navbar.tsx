@@ -161,8 +161,10 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
               </>
             ) : (
               <>
+                {/* Sign in: only useful for returning users — force=1 bypasses the
+                    "new visitors go to /register" redirect on the login page. */}
                 <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
-                  <Link href="/login">Sign in</Link>
+                  <Link href="/login?force=1">Sign in</Link>
                 </Button>
                 <Button size="sm" asChild className="gap-1.5">
                   <Link href="/register">
@@ -239,7 +241,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                     </Link>
                   </Button>
                   <Button variant="outline" className="w-full" asChild>
-                    <Link href="/login">
+                    <Link href="/login?force=1">
                       Sign in
                     </Link>
                   </Button>

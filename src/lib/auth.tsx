@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (error) return error;
     localStorage.setItem("icon_token", data!.token);
+    localStorage.setItem("icom_has_account", "1"); // remember this device has signed in before
     setUser(data!.user);
     return null;
   };
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (error) return error;
     localStorage.setItem("icon_token", data!.token);
+    localStorage.setItem("icom_has_account", "1");
     setUser(data!.user);
     return null;
   };
@@ -92,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (error) return error;
     localStorage.setItem("icon_token", data!.token);
+    localStorage.setItem("icom_has_account", "1");
     setUser(data!.user);
     return null;
   };

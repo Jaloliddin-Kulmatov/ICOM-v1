@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
@@ -18,6 +18,23 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [redirectChecked, setRedirectChecked] = useState(false);
+
+  // First-time visitors → send to /register. They can still get here
+  // explicitly via /login?force=1 (e.g. from the "Sign in" link on /register).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasAccount = localStorage.getItem("icom_has_account") === "1";
+    const force = new URLSearchParams(window.location.search).get("force") === "1";
+    if (!hasAccount && !force) {
+      router.replace("/register");
+      return;
+    }
+    setRedirectChecked(true);
+  }, [router]);
+
+  // Don't flash the login form before the redirect runs
+  if (!redirectChecked) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
