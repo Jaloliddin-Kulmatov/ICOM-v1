@@ -21,24 +21,45 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 async function sendToAI(message: string, history: Message[]): Promise<string> {
   const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
   const url = `${API_BASE}/ai/chat`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      message,
-      history: history.map((m) => ({ role: m.role, content: m.content })),
-    }),
+  const body = JSON.stringify({
+    message,
+    history: history.map((m) => ({ role: m.role, content: m.content })),
   });
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "AI service error");
+  // Render free-tier backends sleep after ~15min of inactivity and take
+  // ~20-40s to wake up. We retry once after a brief delay so users don't
+  // see a scary error on the first request after a cold start.
+  const tryOnce = async (timeoutMs: number) => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { method: "POST", headers, body, signal: ctl.signal });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "AI service error");
+      }
+      const data = await res.json();
+      return data.reply as string;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  try {
+    return await tryOnce(15000);
+  } catch (e: unknown) {
+    // Only retry on network/abort errors, not on real server errors.
+    const isRetryable =
+      e instanceof DOMException && e.name === "AbortError" ||
+      (e instanceof TypeError); // browser "Failed to fetch"
+    if (!isRetryable) throw e;
+    await new Promise((r) => setTimeout(r, 2000));
+    return await tryOnce(45000); // give cold-start more headroom
   }
-  const data = await res.json();
-  return data.reply;
 }
 
 export default function ChatWidget() {
@@ -129,11 +150,14 @@ export default function ChatWidget() {
       const reply = await sendToAI(msg, messages);
       setMessages((prev) => [...prev, { id: Date.now().toString() + "r", role: "assistant", content: reply }]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Something went wrong";
+      const raw = e instanceof Error ? e.message : "";
+      // Network failure / CORS / backend cold-start — user-friendly message,
+      // no internal paths or developer instructions.
+      const isNetwork = !raw || raw.toLowerCase().includes("fetch") || raw.toLowerCase().includes("network");
       setError(
-        msg.toLowerCase().includes("fetch")
-          ? `Backend not running. In a terminal:\n\ncd ~/Downloads/icon-platform/backend\nsource .venv/bin/activate\npython run.py`
-          : msg
+        isNetwork
+          ? "Couldn't reach ICOM AI right now. The service may be waking up — please try again in a few seconds."
+          : raw || "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
