@@ -3,10 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  Sparkles, ArrowRight, Calendar, CheckCircle2, Zap,
-  AlertCircle, Bell, Users, Briefcase, BookOpen,
+  Sparkles, ArrowRight, Users, Briefcase, BookOpen,
   GraduationCap, Globe, Pencil, X, Loader2, ExternalLink,
-  Plus, LogOut,
+  Plus, LogOut, CheckCircle2, Calendar,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
@@ -36,22 +35,6 @@ interface MyClub {
 }
 
 const CLUB_CATEGORIES = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
-
-const typeColors = {
-  urgent:     "text-red-400 bg-red-500/10 border-red-500/20",
-  scholarship:"text-amber-400 bg-amber-500/10 border-amber-500/20",
-  event:      "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-  info:       "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-};
-const typeIcons = {
-  urgent: AlertCircle, scholarship: Zap, event: Calendar, info: Bell,
-};
-
-const announcements = [
-  { id: "1", type: "urgent" as const, title: "Health Insurance Renewal (NHIS)", body: "NHIS enrollment renewal deadline for all D-2 visa holders. Visit nhis.or.kr or the JBNU International Office.", time: "Pinned", tag: "All Students" },
-  { id: "2", type: "scholarship" as const, title: "Korean Government Scholarship (GKS)", body: "Applications for the Global Korea Scholarship are open. Visit the JBNU scholarship portal for details.", time: "Pinned", tag: "JBNU" },
-  { id: "3", type: "event" as const, title: "Welcome to ICOM — JBNU Community", body: "This platform is built for JBNU international students. Browse clubs, find jobs, and connect with others.", time: "New", tag: "JBNU" },
-];
 
 const quickLinks = [
   { href: "/support",      icon: "🗺️", label: "Life Guide" },
@@ -214,112 +197,32 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — announcements */}
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-sm font-semibold text-foreground">Announcements</h2>
-          <div className="space-y-3">
-            {announcements.map((a) => {
-              const Icon = typeIcons[a.type];
-              return (
-                <div key={a.id} className={`flex gap-3 p-4 rounded-2xl border ${typeColors[a.type]} transition-all hover:opacity-90`}>
-                  <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-white/5"><Icon size={15} /></div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-xs font-semibold text-foreground">{a.title}</h3>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{a.time}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{a.body}</p>
-                    <span className="text-[10px] text-muted-foreground/60 mt-1 inline-block">{a.tag}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* ── Quick actions (replaces Announcements + sidebar clutter) ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all text-center"
+          >
+            <span className="text-2xl">{item.icon}</span>
+            <span className="text-[11px] font-medium text-foreground">{item.label}</span>
+          </Link>
+        ))}
+      </div>
 
-          {/* AI banner */}
-          <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/50 to-violet-950/50 p-5">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0">
-                <Sparkles size={18} className="text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-foreground mb-0.5">Ask ICOM AI anything about Korea</p>
-                <p className="text-xs text-muted-foreground">Visa questions, banking, housing, transportation — I know it all.</p>
-              </div>
-              <Button size="sm" asChild className="shrink-0">
-                <Link href="/dashboard/ai">Chat Now</Link>
-              </Button>
-            </div>
-          </div>
-
-          {/* Profile info */}
-          {user && (
-            <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
-              <h2 className="text-sm font-semibold text-foreground mb-3">Your Profile</h2>
-              <div className="grid grid-cols-2 gap-y-2 text-xs">
-                <span className="text-muted-foreground">Name</span>
-                <span className="text-foreground font-medium">{user.name}</span>
-                <span className="text-muted-foreground">University</span>
-                <span className="text-foreground font-medium">{user.university || "Not set"}</span>
-                <span className="text-muted-foreground">Visa Type</span>
-                <span className="text-foreground font-medium">{user.visa_type || "Not set"}</span>
-                <span className="text-muted-foreground">Country</span>
-                <span className="text-foreground font-medium">{user.country || "Not set"}</span>
-              </div>
-              <Link href="/dashboard/settings" className="mt-3 flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                Edit profile <ArrowRight size={10} />
-              </Link>
-            </div>
-          )}
+      {/* ── AI banner — single prominent CTA ── */}
+      <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/8 to-violet-500/8 p-5 flex items-center gap-4">
+        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0">
+          <Sparkles size={18} className="text-white" />
         </div>
-
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
-            <h2 className="text-sm font-semibold text-foreground mb-3">Quick Access</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {quickLinks.map((item) => (
-                <Link key={item.href} href={item.href}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/3 border border-white/8 hover:border-white/15 hover:bg-white/6 transition-all text-center">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 size={14} className="text-indigo-400" />
-              <h2 className="text-sm font-semibold text-foreground">JBNU Resources</h2>
-            </div>
-            <div className="space-y-2 text-xs">
-              {[
-                { label: "International Office", href: "https://international.jbnu.ac.kr" },
-                { label: "Student Portal",       href: "https://portal.jbnu.ac.kr" },
-                { label: "Library",              href: "https://library.jbnu.ac.kr" },
-              ].map((r) => (
-                <a key={r.label} href={r.href} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-between text-muted-foreground hover:text-indigo-400 transition-colors">
-                  <span>{r.label}</span><ArrowRight size={10} />
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={14} className="text-emerald-400" />
-              <h2 className="text-sm font-semibold text-foreground">Visa &amp; Insurance</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">Keep your visa and NHIS insurance up to date to avoid enrollment issues.</p>
-            <Link href="/support/visa" className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
-              View visa guide <ArrowRight size={10} />
-            </Link>
-          </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground leading-tight">Ask ICOM AI</p>
+          <p className="text-xs text-muted-foreground">Visa, banking, housing — instant answers.</p>
         </div>
+        <Button size="sm" asChild className="shrink-0">
+          <Link href="/dashboard/ai">Chat</Link>
+        </Button>
       </div>
 
       {/* ══════════ EDIT CLUB MODAL ══════════ */}
