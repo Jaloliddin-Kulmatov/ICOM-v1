@@ -48,8 +48,17 @@ export default function LoginPage() {
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setError("");
-    const err = await loginWithGoogle(accessToken);
-    if (err) { setError(err); return; }
+    const err = await loginWithGoogle(accessToken, "login");
+    if (err) {
+      // Distinct error UI when no account is linked → guide them to /register
+      if (err.toLowerCase().includes("no icom account") || err.toLowerCase().includes("sign up first")) {
+        setError("No account found for this Google email. Redirecting to sign up…");
+        setTimeout(() => router.push("/register"), 1500);
+        return;
+      }
+      setError(err);
+      return;
+    }
     router.push("/dashboard");
   };
 

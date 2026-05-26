@@ -89,11 +89,18 @@ def login():
 @auth_bp.route("/google", methods=["POST"])
 def google_auth():
     """Sign in / sign up with a Google OAuth access token.
-    Frontend sends {access_token} obtained from @react-oauth/google.
-    We verify by calling Google's userinfo endpoint, then find-or-create the user.
+
+    Frontend sends {access_token, mode} where mode is "login" or "register".
+    - mode="login": only signs in existing users. Returns 404 if no account
+      so the frontend can prompt the user to sign up.
+    - mode="register": creates a new account. Returns 409 if account already
+      exists so the frontend can prompt the user to sign in instead.
+    - mode missing/other: legacy behaviour — find-or-create (kept for
+      backwards compatibility, used by older clients).
     """
     data = request.get_json(silent=True) or {}
     access_token = (data.get("access_token") or "").strip()
+    mode = (data.get("mode") or "").strip().lower()
 
     if not access_token:
         return jsonify({"error": "Google access token is required."}), 400
@@ -127,9 +134,26 @@ def google_auth():
                      "Please verify your Google account first, then try again."
         }), 400
 
-    # ── Find or create user ───────────────────────────────────────────────────
+    # ── Branch on mode ────────────────────────────────────────────────────────
     user = User.query.filter_by(email=email).first()
-    if not user:
+
+    if mode == "login":
+        # Strict sign-in: refuse to auto-create an account.
+        if not user:
+            return jsonify({
+                "error": "No ICOM account is linked to this Google email. "
+                         "Please sign up first.",
+                "code": "NO_ACCOUNT",
+            }), 404
+
+    elif mode == "register":
+        # Strict sign-up: refuse to silently sign in an existing user.
+        if user:
+            return jsonify({
+                "error": "An ICOM account already exists for this Google email. "
+                         "Please sign in instead.",
+                "code": "ACCOUNT_EXISTS",
+            }), 409
         user = User(
             name=name,
             email=email,
@@ -138,11 +162,23 @@ def google_auth():
         )
         db.session.add(user)
         db.session.commit()
+
     else:
-        # Update last seen
-        if hasattr(user, "last_seen"):
-            user.last_seen = datetime.utcnow()
+        # Legacy / unspecified mode: keep find-or-create behaviour.
+        if not user:
+            user = User(
+                name=name,
+                email=email,
+                password_hash="",
+                is_verified=True,
+            )
+            db.session.add(user)
             db.session.commit()
+
+    # Touch last_seen if the column exists (returning users).
+    if hasattr(user, "last_seen"):
+        user.last_seen = datetime.utcnow()
+        db.session.commit()
 
     jwt_token = create_access_token(
         identity=str(user.id),

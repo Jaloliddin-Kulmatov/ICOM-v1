@@ -20,12 +20,14 @@ interface UserProfile {
   is_verified: boolean;
 }
 
+type GoogleMode = "login" | "register";
+
 interface AuthCtx {
   user: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
-  loginWithGoogle: (accessToken: string) => Promise<string | null>;
+  loginWithGoogle: (accessToken: string, mode?: GoogleMode) => Promise<string | null>;
   logout: () => void;
   refreshUser: () => void;
 }
@@ -87,10 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
-  const loginWithGoogle = async (accessToken: string) => {
+  const loginWithGoogle = async (accessToken: string, mode?: GoogleMode) => {
     const { data, error } = await api.post<{ token: string; user: UserProfile }>(
       "/auth/google",
-      { access_token: accessToken }
+      { access_token: accessToken, mode }
     );
     if (error) return error;
     localStorage.setItem("icon_token", data!.token);
