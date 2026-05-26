@@ -5,7 +5,10 @@ import re
 import requests as http_requests
 
 from app import db, bcrypt
-from models import User
+from models import (
+    User, Club, ClubMembership, ClubMessage,
+    Post, PostComment, AmbassadorApplication, Feedback, AISession,
+)
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -213,3 +216,69 @@ def update_me():
 
     db.session.commit()
     return jsonify({"user": user.to_dict()}), 200
+
+
+# ── Delete account (permanent, cascade) ─────────────────────────────────────
+
+@auth_bp.route("/me", methods=["DELETE"])
+@jwt_required()
+def delete_me():
+    """Permanently delete the authenticated user and ALL their data.
+
+    Requires the client to send {"confirm": "DELETE"} in the body as a
+    safety guard against accidental calls.
+    """
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+
+    data = request.get_json(silent=True) or {}
+    if data.get("confirm") != "DELETE":
+        return jsonify({
+            "error": "Please send {\"confirm\": \"DELETE\"} to confirm account deletion."
+        }), 400
+
+    # 1) Anything that referenced this user is removed first.
+    PostComment.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    # 2) Posts authored by the user (and their comments).
+    user_posts = Post.query.filter_by(user_id=user_id).all()
+    for p in user_posts:
+        PostComment.query.filter_by(post_id=p.id).delete(synchronize_session=False)
+    Post.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    # 3) Chat messages and memberships.
+    ClubMessage.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    ClubMembership.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    # 4) Clubs the user CREATED — cascade delete their messages, memberships,
+    #    posts and comments tied to those clubs.
+    owned_clubs = Club.query.filter_by(created_by=user_id).all()
+    for club in owned_clubs:
+        ClubMessage.query.filter_by(club_id=club.id).delete(synchronize_session=False)
+        ClubMembership.query.filter_by(club_id=club.id).delete(synchronize_session=False)
+        club_posts = Post.query.filter_by(club_id=club.id).all()
+        for p in club_posts:
+            PostComment.query.filter_by(post_id=p.id).delete(synchronize_session=False)
+        Post.query.filter_by(club_id=club.id).delete(synchronize_session=False)
+        db.session.delete(club)
+
+    # 5) Feedback they submitted while signed in (anonymise instead of deleting
+    #    so admins keep historical comments — drop the user_id link).
+    Feedback.query.filter_by(user_id=user_id).update(
+        {"user_id": None}, synchronize_session=False
+    )
+
+    # 6) Ambassador application (by email match).
+    if user.email:
+        AmbassadorApplication.query.filter_by(email=user.email).delete(
+            synchronize_session=False
+        )
+
+    # 7) AI sessions.
+    AISession.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    # 8) Finally, the user.
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "Your account and all related data have been deleted."}), 200

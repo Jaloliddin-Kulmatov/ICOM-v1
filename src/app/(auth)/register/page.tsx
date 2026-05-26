@@ -66,13 +66,17 @@ export default function RegisterPage() {
     setError("");
     const err = await loginWithGoogle(accessToken, "register");
     if (err) {
-      // If the account already exists, gently bounce them to the login page.
-      if (err.toLowerCase().includes("already exists") || err.toLowerCase().includes("sign in instead")) {
+      const alreadyExists =
+        err.code === "ACCOUNT_EXISTS" ||
+        err.status === 409 ||
+        (err.message || "").toLowerCase().includes("already exists") ||
+        (err.message || "").toLowerCase().includes("sign in instead");
+      if (alreadyExists) {
         setError("An account already exists for this email. Redirecting to sign in…");
         setTimeout(() => router.push("/login?force=1"), 1500);
         return;
       }
-      setError(err);
+      setError(err.message || "Google sign-up failed.");
       return;
     }
     router.push("/dashboard");

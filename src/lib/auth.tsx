@@ -22,14 +22,21 @@ interface UserProfile {
 
 type GoogleMode = "login" | "register";
 
+export interface AuthError {
+  message: string;
+  code?: string;   // "NO_ACCOUNT" | "ACCOUNT_EXISTS" | ...
+  status?: number;
+}
+
 interface AuthCtx {
   user: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
-  loginWithGoogle: (accessToken: string, mode?: GoogleMode) => Promise<string | null>;
+  loginWithGoogle: (accessToken: string, mode?: GoogleMode) => Promise<AuthError | null>;
   logout: () => void;
   refreshUser: () => void;
+  deleteAccount: (confirm: string) => Promise<string | null>;
 }
 
 interface RegisterData {
@@ -49,6 +56,7 @@ const AuthContext = createContext<AuthCtx>({
   loginWithGoogle: async () => null,
   logout: () => {},
   refreshUser: () => {},
+  deleteAccount: async () => null,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -89,15 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
-  const loginWithGoogle = async (accessToken: string, mode?: GoogleMode) => {
-    const { data, error } = await api.post<{ token: string; user: UserProfile }>(
+  const loginWithGoogle = async (accessToken: string, mode?: GoogleMode): Promise<AuthError | null> => {
+    const result = await api.post<{ token: string; user: UserProfile }>(
       "/auth/google",
       { access_token: accessToken, mode }
     );
-    if (error) return error;
-    localStorage.setItem("icon_token", data!.token);
+    if (result.error) {
+      return { message: result.error, code: result.code, status: result.status };
+    }
+    localStorage.setItem("icon_token", result.data!.token);
     localStorage.setItem("icom_has_account", "1");
-    setUser(data!.user);
+    setUser(result.data!.user);
     return null;
   };
 
@@ -106,8 +116,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const deleteAccount = async (confirm: string): Promise<string | null> => {
+    const { error } = await api.delete<{ message: string }>("/auth/me", { confirm });
+    if (error) return error;
+    localStorage.removeItem("icon_token");
+    localStorage.removeItem("icom_has_account");
+    setUser(null);
+    return null;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, refreshUser: fetchMe }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, refreshUser: fetchMe, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

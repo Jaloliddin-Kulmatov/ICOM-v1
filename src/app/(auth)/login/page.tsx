@@ -50,13 +50,19 @@ export default function LoginPage() {
     setError("");
     const err = await loginWithGoogle(accessToken, "login");
     if (err) {
-      // Distinct error UI when no account is linked → guide them to /register
-      if (err.toLowerCase().includes("no icom account") || err.toLowerCase().includes("sign up first")) {
+      // Backend signals "this Google email has no ICOM account" with code
+      // NO_ACCOUNT (status 404). Bounce them to /register with a clear message.
+      const isNoAccount =
+        err.code === "NO_ACCOUNT" ||
+        err.status === 404 ||
+        (err.message || "").toLowerCase().includes("no icom account") ||
+        (err.message || "").toLowerCase().includes("sign up first");
+      if (isNoAccount) {
         setError("No account found for this Google email. Redirecting to sign up…");
         setTimeout(() => router.push("/register"), 1500);
         return;
       }
-      setError(err);
+      setError(err.message || "Google sign-in failed.");
       return;
     }
     router.push("/dashboard");

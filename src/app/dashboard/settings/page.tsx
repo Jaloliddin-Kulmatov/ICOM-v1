@@ -365,7 +365,7 @@ function JoinedClubCard({ club, onLeft }: { club: Club; onLeft: () => void }) {
 
 // ── Main page ─────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, logout, deleteAccount } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<"profile" | "clubs">("profile");
 
@@ -379,6 +379,28 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [profileError, setProfileError] = useState("");
+
+  // Delete account modal state
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteAccount = async () => {
+    setDeleteError("");
+    if (deleteConfirm !== "DELETE") {
+      setDeleteError("Please type DELETE exactly (uppercase) to confirm.");
+      return;
+    }
+    setDeleting(true);
+    const err = await deleteAccount("DELETE");
+    setDeleting(false);
+    if (err) {
+      setDeleteError(err);
+      return;
+    }
+    router.push("/");
+  };
 
   // Clubs
   const [createdClubs, setCreatedClubs] = useState<Club[]>([]);
@@ -545,7 +567,93 @@ export default function ProfilePage() {
             >
               <LogOut size={14} /> Sign out
             </button>
+
+            {/* ── Danger zone — delete account ── */}
+            <div className="mt-4 pt-5 border-t border-red-500/15">
+              <div className="flex items-start gap-3 p-4 rounded-2xl border border-red-500/20 bg-red-500/5">
+                <UserX size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground mb-0.5">Delete account</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
+                    Permanently remove your account and all data (clubs you created, messages, posts, comments). This cannot be undone.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowDelete(true); setDeleteConfirm(""); setDeleteError(""); }}
+                    className="px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors"
+                  >
+                    Delete my account…
+                  </button>
+                </div>
+              </div>
+            </div>
           </form>
+        )}
+
+        {/* ── Delete confirmation modal ── */}
+        {showDelete && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+            onClick={() => !deleting && setShowDelete(false)}
+          >
+            <div
+              className="w-full max-w-md bg-card border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden animate-slide-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-4 border-b border-red-500/20 bg-red-500/5 flex items-center gap-2.5">
+                <UserX size={16} className="text-red-400" />
+                <h2 className="text-sm font-bold text-foreground">Delete your ICOM account?</h2>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-sm text-foreground leading-relaxed">
+                  This action is <span className="font-bold text-red-400">permanent</span>. We&apos;ll delete:
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside leading-relaxed">
+                  <li>Your profile and login</li>
+                  <li>Clubs and communities you created</li>
+                  <li>All your chat messages, posts, and comments</li>
+                  <li>Your membership in clubs you joined</li>
+                  <li>Your AI chat history</li>
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  Type <code className="px-1.5 py-0.5 rounded bg-muted text-red-400 font-bold">DELETE</code> below to confirm.
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder="DELETE"
+                  disabled={deleting}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500/50 transition-all font-mono"
+                />
+                {deleteError && (
+                  <p className="text-xs text-red-400">{deleteError}</p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDelete(false)}
+                    disabled={deleting}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deleting || deleteConfirm !== "DELETE"}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {deleting ? (
+                      <><Loader2 size={14} className="animate-spin" /> Deleting…</>
+                    ) : (
+                      <><UserX size={14} /> Delete forever</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ═══════════════════════════════

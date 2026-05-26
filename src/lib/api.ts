@@ -5,10 +5,17 @@ function getToken(): string | null {
   return localStorage.getItem("icon_token");
 }
 
+export interface ApiResult<T> {
+  data: T | null;
+  error: string | null;
+  status: number;
+  code?: string; // server-defined error code (e.g. "NO_ACCOUNT", "ACCOUNT_EXISTS")
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
-): Promise<{ data: T | null; error: string | null }> {
+): Promise<ApiResult<T>> {
   const token = getToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -18,11 +25,22 @@ async function request<T>(
 
   try {
     const res = await fetch(`${BASE}${path}`, { ...options, headers });
-    const json = await res.json();
-    if (!res.ok) return { data: null, error: json.error || "Something went wrong" };
-    return { data: json as T, error: null };
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        data: null,
+        error: json.error || "Something went wrong",
+        status: res.status,
+        code: json.code,
+      };
+    }
+    return { data: json as T, error: null, status: res.status };
   } catch {
-    return { data: null, error: "Cannot connect to server. Is the backend running?" };
+    return {
+      data: null,
+      error: "Cannot connect to server. Please try again.",
+      status: 0,
+    };
   }
 }
 
@@ -35,4 +53,10 @@ export const api = {
 
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "DELETE",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
 };
