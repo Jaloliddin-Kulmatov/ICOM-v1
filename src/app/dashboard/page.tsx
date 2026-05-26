@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  Sparkles, ArrowRight, Users, Briefcase, BookOpen,
+  Sparkles, ArrowRight, Users,
   GraduationCap, Globe, Pencil, X, Loader2, ExternalLink,
   Plus, LogOut, CheckCircle2, Calendar,
 } from "lucide-react";
@@ -130,74 +130,91 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Quick stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { icon: Users,    label: "Community",    value: "Join",   href: "/community",    color: "text-indigo-400", bg: "bg-indigo-500/10" },
-          { icon: Briefcase,label: "Jobs & Clubs", value: "Browse", href: "/jobs",         color: "text-violet-400", bg: "bg-violet-500/10" },
-          { icon: Sparkles, label: "AI Assistant", value: "Chat",   href: "/dashboard/ai", color: "text-cyan-400",   bg: "bg-cyan-500/10" },
-          { icon: BookOpen, label: "Visa Guides",  value: "Read",   href: "/support/visa", color: "text-emerald-400",bg: "bg-emerald-500/10" },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link key={item.label} href={item.href}
-              className="group p-5 rounded-2xl border border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5 transition-all duration-200 hover:-translate-y-0.5">
-              <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${item.bg} mb-3`}>
-                <Icon size={17} className={item.color} />
-              </div>
-              <div className="text-sm font-semibold text-foreground group-hover:text-indigo-300 transition-colors">{item.value} →</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+      {/* ── My Clubs & Communities + ICOM AI (side by side on desktop) ── */}
+      <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Clubs/Communities — 2/3 width on desktop */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">My Clubs &amp; Communities</h2>
+            <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+              <Plus size={11} /> Browse more
             </Link>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* ── My Clubs & Communities ── */}
-      <div className="mb-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">My Clubs &amp; Communities</h2>
-          <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-            <Plus size={11} /> Browse more
-          </Link>
+          {clubsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={18} className="animate-spin text-muted-foreground" />
+            </div>
+          ) : (createdClubs.length === 0 && joinedClubs.length === 0) ? (
+            <div className="p-6 rounded-2xl border border-dashed border-border text-center">
+              <Users size={24} className="text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">You haven&apos;t joined any clubs or communities yet.</p>
+              <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                Explore communities <ArrowRight size={10} />
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Created clubs */}
+              {myUniversityClubs.map(club => (
+                <ClubCard key={`c-${club.id}`} club={club} isOwner onEdit={() => openEdit(club)} />
+              ))}
+              {/* Joined clubs */}
+              {myJoinedClubs.map(club => (
+                <ClubCard key={`j-${club.id}`} club={club} isOwner={false} onLeave={() => handleLeave(club.id)} />
+              ))}
+              {/* Communities (created + joined) */}
+              {myCommunities.map(club => {
+                const isOwner = createdClubs.some(c => c.id === club.id);
+                return (
+                  <ClubCard key={`cm-${club.id}`} club={club} isOwner={isOwner}
+                    onEdit={isOwner ? () => openEdit(club) : undefined}
+                    onLeave={!isOwner ? () => handleLeave(club.id) : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {clubsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 size={18} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : (createdClubs.length === 0 && joinedClubs.length === 0) ? (
-          <div className="p-6 rounded-2xl border border-dashed border-white/10 text-center">
-            <Users size={24} className="text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">You haven&apos;t joined any clubs or communities yet.</p>
-            <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-              Explore communities <ArrowRight size={10} />
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Created clubs */}
-            {myUniversityClubs.map(club => (
-              <ClubCard key={`c-${club.id}`} club={club} isOwner onEdit={() => openEdit(club)} />
-            ))}
-            {/* Joined clubs */}
-            {myJoinedClubs.map(club => (
-              <ClubCard key={`j-${club.id}`} club={club} isOwner={false} onLeave={() => handleLeave(club.id)} />
-            ))}
-            {/* Communities (created + joined) */}
-            {myCommunities.map(club => {
-              const isOwner = createdClubs.some(c => c.id === club.id);
-              return (
-                <ClubCard key={`cm-${club.id}`} club={club} isOwner={isOwner}
-                  onEdit={isOwner ? () => openEdit(club) : undefined}
-                  onLeave={!isOwner ? () => handleLeave(club.id) : undefined}
-                />
-              );
-            })}
-          </div>
-        )}
+        {/* ── ICOM AI card (prominent, sticky next to clubs) ── */}
+        <aside className="lg:sticky lg:top-20 self-start">
+          <Link
+            href="/dashboard/ai"
+            className="block rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-purple-500/10 p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Sparkles size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground leading-tight">ICOM AI</p>
+                <p className="text-[11px] text-emerald-500 leading-tight">Online · responds instantly</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              Ask anything about Korea — visa, banking, housing, jobs, transportation. Answers in your language, 24/7.
+            </p>
+            <div className="space-y-1.5">
+              {[
+                "How do I extend my D-2 visa?",
+                "Open a Kakao Bank account",
+                "Find part-time jobs near campus",
+              ].map((q) => (
+                <div key={q} className="flex items-center gap-2 text-[11px] text-foreground/80 bg-background/50 rounded-lg px-2.5 py-1.5 border border-border">
+                  <Sparkles size={10} className="text-indigo-500 shrink-0" />
+                  <span className="truncate">{q}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-semibold group-hover:opacity-90 transition-opacity">
+              Start chatting <ArrowRight size={12} />
+            </div>
+          </Link>
+        </aside>
       </div>
 
-      {/* ── Quick actions (replaces Announcements + sidebar clutter) ── */}
+      {/* ── Quick actions ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
         {quickLinks.map((item) => (
           <Link
@@ -209,20 +226,6 @@ export default function DashboardPage() {
             <span className="text-[11px] font-medium text-foreground">{item.label}</span>
           </Link>
         ))}
-      </div>
-
-      {/* ── AI banner — single prominent CTA ── */}
-      <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/8 to-violet-500/8 p-5 flex items-center gap-4">
-        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0">
-          <Sparkles size={18} className="text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground leading-tight">Ask ICOM AI</p>
-          <p className="text-xs text-muted-foreground">Visa, banking, housing — instant answers.</p>
-        </div>
-        <Button size="sm" asChild className="shrink-0">
-          <Link href="/dashboard/ai">Chat</Link>
-        </Button>
       </div>
 
       {/* ══════════ EDIT CLUB MODAL ══════════ */}
