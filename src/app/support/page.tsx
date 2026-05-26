@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import {
   FileText, Home, CreditCard, Shield, Train, BookOpen,
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 const categories = [
   {
@@ -122,40 +122,79 @@ const categoryLabels: Record<string, "default" | "success" | "cyan" | "warning" 
 };
 
 export default function SupportPage() {
+  const router = useRouter();
   const [openGuide, setOpenGuide] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const askAI = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    router.push(`/dashboard/ai?q=${encodeURIComponent(trimmed)}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-16">
-        {/* Hero */}
-        <div className="relative bg-gradient-to-b from-emerald-950/20 to-transparent border-b border-white/8">
+        {/* Hero — AI-first ask box */}
+        <div className="relative bg-gradient-to-b from-indigo-950/30 via-violet-950/20 to-transparent border-b border-border">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-14 text-center">
-            <Badge variant="success" className="mb-4 text-xs px-3 py-1">
-              Student Support Hub
+            <Badge variant="default" className="mb-4 text-xs px-3 py-1 gap-1.5">
+              <Sparkles size={11} className="text-violet-400" /> AI-powered Student Support
             </Badge>
-            <h1 className="text-4xl font-bold text-foreground mb-3">
-              Everything You Need to
-              <span className="gradient-text"> Thrive in Korea</span>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+              Ask anything about
+              <span className="gradient-text"> life in Korea</span>
             </h1>
-            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Step-by-step guides for visa, banking, housing, insurance, and everyday life in Korea.
-              Written by students, for students.
+            <p className="text-muted-foreground mb-8 max-w-xl mx-auto text-sm sm:text-base">
+              Visa, banking, housing, insurance, transport. Get instant, personalised answers
+              from our AI — or browse our hand-written guides below.
             </p>
-            <div className="max-w-lg mx-auto">
-              <Input
-                placeholder="Search guides... (e.g. &quot;visa extension&quot;, &quot;bank account&quot;)"
-                icon={<Search size={16} />}
-                className="h-12"
-              />
-            </div>
 
-            {/* AI assistant promo */}
-            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-300">
-              <Sparkles size={14} />
-              Can&apos;t find it? Ask the{" "}
-              <Link href="/dashboard/ai" className="underline font-medium hover:text-indigo-200">
-                AI Assistant
-              </Link>
+            {/* AI search box — actually routes to /dashboard/ai */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); askAI(query); }}
+              className="max-w-2xl mx-auto"
+            >
+              <div className="flex items-center gap-2 bg-card border border-border focus-within:border-indigo-500/50 rounded-2xl p-2 transition-colors">
+                <div className="pl-2 text-muted-foreground">
+                  <Sparkles size={18} className="text-indigo-500" />
+                </div>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder='Ask ICOM AI… e.g. "How do I extend my D-2 visa?"'
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none px-2 h-10"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  disabled={!query.trim()}
+                >
+                  Ask AI <ArrowRight size={13} />
+                </Button>
+              </div>
+            </form>
+
+            {/* Quick example chips */}
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
+              {[
+                "Extend my D-2 visa",
+                "Open a Kakao Bank account",
+                "Find a dormitory",
+                "NHIS health insurance",
+                "T-money card",
+              ].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => askAI(q)}
+                  className="text-[11px] px-3 py-1.5 rounded-full border border-border bg-card text-muted-foreground hover:border-indigo-500/30 hover:text-foreground transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
           </div>
         </div>

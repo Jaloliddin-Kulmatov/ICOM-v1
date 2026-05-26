@@ -132,48 +132,78 @@ export default function DashboardPage() {
 
       {/* ── My Clubs & Communities + ICOM AI (side by side on desktop) ── */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Clubs/Communities — 2/3 width on desktop */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">My Clubs &amp; Communities</h2>
-            <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-              <Plus size={11} /> Browse more
-            </Link>
-          </div>
-
+        {/* Clubs and Communities — separate sections, clubs first */}
+        <div className="lg:col-span-2 space-y-6">
           {clubsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 size={18} className="animate-spin text-muted-foreground" />
             </div>
           ) : (createdClubs.length === 0 && joinedClubs.length === 0) ? (
-            <div className="p-6 rounded-2xl border border-dashed border-border text-center">
-              <Users size={24} className="text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">You haven&apos;t joined any clubs or communities yet.</p>
-              <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                Explore communities <ArrowRight size={10} />
-              </Link>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-3">My Clubs &amp; Communities</h2>
+              <div className="p-6 rounded-2xl border border-dashed border-border text-center">
+                <Users size={24} className="text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">You haven&apos;t joined any clubs or communities yet.</p>
+                <Link href="/community" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                  Explore communities <ArrowRight size={10} />
+                </Link>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Created clubs */}
-              {myUniversityClubs.map(club => (
-                <ClubCard key={`c-${club.id}`} club={club} isOwner onEdit={() => openEdit(club)} />
-              ))}
-              {/* Joined clubs */}
-              {myJoinedClubs.map(club => (
-                <ClubCard key={`j-${club.id}`} club={club} isOwner={false} onLeave={() => handleLeave(club.id)} />
-              ))}
-              {/* Communities (created + joined) */}
-              {myCommunities.map(club => {
-                const isOwner = createdClubs.some(c => c.id === club.id);
-                return (
-                  <ClubCard key={`cm-${club.id}`} club={club} isOwner={isOwner}
-                    onEdit={isOwner ? () => openEdit(club) : undefined}
-                    onLeave={!isOwner ? () => handleLeave(club.id) : undefined}
-                  />
-                );
-              })}
-            </div>
+            <>
+              {/* ── 🎓 My Clubs ── */}
+              {(myUniversityClubs.length > 0 || myJoinedClubs.length > 0) && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <span>🎓</span> My Clubs
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({myUniversityClubs.length + myJoinedClubs.length})
+                      </span>
+                    </h2>
+                    <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                      <Plus size={11} /> Browse
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {myUniversityClubs.map(club => (
+                      <ClubCard key={`c-${club.id}`} club={club} isOwner onEdit={() => openEdit(club)} />
+                    ))}
+                    {myJoinedClubs.map(club => (
+                      <ClubCard key={`j-${club.id}`} club={club} isOwner={false} onLeave={() => handleLeave(club.id)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── 🌍 My Communities ── */}
+              {myCommunities.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <span>🌍</span> My Communities
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({myCommunities.length})
+                      </span>
+                    </h2>
+                    <Link href="/community" className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                      <Plus size={11} /> Browse
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {myCommunities.map(club => {
+                      const isOwner = createdClubs.some(c => c.id === club.id);
+                      return (
+                        <ClubCard key={`cm-${club.id}`} club={club} isOwner={isOwner}
+                          onEdit={isOwner ? () => openEdit(club) : undefined}
+                          onLeave={!isOwner ? () => handleLeave(club.id) : undefined}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -35,6 +35,7 @@ export default function AIPage() {
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autoSentRef = useRef(false);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
@@ -53,6 +54,20 @@ export default function AIPage() {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally { setLoading(false); }
   }, [loading, messages]);
+
+  // Auto-send a question if the page was opened with ?q=… (e.g. from /support)
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q && q.trim()) {
+      autoSentRef.current = true;
+      send(q);
+    }
+    // We intentionally only run this once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <DashboardLayout>
