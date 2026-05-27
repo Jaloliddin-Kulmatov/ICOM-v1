@@ -137,7 +137,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteAccount = async (confirm: string): Promise<string | null> => {
-    const { error } = await api.delete<{ message: string }>("/auth/me", { confirm });
+    // Belt-and-braces: send confirm both as a body field AND a query param,
+    // since some proxies / HTTP clients strip the body on DELETE.
+    const path = `/auth/me?confirm=${encodeURIComponent(confirm)}`;
+    const { error } = await api.delete<{ message: string }>(path, { confirm });
     if (error) return error;
     localStorage.removeItem("icon_token");
     localStorage.removeItem("icom_has_account");
