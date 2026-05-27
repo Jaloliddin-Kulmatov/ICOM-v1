@@ -128,7 +128,7 @@ def create_club():
     return jsonify({"club": club.to_dict(user_id=user_id)}), 201
 
 
-# ── Request to join ───────────────────────────────────────────
+# ── Request to join (auto-approved for now) ───────────────────
 
 @clubs_bp.route("/<int:club_id>/request", methods=["POST"])
 @jwt_required()
@@ -142,12 +142,26 @@ def request_join(club_id):
 
     existing = ClubMembership.query.filter_by(user_id=user_id, club_id=club_id).first()
     if existing:
-        return jsonify({"error": "Already requested or a member.", "status": existing.status}), 409
+        # If they were stuck in "pending" from before this change, promote
+        # them to approved so nobody is permanently waiting.
+        if existing.status != "approved":
+            existing.status = "approved"
+            db.session.commit()
+            return jsonify({
+                "message": "Welcome! You're now a member.",
+                "club": club.to_dict(user_id=user_id),
+            }), 200
+        return jsonify({"error": "Already a member.", "status": existing.status}), 409
 
-    membership = ClubMembership(user_id=user_id, club_id=club_id, status="pending")
+    # Auto-approve every join request for now — no creator review step.
+    # (Flip back to status="pending" if/when we want gated joining.)
+    membership = ClubMembership(user_id=user_id, club_id=club_id, status="approved")
     db.session.add(membership)
     db.session.commit()
-    return jsonify({"message": "Join request sent!", "club": club.to_dict(user_id=user_id)}), 200
+    return jsonify({
+        "message": "Welcome! You're now a member.",
+        "club": club.to_dict(user_id=user_id),
+    }), 200
 
 
 # ── Leave a club ──────────────────────────────────────────────

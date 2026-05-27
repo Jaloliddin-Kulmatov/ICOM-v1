@@ -411,7 +411,7 @@ export default function PostFeed() {
           <p className="text-sm font-semibold text-foreground mb-1">Join a club to read News</p>
           <p className="text-xs text-muted-foreground">You must be a member of at least one club or community to view the News feed</p>
         </div>
-        <p className="text-[11px] text-muted-foreground">← Browse clubs and hit &quot;Request to Join&quot;</p>
+        <p className="text-[11px] text-muted-foreground">← Browse clubs and hit &quot;Join&quot;</p>
       </div>
     );
   }

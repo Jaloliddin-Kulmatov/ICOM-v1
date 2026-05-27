@@ -582,7 +582,7 @@ export default function CommunityDetailPage() {
                         ? "Leave"
                         : isPending
                         ? "Pending…"
-                        : "Request to Join"}
+                        : "Join"}
                     </button>
                   )}
                   {!user && (
@@ -663,7 +663,7 @@ export default function CommunityDetailPage() {
                       {joining && (
                         <Loader2 size={14} className="animate-spin" />
                       )}
-                      Request to Join
+                      Join
                     </button>
                   )}
                   {!user && (

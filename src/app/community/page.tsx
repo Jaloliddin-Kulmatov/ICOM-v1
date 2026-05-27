@@ -760,8 +760,8 @@ export default function CommunityPage() {
                 {/* Info */}
                 <div className="p-4 rounded-2xl border border-white/8 bg-white/3 text-xs text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">How it works</p>
-                  <p>Click <strong>Request to Join</strong> on a club. The creator reviews your request and accepts or rejects it.</p>
-                  <p>Once accepted, you can see the KakaoTalk group link and private contact details.</p>
+                  <p>Click <strong>Join</strong> on any club or community — you&apos;re in instantly.</p>
+                  <p>Once you join, you can chat with members and see the KakaoTalk group link and contact details.</p>
                 </div>
               </div>
             </div>
