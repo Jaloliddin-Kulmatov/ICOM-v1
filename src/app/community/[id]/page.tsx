@@ -466,158 +466,116 @@ export default function CommunityDetailPage() {
           </Link>
 
           {/* ── Hero header ── */}
-          <div className="rounded-2xl border border-border overflow-hidden mb-6">
-            {/* Cover image */}
-            {(() => {
-              const coverUrl = club.cover_image || getClubCoverUrl(club);
-              return (
-                <div className="relative h-36 sm:h-44 overflow-hidden">
+          {(() => {
+            const coverUrl = club.cover_image || getClubCoverUrl(club);
+            return (
+              <div className="relative rounded-2xl border border-border overflow-hidden mb-5">
+                {/* Cover */}
+                <div className="relative h-52 sm:h-64 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={coverUrl}
                     alt={club.name}
                     className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/icom-${club.id}/800/250`; }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/icom-${club.id}/800/300`; }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/70" />
-                </div>
-              );
-            })()}
-            <div className={`p-6 sm:p-8 -mt-0 ${isCC ? "bg-gradient-to-br from-violet-950/40 to-indigo-950/30" : "bg-gradient-to-br from-indigo-950/40 to-cyan-950/30"}`}>
-              <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-                {/* Avatar */}
-                <div
-                  className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black shrink-0 shadow-lg ${
-                    isCC
-                      ? "bg-gradient-to-br from-violet-500 to-indigo-600"
-                      : "bg-gradient-to-br from-indigo-500 to-cyan-600"
-                  }`}
-                >
-                  {club.name[0]?.toUpperCase()}
-                </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span
-                      className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold capitalize ${colorCls}`}
-                    >
-                      {club.category}
-                    </span>
-                    <span
-                      className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold ${
+                  {/* Action buttons — top right */}
+                  <div className="absolute top-3 right-3 flex items-center gap-2">
+                    {club.is_creator && (
+                      <button
+                        onClick={() => setShowManage(true)}
+                        className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-sm border border-white/15 text-xs text-white/80 hover:text-amber-400 hover:border-amber-500/40 transition-all"
+                      >
+                        <Settings size={12} /> Manage
+                        {club.pending_count > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                            {club.pending_count}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {user && !club.is_creator && (
+                      <button
+                        onClick={handleJoin}
+                        disabled={joining || isPending}
+                        className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-60 backdrop-blur-sm ${
+                          isApproved
+                            ? "bg-black/50 border border-white/15 text-white/70 hover:text-red-400 hover:border-red-500/30"
+                            : isPending
+                            ? "bg-black/50 border border-amber-500/30 text-amber-400 cursor-default"
+                            : "bg-indigo-500 border border-indigo-400/30 text-white hover:bg-indigo-600 shadow-lg shadow-indigo-500/25"
+                        }`}
+                      >
+                        {joining ? <Loader2 size={12} className="animate-spin" /> : null}
+                        {isApproved ? "Leave" : isPending ? "Pending…" : "Join"}
+                      </button>
+                    )}
+                    {!user && (
+                      <Link
+                        href="/login"
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-500 border border-indigo-400/30 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors backdrop-blur-sm"
+                      >
+                        Sign in to Join
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Title + meta overlaid at bottom of cover */}
+                  <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-8">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize backdrop-blur-sm ${colorCls}`}>
+                        {club.category}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold backdrop-blur-sm ${
                         isCC
-                          ? "text-violet-400 bg-violet-500/10 border-violet-500/20"
-                          : "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
-                      }`}
-                    >
-                      {isCC ? "🌍 Community" : "🎓 Club"}
-                    </span>
-                    {isApproved && (
-                      <span className="text-[11px] px-2.5 py-1 rounded-full border text-emerald-400 bg-emerald-500/10 border-emerald-500/20 flex items-center gap-1">
-                        <CheckCircle2 size={10} /> Joined
+                          ? "text-violet-300 bg-violet-500/20 border-violet-500/30"
+                          : "text-indigo-300 bg-indigo-500/20 border-indigo-500/30"
+                      }`}>
+                        {isCC ? "🌍 Community" : "🎓 Club"}
                       </span>
-                    )}
-                    {isPending && (
-                      <span className="text-[11px] px-2.5 py-1 rounded-full border text-amber-400 bg-amber-500/10 border-amber-500/20">
-                        Pending approval
-                      </span>
-                    )}
-                  </div>
-
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                    {club.name}
-                  </h1>
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                    <span className="flex items-center gap-1.5">
-                      <Users size={12} />
-                      {club.member_count} member
-                      {club.member_count !== 1 ? "s" : ""}
-                    </span>
-                    {locationDisplay && (
-                      <span className="flex items-center gap-1.5">
-                        <MapPin size={12} />
-                        {locationDisplay}
-                      </span>
-                    )}
-                    {club.creator_name && (
-                      <span>by {club.creator_name}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {club.is_creator && (
-                    <button
-                      onClick={() => setShowManage(true)}
-                      className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-amber-400 hover:border-amber-500/30 transition-all"
-                    >
-                      <Settings size={14} />
-                      Manage
-                      {club.pending_count > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
-                          {club.pending_count}
+                      {isApproved && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border text-emerald-300 bg-emerald-500/20 border-emerald-500/30 backdrop-blur-sm flex items-center gap-1">
+                          <CheckCircle2 size={9} /> Joined
                         </span>
                       )}
-                    </button>
-                  )}
-                  {user && !club.is_creator && (
-                    <button
-                      onClick={handleJoin}
-                      disabled={joining || isPending}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60 ${
-                        isApproved
-                          ? "border border-border text-muted-foreground hover:text-red-400 hover:border-red-500/30"
-                          : isPending
-                          ? "border border-amber-500/20 text-amber-400 cursor-default"
-                          : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm"
-                      }`}
-                    >
-                      {joining && (
-                        <Loader2 size={14} className="animate-spin" />
+                      {isPending && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border text-amber-300 bg-amber-500/20 border-amber-500/30 backdrop-blur-sm">
+                          Pending
+                        </span>
                       )}
-                      {isApproved
-                        ? "Leave"
-                        : isPending
-                        ? "Pending…"
-                        : "Request to Join"}
-                    </button>
-                  )}
-                  {!user && (
-                    <Link
-                      href="/login"
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
-                    >
-                      Sign in to Join
-                    </Link>
-                  )}
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white mb-1.5 leading-tight">
+                      {club.name}
+                    </h1>
+                    <div className="flex items-center gap-3 text-[11px] text-white/55 flex-wrap">
+                      <span className="flex items-center gap-1"><Users size={11} />{club.member_count} member{club.member_count !== 1 ? "s" : ""}</span>
+                      {locationDisplay && <span className="flex items-center gap-1"><MapPin size={11} />{locationDisplay}</span>}
+                      {club.creator_name && <span>by {club.creator_name}</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* ── Tabs ── */}
-          <div className="flex gap-1 p-1 rounded-xl bg-muted/50 border border-border mb-6 w-fit">
+          <div className="flex gap-0.5 mb-5 border-b border-border">
             {(
               [
-                { key: "chat", icon: MessageSquare, label: "Chat" },
-                {
-                  key: "members",
-                  icon: Users,
-                  label: `Members (${club.member_count})`,
-                },
-                { key: "about", icon: Info, label: "About" },
+                { key: "chat",    icon: MessageSquare, label: "Chat" },
+                { key: "members", icon: Users,         label: `Members (${club.member_count})` },
+                { key: "about",   icon: Info,          label: "About" },
               ] as const
             ).map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                   tab === t.key
-                    ? "bg-background shadow-sm text-foreground border border-border"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-indigo-500 text-indigo-500 dark:text-indigo-400"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <t.icon size={14} />
