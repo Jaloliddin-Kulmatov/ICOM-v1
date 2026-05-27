@@ -17,6 +17,15 @@ def _email_valid(email: str) -> bool:
     return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email))
 
 
+@auth_bp.route("/check-email", methods=["GET"])
+def check_email():
+    email = (request.args.get("email") or "").strip().lower()
+    if not email or not _email_valid(email):
+        return jsonify({"exists": False}), 200
+    exists = User.query.filter_by(email=email).first() is not None
+    return jsonify({"exists": exists}), 200
+
+
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json(silent=True) or {}

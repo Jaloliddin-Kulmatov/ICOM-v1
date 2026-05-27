@@ -61,6 +61,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "taken" | "ok">("idle");
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setError("");
@@ -93,8 +94,21 @@ export default function RegisterPage() {
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  const checkEmailExists = async (email: string) => {
+    if (!isValidEmail(email)) return;
+    setEmailStatus("checking");
+    try {
+      const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+      const res = await fetch(`${BASE}/auth/check-email?email=${encodeURIComponent(email)}`);
+      const json = await res.json();
+      setEmailStatus(json.exists ? "taken" : "ok");
+    } catch {
+      setEmailStatus("idle");
+    }
+  };
+
   const canNext = () => {
-    if (step === 0) return form.name.trim() && isValidEmail(form.email) && form.password.length >= 6;
+    if (step === 0) return form.name.trim() && isValidEmail(form.email) && form.password.length >= 6 && emailStatus !== "taken" && emailStatus !== "checking";
     if (step === 1) return !!form.university;
     return true;
   };
@@ -104,7 +118,22 @@ export default function RegisterPage() {
     if (step === 0) {
       if (!form.name.trim()) { setError("Please enter your full name."); return; }
       if (!isValidEmail(form.email)) { setError("Please enter a valid email address (e.g. you@gmail.com)."); return; }
+      if (emailStatus === "checking") { setError("Please wait while we check your email."); return; }
+      if (emailStatus === "taken") { setError("An account with this email already exists. Please sign in instead."); return; }
       if (form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
+      // If user skipped the blur, check now
+      if (emailStatus === "idle") {
+        setEmailStatus("checking");
+        try {
+          const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+          const res = await fetch(`${BASE}/auth/check-email?email=${encodeURIComponent(form.email)}`);
+          const json = await res.json();
+          if (json.exists) { setEmailStatus("taken"); setError("An account with this email already exists. Please sign in instead."); return; }
+          setEmailStatus("ok");
+        } catch {
+          setEmailStatus("idle");
+        }
+      }
       setStep(1); return;
     }
     if (step === 1) {
@@ -194,9 +223,28 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">Email Address</label>
-                <Input type="email" placeholder="you@gmail.com" value={form.email} onChange={(e) => { set("email", e.target.value); setError(""); }} icon={<Mail size={14} />} />
+                <Input
+                  type="email"
+                  placeholder="you@gmail.com"
+                  value={form.email}
+                  onChange={(e) => { set("email", e.target.value); setError(""); setEmailStatus("idle"); }}
+                  onBlur={(e) => checkEmailExists(e.target.value)}
+                  icon={<Mail size={14} />}
+                />
                 {form.email && !isValidEmail(form.email) && (
                   <p className="text-[11px] text-red-400 pl-1">Enter a valid email (e.g. you@gmail.com)</p>
+                )}
+                {emailStatus === "checking" && (
+                  <p className="text-[11px] text-muted-foreground pl-1">Checking availability…</p>
+                )}
+                {emailStatus === "taken" && (
+                  <p className="text-[11px] text-red-400 pl-1">
+                    An account with this email already exists.{" "}
+                    <button type="button" className="underline" onClick={() => router.push("/login?force=1")}>Sign in instead</button>
+                  </p>
+                )}
+                {emailStatus === "ok" && (
+                  <p className="text-[11px] text-emerald-500 pl-1">Email is available</p>
                 )}
               </div>
               <div className="space-y-1.5">
