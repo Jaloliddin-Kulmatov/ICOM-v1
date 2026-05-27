@@ -561,7 +561,7 @@ export default function CommunityDetailPage() {
           })()}
 
           {/* ── Tabs ── */}
-          <div className="flex gap-0.5 mb-5 border-b border-border">
+          <div className="flex gap-0.5 mb-5 border-b border-border overflow-x-auto scrollbar-hide">
             {(
               [
                 { key: "chat",    icon: MessageSquare, label: "Chat" },
@@ -842,7 +842,7 @@ export default function CommunityDetailPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {members.map((m) => {
                     const grad =
                       AVATAR_GRADIENTS[m.user_id % AVATAR_GRADIENTS.length];
@@ -888,7 +888,7 @@ export default function CommunityDetailPage() {
                ABOUT TAB
           ══════════════════════════════ */}
           {tab === "about" && (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
               {/* Description — wider */}
               <div className="md:col-span-3 p-5 rounded-2xl border border-border bg-card">
                 <h3 className="text-sm font-semibold text-foreground mb-3">
