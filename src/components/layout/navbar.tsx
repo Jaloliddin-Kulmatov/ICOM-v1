@@ -72,9 +72,12 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href={user ? "/dashboard" : "/"} prefetch className="flex items-center gap-2 group shrink-0">
-            <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow">
-              <span className="text-white font-black text-sm leading-none select-none">IC</span>
-            </div>
+            <img
+              src="/logo.svg"
+              alt="ICOM logo"
+              className="w-8 h-8 rounded-full shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow select-none"
+              draggable={false}
+            />
             <div className="flex flex-col leading-none">
               <span className="font-bold text-base tracking-tight text-foreground">
                 ICOM<span className="text-indigo-500">.</span>

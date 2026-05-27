@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Send, Trash2, Globe, Building2, Users, ChevronDown,
-  Loader2, MessageSquare, Lock, LogIn, CornerDownRight,
+  Loader2, MessageSquare, Lock, LogIn, CornerDownRight, Bookmark,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
+import { Bookmarks } from "@/lib/bookmarks";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -256,6 +257,7 @@ function PostCard({ post, currentUserId, onDelete }: {
   const isOwn = post.user_id === currentUserId;
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comment_count);
+  const [saved, setSaved] = useState(() => Bookmarks.posts.has(post.id));
 
   const avatarLetter = label[0]?.toUpperCase() ?? "?";
   const gradients: Record<string, string> = {
@@ -297,8 +299,8 @@ function PostCard({ post, currentUserId, onDelete }: {
         )}
       </div>
 
-      {/* Comment toggle */}
-      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center">
+      {/* Comment toggle + bookmark */}
+      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-3">
         <button
           onClick={() => setShowComments(v => !v)}
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-indigo-500 transition-colors"
@@ -306,6 +308,19 @@ function PostCard({ post, currentUserId, onDelete }: {
           <MessageSquare size={13} />
           <span>{commentCount > 0 ? `${commentCount} comment${commentCount !== 1 ? "s" : ""}` : "Comment"}</span>
           <ChevronDown size={12} className={`transition-transform ${showComments ? "rotate-180" : ""}`} />
+        </button>
+        <button
+          onClick={() => setSaved(Bookmarks.posts.toggle({
+            id: post.id, author_name: post.author_name, content: post.content,
+            created_at: post.created_at, posted_as_label: post.posted_as_label,
+            posted_as_type: post.posted_as_type,
+          }))}
+          className={`flex items-center gap-1 text-xs transition-colors ml-auto ${
+            saved ? "text-indigo-400" : "text-muted-foreground hover:text-indigo-400"
+          }`}
+        >
+          <Bookmark size={13} className={saved ? "fill-indigo-400" : ""} />
+          {saved ? "Saved" : "Save"}
         </button>
       </div>
 

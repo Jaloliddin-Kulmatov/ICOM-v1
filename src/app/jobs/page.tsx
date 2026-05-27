@@ -53,7 +53,7 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-16">
+      <main className="pt-16 pb-20 md:pb-0">
         {/* Page header */}
         <div className="border-b border-white/8 bg-gradient-to-b from-white/2 to-transparent">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -128,7 +128,7 @@ export default function JobsPage() {
                   <button
                     key={v}
                     onClick={() => toggleVisa(v)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                       visaFilter.includes(v)
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                         : "text-muted-foreground border-white/10 hover:border-white/20 hover:text-foreground"
@@ -182,8 +182,8 @@ export default function JobsPage() {
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-4">
+            {/* Sidebar — desktop only */}
+            <div className="space-y-4 hidden lg:block">
               {/* Job alerts */}
               <div className="p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
                 <div className="flex items-center gap-2 mb-2">

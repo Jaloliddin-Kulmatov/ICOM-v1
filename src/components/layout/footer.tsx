@@ -51,9 +51,12 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="relative flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500">
-                <span className="text-white font-black text-sm tracking-tight">IC</span>
-              </div>
+              <img
+                src="/logo.svg"
+                alt="ICOM logo"
+                className="h-8 w-8 rounded-full select-none"
+                draggable={false}
+              />
               <span className="font-bold text-xl tracking-tight text-foreground">
                 ICOM<span className="text-indigo-400">.</span>
               </span>

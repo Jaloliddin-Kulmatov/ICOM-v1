@@ -23,6 +23,12 @@ def create_app():
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+    if db_url.startswith("postgresql://"):
+        app.config["SQLALCHEMY_POOL_SIZE"] = 5
+        app.config["SQLALCHEMY_MAX_OVERFLOW"] = 10
+        app.config["SQLALCHEMY_POOL_RECYCLE"] = 300
+        app.config["SQLALCHEMY_POOL_TIMEOUT"] = 20
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False  # no expiry for dev; set timedelta in prod
 
     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
@@ -68,6 +74,10 @@ def create_app():
     @app.route("/")
     def index():
         return jsonify({"status": "ok", "service": "ICOM API", "version": "1.0", "frontend": "http://localhost:3000"})
+
+    @app.route("/api/health")
+    def health():
+        return jsonify({"status": "ok"}), 200
 
     with app.app_context():
         db.create_all()
@@ -185,6 +195,22 @@ def _run_lightweight_migrations():
                 print("[migration] Basic search indexes created/verified")
         except Exception:
             pass  # SQLite or already exists — no-op
+
+    # Composite index on club_memberships(club_id, status) for fast member count queries
+    try:
+        dialect = db.engine.dialect.name
+        idx_sql = (
+            "CREATE INDEX IF NOT EXISTS ix_club_memberships_club_status "
+            "ON club_memberships (club_id, status)"
+            if dialect == "postgresql" else
+            "CREATE INDEX IF NOT EXISTS ix_club_memberships_club_status "
+            "ON club_memberships (club_id, status)"
+        )
+        with db.engine.begin() as conn:
+            conn.execute(text(idx_sql))
+        print("[migration] club_memberships(club_id, status) index verified")
+    except Exception as e:
+        print(f"[migration] club_memberships composite index skipped: {e}")
 
     # reply threading columns on club_messages
     for col_name, col_def in [

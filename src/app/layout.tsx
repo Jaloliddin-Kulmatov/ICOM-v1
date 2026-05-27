@@ -5,6 +5,7 @@ import "./globals.css";
 import ChatWidget from "@/components/ai/chat-widget";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import FeedbackWidget from "@/components/feedback/feedback-widget";
+import SplashScreen from "@/components/ui/splash-screen";
 import { AuthProvider } from "@/lib/auth";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
@@ -26,11 +27,18 @@ export const metadata: Metadata = {
     "ICOM connects 28,000+ international students across 47 Korean universities. Community, jobs, visa guidance, and AI-powered support in one platform.",
   keywords: ["international students", "Korea", "university", "ICOM", "jobs", "visa", "community"],
   metadataBase: new URL("https://icon.study"),
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.svg",
+  },
   openGraph: {
     title: "ICOM — The OS for International Students in Korea",
     description: "Community, jobs, visa guidance, and AI support for international students in Korea.",
     type: "website",
     url: "https://icon.study",
+    images: [{ url: "/favicon.svg" }],
   },
 };
 
@@ -45,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       storageKey="icon-theme"
     >
       <AuthProvider>
+        <SplashScreen />
         {children}
         <MobileBottomNav />
         <ChatWidget />

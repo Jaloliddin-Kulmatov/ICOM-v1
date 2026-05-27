@@ -66,21 +66,34 @@ class Club(db.Model):
 
     creator = db.relationship("User", foreign_keys=[created_by], backref="owned_clubs")
 
-    def to_dict(self, user_id=None):
-        approved_count = ClubMembership.query.filter_by(club_id=self.id, status="approved").count()
-        # Avoid double-counting if the creator joined their own club via ClubMembership
-        creator_in_memberships = ClubMembership.query.filter_by(
-            club_id=self.id, user_id=self.created_by, status="approved"
-        ).first() is not None
-        pending_count = 0
-        my_status = None  # None | "pending" | "approved"
-
-        if user_id:
-            m = ClubMembership.query.filter_by(club_id=self.id, user_id=user_id).first()
-            if m:
-                my_status = m.status
-            if self.created_by == user_id:
-                pending_count = ClubMembership.query.filter_by(club_id=self.id, status="pending").count()
+    def to_dict(self, user_id=None, _memberships=None):
+        # _memberships: pre-fetched list of ClubMembership for this club (avoids N+1 on list endpoints)
+        if _memberships is not None:
+            approved_count = sum(1 for m in _memberships if m.status == "approved")
+            creator_in_memberships = any(
+                m.user_id == self.created_by and m.status == "approved" for m in _memberships
+            )
+            my_status = None
+            pending_count = 0
+            if user_id:
+                my_m = next((m for m in _memberships if m.user_id == user_id), None)
+                if my_m:
+                    my_status = my_m.status
+                if self.created_by == user_id:
+                    pending_count = sum(1 for m in _memberships if m.status == "pending")
+        else:
+            approved_count = ClubMembership.query.filter_by(club_id=self.id, status="approved").count()
+            creator_in_memberships = ClubMembership.query.filter_by(
+                club_id=self.id, user_id=self.created_by, status="approved"
+            ).first() is not None
+            pending_count = 0
+            my_status = None
+            if user_id:
+                m = ClubMembership.query.filter_by(club_id=self.id, user_id=user_id).first()
+                if m:
+                    my_status = m.status
+                if self.created_by == user_id:
+                    pending_count = ClubMembership.query.filter_by(club_id=self.id, status="pending").count()
 
         is_approved_member = my_status == "approved" or self.created_by == user_id
         is_creator = self.created_by == user_id
@@ -115,12 +128,15 @@ class ClubMembership(db.Model):
     __tablename__ = "club_memberships"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"), nullable=False)
-    status = db.Column(db.String(20), default="pending")  # pending | approved | rejected
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"), nullable=False, index=True)
+    status = db.Column(db.String(20), default="pending", index=True)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    __table_args__ = (db.UniqueConstraint("user_id", "club_id"),)
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "club_id"),
+        db.Index("ix_club_memberships_club_status", "club_id", "status"),
+    )
 
     user = db.relationship("User", backref="club_memberships")
     club = db.relationship("Club", backref="memberships")

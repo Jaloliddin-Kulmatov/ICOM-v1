@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/utils";
+import { Bookmarks } from "@/lib/bookmarks";
 import type { Job } from "@/types";
 
 const typeConfig: Record<Job["type"], { label: string; variant: "default" | "success" | "cyan" | "warning" | "violet" }> = {
@@ -30,7 +31,7 @@ interface JobCardProps {
 }
 
 export default function JobCard({ job, featured = false }: JobCardProps) {
-  const [bookmarked, setBookmarked] = useState(job.isBookmarked ?? false);
+  const [bookmarked, setBookmarked] = useState(() => Bookmarks.jobs.has(job.id));
   const typeInfo = typeConfig[job.type];
 
   return (
@@ -70,7 +71,7 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
         </div>
 
         <button
-          onClick={() => setBookmarked((prev) => !prev)}
+          onClick={() => setBookmarked(Bookmarks.jobs.toggle(job))}
           className={`p-1.5 rounded-lg transition-all hover:bg-white/5 shrink-0 ${
             bookmarked ? "text-indigo-400" : "text-muted-foreground hover:text-foreground"
           }`}

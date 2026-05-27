@@ -505,10 +505,28 @@ function ClubCard({ club, onAction, onManage }: {
 
 // ── Main Page ─────────────────────────────────────────────────
 
+function ClubSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+      <div className="h-28 bg-muted/50" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 w-2/3 rounded bg-muted/60" />
+        <div className="h-3 w-full rounded bg-muted/40" />
+        <div className="h-3 w-4/5 rounded bg-muted/40" />
+      </div>
+      <div className="px-4 py-3 border-t border-border flex justify-between">
+        <div className="h-3 w-20 rounded bg-muted/40" />
+        <div className="h-6 w-14 rounded-xl bg-muted/40" />
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityPage() {
   const { user } = useAuth();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<{ clubs: number; communities: number } | null>(null);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeTab, setActiveTab] = useState<"club" | "community">("club");
@@ -518,6 +536,14 @@ export default function CommunityPage() {
   const [newsUnread, setNewsUnread] = useState(0);
   const [toast, setToast] = useState<{ msg: string; clubId?: number } | null>(null);
   const prevNewsRef = useRef(0);
+
+  // Fetch lightweight counts immediately so tab labels show before full list arrives
+  useEffect(() => {
+    fetch(`${API}/clubs/counts`)
+      .then(r => r.json())
+      .then(d => setCounts({ clubs: d.clubs ?? 0, communities: d.communities ?? 0 }))
+      .catch(() => {});
+  }, []);
 
   const fetchClubs = useCallback(async () => {
     const token = getToken();
@@ -657,16 +683,16 @@ export default function CommunityPage() {
       {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {manageClub && <ManageModal club={manageClub} onClose={() => setManageClub(null)} onUpdate={fetchClubs} />}
 
-      <main className="pt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          <div className="flex items-start justify-between mb-6 gap-4">
+      <main className="pt-16 pb-20 md:pb-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-start justify-between mb-5 gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Badge variant="violet" className="text-xs">JBNU</Badge>
                 <Badge variant="default" className="text-xs">International Students</Badge>
               </div>
-              <h1 className="text-3xl font-bold text-foreground mb-1">Community & Clubs</h1>
-              <p className="text-sm text-muted-foreground">Join clubs, connect with students, and build your network.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Community & Clubs</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Join clubs, connect with students, and build your network.</p>
             </div>
             {user ? (
               <button
@@ -716,7 +742,9 @@ export default function CommunityPage() {
                 {tab.label}
                 {tab.key !== "news" && (
                   <span className="ml-1.5 text-[10px] text-muted-foreground">
-                    ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
+                    ({loading && counts
+                      ? tab.key === "club" ? counts.clubs : counts.communities
+                      : clubs.filter(c => (c.club_type || "club") === tab.key).length})
                   </span>
                 )}
                 {/* News unread badge only */}
@@ -737,17 +765,31 @@ export default function CommunityPage() {
           )}
 
           {/* Clubs / Community tab */}
-          {activeTabMain !== "news" && <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
+          {activeTabMain !== "news" && <>
+            {/* Mobile: horizontal category scroll */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 mb-4 lg:hidden">
+              {categories.map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat)}
+                  className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-all border ${
+                    activeCategory === cat
+                      ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
+                      : "text-muted-foreground bg-white/5 border-white/10 hover:border-white/20"
+                  }`}>
+                  {cat === "all" ? "All" : cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar — desktop only */}
+            <div className="lg:col-span-1 hidden lg:block">
               <div className="sticky top-24 space-y-4">
-                {/* Categories */}
                 <div>
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Category</h2>
                   <div className="space-y-0.5">
                     {categories.map(cat => (
                       <button key={cat} onClick={() => setActiveCategory(cat)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all ${
                           activeCategory === cat ? "bg-indigo-500/10 text-indigo-400" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                         }`}>
                         <Globe size={13} />
@@ -756,8 +798,6 @@ export default function CommunityPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Info */}
                 <div className="p-4 rounded-2xl border border-white/8 bg-white/3 text-xs text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">How it works</p>
                   <p>Click <strong>Join</strong> on any club or community — you&apos;re in instantly.</p>
@@ -791,8 +831,8 @@ export default function CommunityPage() {
               )}
 
               {loading && (
-                <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
-                  <Loader2 size={16} className="animate-spin" /> Loading clubs...
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => <ClubSkeleton key={i} />)}
                 </div>
               )}
 
@@ -821,7 +861,8 @@ export default function CommunityPage() {
                 ))}
               </div>
             </div>
-          </div>}
+          </div>
+          </>}
 
         </div>
       </main>
