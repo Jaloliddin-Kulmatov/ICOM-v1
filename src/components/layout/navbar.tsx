@@ -75,7 +75,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
             <img
               src="/logo.svg"
               alt="ICOM logo"
-              className="w-8 h-8 rounded-xl shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow select-none"
+              className="w-8 h-8 rounded-full shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow select-none"
               draggable={false}
             />
             <div className="flex flex-col leading-none">

@@ -53,7 +53,7 @@ export default function Footer() {
               <img
                 src="/logo.svg"
                 alt="ICOM logo"
-                className="h-8 w-8 rounded-lg select-none"
+                className="h-8 w-8 rounded-full select-none"
                 draggable={false}
               />
               <span className="font-bold text-xl tracking-tight text-foreground">
