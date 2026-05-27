@@ -2,7 +2,7 @@
 
 
 
-# ICOM — International Community in Korea
+# ICOM — International Community in Korea, https://icom.ai.kr/
 
 > The all-in-one platform for international students living and studying in Korea.
 > Community, internships, visa guides, housing, banking, and an AI assistant — in one place.

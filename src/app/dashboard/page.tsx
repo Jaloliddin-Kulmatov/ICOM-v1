@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Sparkles, ArrowRight, Users,
   GraduationCap, Globe, Pencil, X, Loader2, ExternalLink,
@@ -46,10 +47,22 @@ const quickLinks = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const firstName = user?.name?.split(" ")[0] || "there";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  // Force users without a complete profile (e.g. fresh Google sign-ups) to
+  // finish onboarding before they can use the dashboard.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const complete =
+      !!(user.university || "").trim() &&
+      !!(user.country || "").trim() &&
+      !!(user.visa_type || "").trim();
+    if (!complete) router.replace("/onboarding");
+  }, [user, authLoading, router]);
 
   // ── My clubs state ─────────────────────────────────────────
   const [createdClubs, setCreatedClubs] = useState<MyClub[]>([]);

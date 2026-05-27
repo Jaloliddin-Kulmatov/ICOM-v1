@@ -64,8 +64,9 @@ export default function RegisterPage() {
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setError("");
-    const err = await loginWithGoogle(accessToken, "register");
-    if (err) {
+    const result = await loginWithGoogle(accessToken, "register");
+    if ("error" in result) {
+      const err = result.error;
       const alreadyExists =
         err.code === "ACCOUNT_EXISTS" ||
         err.status === 409 ||
@@ -79,7 +80,9 @@ export default function RegisterPage() {
       setError(err.message || "Google sign-up failed.");
       return;
     }
-    router.push("/dashboard");
+    // Brand-new Google account → onboarding to fill in university / visa / country.
+    // (Even if profile_complete were somehow true here, we still want them to confirm.)
+    router.push(result.ok.profileComplete ? "/dashboard" : "/onboarding");
   };
   const [form, setForm] = useState({
     name: "", email: "", password: "",

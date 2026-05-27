@@ -28,12 +28,20 @@ export interface AuthError {
   status?: number;
 }
 
+export interface GoogleAuthSuccess {
+  created: boolean;          // was a NEW account created in this call?
+  profileComplete: boolean;  // are university/visa/country all filled in?
+}
+
 interface AuthCtx {
   user: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
-  loginWithGoogle: (accessToken: string, mode?: GoogleMode) => Promise<AuthError | null>;
+  loginWithGoogle: (
+    accessToken: string,
+    mode?: GoogleMode
+  ) => Promise<{ ok: GoogleAuthSuccess } | { error: AuthError }>;
   logout: () => void;
   refreshUser: () => void;
   deleteAccount: (confirm: string) => Promise<string | null>;
@@ -53,7 +61,7 @@ const AuthContext = createContext<AuthCtx>({
   loading: true,
   login: async () => null,
   register: async () => null,
-  loginWithGoogle: async () => null,
+  loginWithGoogle: async () => ({ error: { message: "AuthContext not mounted" } }),
   logout: () => {},
   refreshUser: () => {},
   deleteAccount: async () => null,
@@ -97,18 +105,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
-  const loginWithGoogle = async (accessToken: string, mode?: GoogleMode): Promise<AuthError | null> => {
-    const result = await api.post<{ token: string; user: UserProfile }>(
-      "/auth/google",
-      { access_token: accessToken, mode }
-    );
+  const loginWithGoogle = async (
+    accessToken: string,
+    mode?: GoogleMode
+  ): Promise<{ ok: GoogleAuthSuccess } | { error: AuthError }> => {
+    const result = await api.post<{
+      token: string;
+      user: UserProfile;
+      created?: boolean;
+      profile_complete?: boolean;
+    }>("/auth/google", { access_token: accessToken, mode });
     if (result.error) {
-      return { message: result.error, code: result.code, status: result.status };
+      return { error: { message: result.error, code: result.code, status: result.status } };
     }
     localStorage.setItem("icon_token", result.data!.token);
     localStorage.setItem("icom_has_account", "1");
     setUser(result.data!.user);
-    return null;
+    return {
+      ok: {
+        created: !!result.data!.created,
+        // Default to false (force onboarding) if the backend hasn't been
+        // redeployed yet with the new fields.
+        profileComplete: !!result.data!.profile_complete,
+      },
+    };
   };
 
   const logout = () => {
@@ -117,7 +137,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteAccount = async (confirm: string): Promise<string | null> => {
-    const { error } = await api.delete<{ message: string }>("/auth/me", { confirm });
+    // Belt-and-braces: send confirm both as a body field AND a query param,
+    // since some proxies / HTTP clients strip the body on DELETE.
+    const path = `/auth/me?confirm=${encodeURIComponent(confirm)}`;
+    const { error } = await api.delete<{ message: string }>(path, { confirm });
     if (error) return error;
     localStorage.removeItem("icon_token");
     localStorage.removeItem("icom_has_account");

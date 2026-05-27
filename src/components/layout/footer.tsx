@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Twitter, Github, Instagram, Linkedin, Mail } from "lucide-react";
+import { Github, Linkedin, Mail, Send, Globe } from "lucide-react";
 
 const footerLinks = {
   Platform: [
@@ -33,12 +33,13 @@ const footerLinks = {
   ],
 };
 
+// Founder's social links. Replace the # values with your real URLs.
 const socialLinks = [
-  { icon: Twitter, href: "#", label: "Twitter" },
-  { icon: Instagram, href: "#", label: "Instagram" },
-  { icon: Linkedin, href: "#", label: "LinkedIn" },
-  { icon: Github, href: "#", label: "GitHub" },
-  { icon: Mail, href: "#", label: "Email" },
+  { icon: Send,     href: "https://t.me/jaloliddinkulmatov",                    label: "Telegram" },
+  { icon: Github,   href: "https://github.com/Jaloliddin-Kulmatov",             label: "GitHub" },
+  { icon: Linkedin, href: "https://www.linkedin.com/in/jaloliddin-kulmatov/",   label: "LinkedIn" },
+  { icon: Globe,    href: "https://jaloliddin-kulmatov.vercel.app",             label: "Portfolio" },
+  { icon: Mail,     href: "mailto:jaloliddinkulmatov@gmail.com",                label: "Email" },
 ];
 
 export default function Footer() {
@@ -67,16 +68,22 @@ export default function Footer() {
               Currently supporting students across 89 countries in 47+ Korean universities.
             </p>
             <div className="flex items-center gap-3 mt-5">
-              {socialLinks.map(({ icon: Icon, href, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 hover:border-white/20 transition-all duration-200"
-                >
-                  <Icon size={14} />
-                </a>
-              ))}
+              {socialLinks.map(({ icon: Icon, href, label }) => {
+                const isExternal = href.startsWith("http");
+                return (
+                  <a
+                    key={label}
+                    href={href}
+                    aria-label={label}
+                    title={label}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 hover:border-white/20 transition-all duration-200"
+                  >
+                    <Icon size={14} />
+                  </a>
+                );
+              })}
             </div>
           </div>
 
