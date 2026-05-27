@@ -48,10 +48,9 @@ export default function LoginPage() {
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setError("");
-    const err = await loginWithGoogle(accessToken, "login");
-    if (err) {
-      // Backend signals "this Google email has no ICOM account" with code
-      // NO_ACCOUNT (status 404). Bounce them to /register with a clear message.
+    const result = await loginWithGoogle(accessToken, "login");
+    if ("error" in result) {
+      const err = result.error;
       const isNoAccount =
         err.code === "NO_ACCOUNT" ||
         err.status === 404 ||
@@ -65,7 +64,10 @@ export default function LoginPage() {
       setError(err.message || "Google sign-in failed.");
       return;
     }
-    router.push("/dashboard");
+    // Returning users with a complete profile go straight to dashboard.
+    // If they signed up with Google previously but never finished the form,
+    // send them to /onboarding instead.
+    router.push(result.ok.profileComplete ? "/dashboard" : "/onboarding");
   };
 
   return (

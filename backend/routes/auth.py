@@ -139,6 +139,7 @@ def google_auth():
 
     # ── Branch on mode ────────────────────────────────────────────────────────
     user = User.query.filter_by(email=email).first()
+    created = False  # whether we created a new user in this call
 
     if mode == "login":
         # Strict sign-in: refuse to auto-create an account.
@@ -165,6 +166,7 @@ def google_auth():
         )
         db.session.add(user)
         db.session.commit()
+        created = True
 
     else:
         # Legacy / unspecified mode: keep find-or-create behaviour.
@@ -177,11 +179,21 @@ def google_auth():
             )
             db.session.add(user)
             db.session.commit()
+            created = True
 
     # Touch last_seen if the column exists (returning users).
     if hasattr(user, "last_seen"):
         user.last_seen = datetime.utcnow()
         db.session.commit()
+
+    # Tell the frontend whether the user's profile is still missing the
+    # required onboarding info (university / visa_type / country) so it
+    # can redirect to the onboarding page instead of straight to /dashboard.
+    profile_complete = bool(
+        (user.university or "").strip() and
+        (user.country or "").strip() and
+        (user.visa_type or "").strip()
+    )
 
     jwt_token = create_access_token(
         identity=str(user.id),
@@ -191,6 +203,8 @@ def google_auth():
         "message": f"Welcome, {user.name}!",
         "token": jwt_token,
         "user": user.to_dict(),
+        "created": created,
+        "profile_complete": profile_complete,
     }), 200
 
 
