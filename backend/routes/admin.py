@@ -162,6 +162,59 @@ def delete_club(club_id):
 
 # ── Jobs ─────────────────────────────────────────────────────────────────────
 
+SCRAPER_SECRET = os.environ.get("SCRAPER_SECRET", "")
+
+
+@admin_bp.route("/jobs/bulk-ingest", methods=["POST"])
+def bulk_ingest_jobs():
+    """Scraper-only endpoint. Protected by SCRAPER_SECRET header, not JWT."""
+    key = request.headers.get("X-Scraper-Key", "")
+    if not SCRAPER_SECRET or key != SCRAPER_SECRET:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    jobs_data = (request.get_json(silent=True) or {}).get("jobs", [])
+    if not jobs_data:
+        return jsonify({"inserted": 0, "skipped": 0}), 200
+
+    # Fetch all existing apply_links in one query for deduplication
+    existing_links = {
+        row[0] for row in db.session.query(Job.apply_link).filter(Job.apply_link.isnot(None)).all()
+    }
+
+    inserted = 0
+    skipped = 0
+    for d in jobs_data:
+        link = (d.get("apply_link") or "").strip()
+        if not link or link in existing_links:
+            skipped += 1
+            continue
+        title   = (d.get("title")   or "").strip()
+        company = (d.get("company") or "").strip()
+        if not title or not company:
+            skipped += 1
+            continue
+        job = Job(
+            title=title,
+            company=company,
+            location=(d.get("location") or "").strip(),
+            job_type=(d.get("type") or "internship").strip(),
+            salary=(d.get("salary") or "").strip(),
+            description=(d.get("description") or "").strip(),
+            requirements=(d.get("requirements") or "").strip(),
+            visa_compatible=(d.get("visa_compatible") or "D-2, D-4").strip(),
+            deadline=(d.get("deadline") or "").strip(),
+            tags=(d.get("tags") or "").strip(),
+            apply_link=link,
+        )
+        db.session.add(job)
+        existing_links.add(link)
+        inserted += 1
+
+    db.session.commit()
+    print(f"[scraper] inserted={inserted} skipped={skipped}")
+    return jsonify({"inserted": inserted, "skipped": skipped}), 200
+
+
 @admin_bp.route("/jobs", methods=["GET"])
 def list_jobs():
     jobs = Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
