@@ -505,10 +505,28 @@ function ClubCard({ club, onAction, onManage }: {
 
 // ── Main Page ─────────────────────────────────────────────────
 
+function ClubSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+      <div className="h-28 bg-muted/50" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 w-2/3 rounded bg-muted/60" />
+        <div className="h-3 w-full rounded bg-muted/40" />
+        <div className="h-3 w-4/5 rounded bg-muted/40" />
+      </div>
+      <div className="px-4 py-3 border-t border-border flex justify-between">
+        <div className="h-3 w-20 rounded bg-muted/40" />
+        <div className="h-6 w-14 rounded-xl bg-muted/40" />
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityPage() {
   const { user } = useAuth();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<{ clubs: number; communities: number } | null>(null);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeTab, setActiveTab] = useState<"club" | "community">("club");
@@ -518,6 +536,14 @@ export default function CommunityPage() {
   const [newsUnread, setNewsUnread] = useState(0);
   const [toast, setToast] = useState<{ msg: string; clubId?: number } | null>(null);
   const prevNewsRef = useRef(0);
+
+  // Fetch lightweight counts immediately so tab labels show before full list arrives
+  useEffect(() => {
+    fetch(`${API}/clubs/counts`)
+      .then(r => r.json())
+      .then(d => setCounts({ clubs: d.clubs ?? 0, communities: d.communities ?? 0 }))
+      .catch(() => {});
+  }, []);
 
   const fetchClubs = useCallback(async () => {
     const token = getToken();
@@ -716,7 +742,9 @@ export default function CommunityPage() {
                 {tab.label}
                 {tab.key !== "news" && (
                   <span className="ml-1.5 text-[10px] text-muted-foreground">
-                    ({clubs.filter(c => (c.club_type || "club") === tab.key).length})
+                    ({loading && counts
+                      ? tab.key === "club" ? counts.clubs : counts.communities
+                      : clubs.filter(c => (c.club_type || "club") === tab.key).length})
                   </span>
                 )}
                 {/* News unread badge only */}
@@ -791,8 +819,8 @@ export default function CommunityPage() {
               )}
 
               {loading && (
-                <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
-                  <Loader2 size={16} className="animate-spin" /> Loading clubs...
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => <ClubSkeleton key={i} />)}
                 </div>
               )}
 

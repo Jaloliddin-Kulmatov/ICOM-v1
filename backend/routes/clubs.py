@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 
@@ -60,6 +62,23 @@ def _current_user_id():
         return None
 
 
+# ── Fast counts (no auth needed) ─────────────────────────────
+
+@clubs_bp.route("/counts", methods=["GET"])
+def club_counts():
+    from sqlalchemy import func
+    rows = (
+        db.session.query(Club.club_type, func.count(Club.id))
+        .filter_by(is_active=True)
+        .group_by(Club.club_type)
+        .all()
+    )
+    result = {"clubs": 0, "communities": 0}
+    for ctype, cnt in rows:
+        result["communities" if ctype == "community" else "clubs"] += cnt
+    return jsonify(result), 200
+
+
 # ── List clubs ────────────────────────────────────────────────
 # Rules:
 #   club_type == "community"  → visible to every authenticated user
@@ -87,11 +106,28 @@ def list_clubs():
     for c in all_clubs:
         ctype = (c.club_type or "club").lower()
         if ctype == "community":
-            visible.append(c)                             # communities: everyone
+            visible.append(c)
         elif user_uni and _uni_matches(user_uni, c.university or ""):
-            visible.append(c)                             # clubs: same university
+            visible.append(c)
 
-    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in visible]}), 200
+    if not visible:
+        return jsonify({"clubs": []}), 200
+
+    # Fetch all memberships for visible clubs in a single query (avoids N+1)
+    visible_ids = [c.id for c in visible]
+    all_memberships = ClubMembership.query.filter(
+        ClubMembership.club_id.in_(visible_ids)
+    ).all()
+    memberships_by_club: dict = defaultdict(list)
+    for m in all_memberships:
+        memberships_by_club[m.club_id].append(m)
+
+    return jsonify({
+        "clubs": [
+            c.to_dict(user_id=user_id, _memberships=memberships_by_club[c.id])
+            for c in visible
+        ]
+    }), 200
 
 
 # ── Create a club (any authenticated user) ───────────────────
