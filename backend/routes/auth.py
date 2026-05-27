@@ -21,23 +21,23 @@ def _email_valid(email: str) -> bool:
 
 
 def _verify_email_deliverable(email: str) -> tuple[bool, str]:
-    """Check email deliverability via Abstract API.
+    """Check email deliverability via Abstract API Email Reputation.
     Returns (is_valid, error_message). If API key not set, skips check."""
     if not ABSTRACT_API_KEY:
         return True, ""
     try:
         resp = http_requests.get(
-            "https://emailvalidation.abstractapi.com/v1/",
+            "https://emailreputation.abstractapi.com/v1/",
             params={"api_key": ABSTRACT_API_KEY, "email": email},
             timeout=5,
         )
         if resp.status_code != 200:
             return True, ""  # fail open — don't block on API errors
         data = resp.json()
-        if data.get("is_disposable_email", {}).get("value"):
+        details = data.get("details", {})
+        if details.get("disposable"):
             return False, "Disposable email addresses are not allowed. Please use a real email."
-        deliverability = data.get("deliverability", "")
-        if deliverability == "UNDELIVERABLE":
+        if details.get("deliverable") is False:
             return False, "This email address doesn't appear to exist. Please use a real email."
         return True, ""
     except Exception:
