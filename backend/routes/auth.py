@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
+import os
 import re
 import requests as http_requests
 
@@ -12,9 +13,52 @@ from models import (
 
 auth_bp = Blueprint("auth", __name__)
 
+ABSTRACT_API_KEY = os.environ.get("ABSTRACT_EMAIL_API_KEY", "")
+
 
 def _email_valid(email: str) -> bool:
     return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email))
+
+
+def _verify_email_deliverable(email: str) -> tuple[bool, str]:
+    """Check email deliverability via Abstract API Email Reputation.
+    Returns (is_valid, error_message). If API key not set, skips check."""
+    if not ABSTRACT_API_KEY:
+        return True, ""
+    try:
+        resp = http_requests.get(
+            "https://emailreputation.abstractapi.com/v1/",
+            params={"api_key": ABSTRACT_API_KEY, "email": email},
+            timeout=5,
+        )
+        if resp.status_code != 200:
+            return True, ""  # fail open — don't block on API errors
+        data = resp.json()
+        details = data.get("details", {})
+        if details.get("disposable"):
+            return False, "Disposable email addresses are not allowed. Please use a real email."
+        if details.get("deliverable") is False:
+            return False, "This email address doesn't appear to exist. Please use a real email."
+        return True, ""
+    except Exception:
+        return True, ""  # fail open on network errors
+
+
+@auth_bp.route("/check-email", methods=["GET"])
+def check_email():
+    email = (request.args.get("email") or "").strip().lower()
+    if not email or not _email_valid(email):
+        return jsonify({"exists": False, "valid": False, "message": "Invalid email format."}), 200
+
+    exists = User.query.filter_by(email=email).first() is not None
+    if exists:
+        return jsonify({"exists": True, "valid": False, "message": "An account with this email already exists."}), 200
+
+    is_valid, error_msg = _verify_email_deliverable(email)
+    if not is_valid:
+        return jsonify({"exists": False, "valid": False, "message": error_msg}), 200
+
+    return jsonify({"exists": False, "valid": True, "message": ""}), 200
 
 
 @auth_bp.route("/register", methods=["POST"])
