@@ -54,6 +54,9 @@ export interface Job {
   isNew?: boolean;
   isHot?: boolean;
   applyLink?: string;
+  // AI-detected on Wanted scrapes. Empty string on admin-entered jobs.
+  foreignerFriendly?: "yes" | "no" | "unclear" | "";
+  foreignerNote?: string;
 }
 
 export interface University {

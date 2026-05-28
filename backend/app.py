@@ -150,6 +150,22 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] clubs.website failed (probably already done): {e}")
 
+    # foreigner_friendly + foreigner_note on jobs (AI-detected from Korean
+    # job posts during scraping)
+    for col_name, col_def in [
+        ("foreigner_friendly", "VARCHAR(20) DEFAULT ''"),
+        ("foreigner_note",     "VARCHAR(300) DEFAULT ''"),
+    ]:
+        try:
+            if "jobs" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("jobs")]
+                if col_name not in cols:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_def}"))
+                    print(f"[migration] Added jobs.{col_name}")
+        except Exception as e:
+            print(f"[migration] jobs.{col_name} failed (probably already done): {e}")
+
     # cover_image on clubs (optional user-set cover photo URL)
     try:
         if "clubs" in insp.get_table_names():

@@ -18,6 +18,7 @@ Environment variables (all optional):
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import traceback
@@ -126,6 +127,87 @@ def _join_sections(*sections: str) -> str:
     """Join non-empty multi-line sections with a blank line between them."""
     parts = [s.strip() for s in sections if s and s.strip()]
     return "\n\n".join(parts)
+
+
+# Translation + foreigner-friendly detection -----------------------------------
+
+_TRANSLATION_PROMPT = """You translate Korean job postings from Wanted.co.kr to clean English for an audience of international students in Korea, and determine whether foreign applicants are welcome.
+
+Rules:
+- Translate naturally (don't be overly literal). Keep company names, brand names, and addresses in their original script when more readable.
+- Keep formatting: line breaks between sections, bullet points if present.
+- For the foreigner_friendly field, decide one of:
+    "yes"      → the posting explicitly welcomes foreigners, says English-OK, no Korean fluency required, or English is the working language.
+    "no"       → it requires Korean fluency/native level, requires Korean military service completion, or otherwise excludes foreigners.
+    "unclear"  → no language requirement mentioned. Default for typical Korean-language postings.
+- foreigner_note: ONE short English sentence explaining the decision (max 120 chars).
+
+Return STRICT JSON only — no markdown, no commentary. Schema:
+{
+  "title": "<English title>",
+  "description": "<English description>",
+  "requirements": "<English requirements>",
+  "foreigner_friendly": "yes" | "no" | "unclear",
+  "foreigner_note": "<short reason>"
+}
+"""
+
+
+def _translate_with_groq(parsed: dict) -> dict:
+    """Translate Korean job fields to English via Groq + classify
+    foreigner-friendliness. Returns a copy of `parsed` with title/description/
+    requirements replaced (when translation succeeds) and two new keys:
+    foreigner_friendly + foreigner_note. On any failure, returns the input
+    untouched with empty foreigner fields so the row still inserts."""
+    out = dict(parsed)
+    out.setdefault("foreigner_friendly", "")
+    out.setdefault("foreigner_note", "")
+
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not api_key:
+        return out  # no Groq configured → store Korean as-is
+
+    payload_in = {
+        "title": parsed.get("title", "")[:200],
+        "company": parsed.get("company", "")[:150],
+        "description": parsed.get("description", "")[:4000],
+        "requirements": parsed.get("requirements", "")[:3000],
+    }
+
+    try:
+        from groq import Groq  # imported lazily so missing dep doesn't kill the run
+        client = Groq(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=os.environ.get("WANTED_TRANSLATE_MODEL", "llama-3.3-70b-versatile"),
+            messages=[
+                {"role": "system", "content": _TRANSLATION_PROMPT},
+                {"role": "user", "content": json.dumps(payload_in, ensure_ascii=False)},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+            max_tokens=2000,
+        )
+        raw = resp.choices[0].message.content or "{}"
+        data = json.loads(raw)
+    except Exception as e:
+        print(f"[wanted] translation failed for '{payload_in['title'][:60]}': {e}")
+        return out
+
+    title = _clean_text(data.get("title"))
+    description = _clean_text(data.get("description"))
+    requirements = _clean_text(data.get("requirements"))
+    foreigner_friendly = _clean_text(data.get("foreigner_friendly")).lower()
+    foreigner_note = _clean_text(data.get("foreigner_note"))
+
+    if foreigner_friendly not in {"yes", "no", "unclear"}:
+        foreigner_friendly = "unclear"
+
+    if title:        out["title"]        = title[:200]
+    if description:  out["description"]  = description
+    if requirements: out["requirements"] = requirements
+    out["foreigner_friendly"] = foreigner_friendly
+    out["foreigner_note"]     = foreigner_note[:300]
+    return out
 
 
 def _parse_job(detail: dict) -> Optional[dict]:
@@ -283,6 +365,11 @@ def run_scraper(app) -> dict:
                 summary["skipped_existing"] += 1
                 continue
 
+            # Translate Korean → English + classify foreigner-friendly.
+            # If GROQ_API_KEY is missing or the call fails, parsed stays
+            # in Korean and foreigner_friendly comes back empty.
+            parsed = _translate_with_groq(parsed)
+
             # Is there an inactive row for this apply_link? If so, reactivate
             # it with fresh data instead of inserting a duplicate.
             try:
@@ -290,17 +377,19 @@ def run_scraper(app) -> dict:
                     Job.query.filter_by(apply_link=parsed["apply_link"]).first()
                 )
                 if existing:
-                    existing.title           = parsed["title"]
-                    existing.company         = parsed["company"]
-                    existing.location        = parsed["location"]
-                    existing.job_type        = parsed["job_type"]
-                    existing.salary          = parsed["salary"]
-                    existing.description     = parsed["description"]
-                    existing.requirements    = parsed["requirements"]
-                    existing.visa_compatible = parsed["visa_compatible"]
-                    existing.deadline        = parsed["deadline"]
-                    existing.tags            = parsed["tags"]
-                    existing.is_active       = True
+                    existing.title              = parsed["title"]
+                    existing.company            = parsed["company"]
+                    existing.location           = parsed["location"]
+                    existing.job_type           = parsed["job_type"]
+                    existing.salary             = parsed["salary"]
+                    existing.description        = parsed["description"]
+                    existing.requirements       = parsed["requirements"]
+                    existing.visa_compatible    = parsed["visa_compatible"]
+                    existing.deadline           = parsed["deadline"]
+                    existing.tags               = parsed["tags"]
+                    existing.foreigner_friendly = parsed.get("foreigner_friendly", "")
+                    existing.foreigner_note     = parsed.get("foreigner_note", "")
+                    existing.is_active          = True
                     db.session.commit()
                     active_links.add(parsed["apply_link"])
                     reactivated_links.append(parsed["apply_link"])
@@ -320,6 +409,8 @@ def run_scraper(app) -> dict:
                     deadline=parsed["deadline"],
                     tags=parsed["tags"],
                     apply_link=parsed["apply_link"],
+                    foreigner_friendly=parsed.get("foreigner_friendly", ""),
+                    foreigner_note=parsed.get("foreigner_note", ""),
                     is_active=True,
                 )
                 db.session.add(job)

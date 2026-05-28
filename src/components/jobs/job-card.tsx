@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   MapPin,
   Clock,
@@ -10,12 +11,17 @@ import {
   Zap,
   CheckCircle2,
   Users,
+  Globe,
+  ShieldAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import type { Job } from "@/types";
+
+// Strip the "db-" prefix from the list page so we can route to /jobs/<numeric id>
+const detailHref = (id: string) => `/jobs/${id.replace(/^db-/, "")}`;
 
 const typeConfig: Record<Job["type"], { label: string; variant: "default" | "success" | "cyan" | "warning" | "violet" }> = {
   "part-time": { label: "Part-time", variant: "default" },
@@ -35,8 +41,9 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
   const typeInfo = typeConfig[job.type];
 
   return (
-    <div
-      className={`group relative rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card ${
+    <Link
+      href={detailHref(job.id)}
+      className={`group relative rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card block cursor-pointer ${
         featured
           ? "border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 to-violet-950/20"
           : "border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5"
@@ -71,10 +78,16 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
         </div>
 
         <button
-          onClick={() => setBookmarked(Bookmarks.jobs.toggle(job))}
+          onClick={(e) => {
+            // Don't navigate to the detail page when the user just wants to bookmark.
+            e.preventDefault();
+            e.stopPropagation();
+            setBookmarked(Bookmarks.jobs.toggle(job));
+          }}
           className={`p-1.5 rounded-lg transition-all hover:bg-white/5 shrink-0 ${
             bookmarked ? "text-indigo-400" : "text-muted-foreground hover:text-foreground"
           }`}
+          aria-label={bookmarked ? "Remove bookmark" : "Save for later"}
         >
           <Bookmark size={15} className={bookmarked ? "fill-indigo-400" : ""} />
         </button>
@@ -107,6 +120,21 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
         <Badge variant={typeInfo.variant} className="text-[11px]">
           {typeInfo.label}
         </Badge>
+
+        {/* AI-detected foreigner-friendly indicator (only shown when the
+            scraper actually classified the posting). Skipped on admin-entered
+            jobs whose foreignerFriendly stays empty. */}
+        {job.foreignerFriendly === "yes" && (
+          <Badge variant="success" className="gap-1 text-[11px]" title={job.foreignerNote || "Foreign applicants welcome"}>
+            <Globe size={9} /> Foreigners welcome
+          </Badge>
+        )}
+        {job.foreignerFriendly === "no" && (
+          <Badge variant="warning" className="gap-1 text-[11px]" title={job.foreignerNote || "Korean fluency or local citizenship required"}>
+            <ShieldAlert size={9} /> Korean-only
+          </Badge>
+        )}
+
         {job.visaCompatible.map((visa) => (
           <Badge key={visa} variant="success" className="gap-1 text-[11px]">
             <CheckCircle2 size={9} />
@@ -139,6 +167,9 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="ml-auto"
+            // Don't bubble into the wrapping <Link> — Apply should go to the
+            // employer site in a new tab, not to our detail page.
+            onClick={(e) => e.stopPropagation()}
           >
             <Button size="sm" variant={featured ? "default" : "outline"} className="gap-1">
               Apply ↗
@@ -151,6 +182,6 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
           </Button>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

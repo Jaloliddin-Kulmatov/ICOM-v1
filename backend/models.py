@@ -277,6 +277,11 @@ class Job(db.Model):
     deadline = db.Column(db.String(50))
     tags = db.Column(db.String(300))
     apply_link = db.Column(db.String(500))   # real application URL
+    # AI-detected hospitality toward foreign applicants. Set by the scraper
+    # after translating Korean job posts via Groq.
+    # Values: "yes" | "no" | "unclear" | "" (legacy/admin-entered)
+    foreigner_friendly = db.Column(db.String(20), default="")
+    foreigner_note = db.Column(db.String(300), default="")
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -295,6 +300,8 @@ class Job(db.Model):
             "deadline": self.deadline,
             "tags": [t.strip() for t in (self.tags or "").split(",") if t.strip()],
             "apply_link": self.apply_link or "",
+            "foreigner_friendly": self.foreigner_friendly or "",
+            "foreigner_note": self.foreigner_note or "",
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() + "Z",
             "isNew": (datetime.utcnow() - self.created_at).days < 3,

@@ -38,6 +38,8 @@ interface JobDetail {
   deadline?: string;
   tags: string[];
   apply_link?: string;
+  foreigner_friendly?: "yes" | "no" | "unclear" | "";
+  foreigner_note?: string;
   isNew?: boolean;
   created_at: string;
 }
@@ -78,6 +80,8 @@ export default function JobDetailPage() {
     tags: j.tags,
     isNew: j.isNew,
     applyLink: j.apply_link,
+    foreignerFriendly: j.foreigner_friendly,
+    foreignerNote: j.foreigner_note,
   });
 
   const toggleBookmark = () => {
@@ -202,6 +206,44 @@ export default function JobDetailPage() {
                 <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-emerald-500" /> Requirements
                 </h2>
+
+                {/* AI-detected foreigner-friendly banner — sits above the
+                    requirements list so applicants can see at a glance whether
+                    they're a fit before reading the Korean-original criteria. */}
+                {job.foreigner_friendly === "yes" && (
+                  <div className="mb-3 flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                    <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-emerald-500">Foreign applicants welcome</p>
+                      {job.foreigner_note && (
+                        <p className="text-muted-foreground mt-0.5">{job.foreigner_note}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {job.foreigner_friendly === "no" && (
+                  <div className="mb-3 flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                    <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-amber-500">Korean fluency or citizenship required</p>
+                      {job.foreigner_note && (
+                        <p className="text-muted-foreground mt-0.5">{job.foreigner_note}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {job.foreigner_friendly === "unclear" && (
+                  <div className="mb-3 flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-muted/50 border border-border">
+                    <AlertCircle size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-foreground">Eligibility for foreigners not specified</p>
+                      <p className="text-muted-foreground mt-0.5">
+                        Contact the employer to confirm before applying.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <ul className="space-y-2">
                   {job.requirements.map((req, i) => (
                     <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
