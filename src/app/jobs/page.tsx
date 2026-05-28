@@ -77,12 +77,16 @@ export default function JobsPage() {
             id: string; title: string; company: string; location: string; type: string;
             salary: string; description: string; requirements: string[]; visa_compatible: string[];
             deadline: string; tags: string[]; isNew: boolean; apply_link: string;
+            created_at?: string;
             foreigner_friendly?: string; foreigner_note?: string;
           }) => ({
             id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
             type: "internship" as Job["type"], salary: j.salary || "", description: j.description || "",
             requirements: j.requirements, visaCompatible: j.visa_compatible,
-            postedAt: new Date().toISOString(), deadline: j.deadline, applications: 0,
+            // Use the real creation timestamp from the DB so "Posted X ago"
+            // shows the actual age instead of "just now" every render.
+            postedAt: j.created_at || new Date().toISOString(),
+            deadline: j.deadline, applications: 0,
             tags: j.tags, isNew: j.isNew, isHot: false, isBookmarked: false,
             applyLink: j.apply_link || "",
             foreignerFriendly: (j.foreigner_friendly || "") as Job["foreignerFriendly"],

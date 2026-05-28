@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, Clock, DollarSign, CheckCircle2,
   Briefcase, Tag, Calendar, Loader2, AlertCircle, Building2, ExternalLink,
-  Bookmark, BookmarkCheck,
+  Bookmark, BookmarkCheck, Globe,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,18 @@ export default function JobDetailPage() {
                   <span className="flex items-center gap-1"><MapPin size={11} />{job.location}</span>
                   {job.salary && <span className="flex items-center gap-1"><DollarSign size={11} />{job.salary}</span>}
                   <span className="flex items-center gap-1"><Clock size={11} />{formatRelativeTime(job.created_at)}</span>
-                  {job.deadline && <span className="flex items-center gap-1 text-amber-500"><Calendar size={11} />Apply by {job.deadline}</span>}
+                  {job.deadline && (
+                    <span className="flex items-center gap-1 text-amber-500">
+                      <Calendar size={11} />
+                      {(() => {
+                        const m = job.deadline.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        if (!m) return `Apply by ${job.deadline}`;
+                        const d = new Date(`${m[0]}T00:00:00Z`);
+                        if (isNaN(d.getTime())) return `Apply by ${job.deadline}`;
+                        return `Expires ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                      })()}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -305,18 +316,62 @@ export default function JobDetailPage() {
               <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <Building2 size={12} className="text-muted-foreground" /> Job Details
               </h3>
-              {[
-                { label: "Type",      value: typeInfo.label },
-                { label: "Location",  value: job.location },
-                { label: "Salary",    value: job.salary || "Not specified" },
-                { label: "Deadline",  value: job.deadline || "Open" },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{row.label}</span>
-                  <span className="text-foreground font-medium text-right max-w-[60%]">{row.value}</span>
-                </div>
-              ))}
+              {(() => {
+                // Format an ISO date like "2026-08-15" into "Aug 15, 2026".
+                const fmtDeadline = (raw?: string) => {
+                  if (!raw) return "Rolling — apply anytime";
+                  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                  if (!m) return raw;
+                  const d = new Date(`${m[0]}T00:00:00Z`);
+                  if (isNaN(d.getTime())) return raw;
+                  return d.toLocaleDateString("en-US", {
+                    year: "numeric", month: "short", day: "numeric",
+                  });
+                };
+                const rows = [
+                  { label: "Type",      value: typeInfo.label },
+                  { label: "Location",  value: job.location },
+                  { label: "Salary",    value: job.salary || "Not specified" },
+                  { label: "Deadline",  value: fmtDeadline(job.deadline) },
+                ];
+                return rows.map(row => (
+                  <div key={row.label} className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="text-foreground font-medium text-right max-w-[60%]">{row.value}</span>
+                  </div>
+                ));
+              })()}
             </div>
+
+            {/* Foreigner-friendly status — explicit when we know, "Not clear"
+                when AI couldn't determine. "No" rows are filtered out by the
+                scraper, so this card never shows "Not welcome". */}
+            {(job.foreigner_friendly || "") && (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                  <Globe size={12} className="text-indigo-400" /> Foreign Applicants
+                </h3>
+                <div className={`flex items-start gap-2 text-xs ${
+                  job.foreigner_friendly === "yes" ? "text-emerald-500" :
+                  job.foreigner_friendly === "no"  ? "text-red-500" :
+                  "text-amber-500"
+                }`}>
+                  {job.foreigner_friendly === "yes" ? <CheckCircle2 size={12} className="shrink-0 mt-0.5" /> :
+                   job.foreigner_friendly === "no"  ? <AlertCircle size={12} className="shrink-0 mt-0.5" /> :
+                   <AlertCircle size={12} className="shrink-0 mt-0.5" />}
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {job.foreigner_friendly === "yes" ? "Foreigners welcome"
+                       : job.foreigner_friendly === "no" ? "Korean-only role"
+                       : "Not clear — contact employer"}
+                    </p>
+                    {job.foreigner_note && (
+                      <p className="text-muted-foreground mt-1 leading-relaxed">{job.foreigner_note}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
               <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">

@@ -93,7 +93,6 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [translating, setTranslating] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -234,28 +233,6 @@ export default function AdminPage() {
     };
 
     setTimeout(poll, 3000);  // first poll after 3s — give the scraper a head start
-  };
-
-  // Backfill translator: walks every active job that still looks Korean and
-  // sends it through Groq for English translation + foreigner-friendly flag.
-  // Sync response so we know exactly how many got translated.
-  const handleTranslatePending = async () => {
-    if (translating) return;
-    setTranslating(true);
-    try {
-      const res = await apiCall("POST", "/admin/jobs/translate-pending");
-      const s = res?.summary;
-      if (s) {
-        flash(`Translated ${s.translated} of ${s.scanned} job(s). Skipped ${s.skipped}, errors ${s.errors}.`);
-      } else {
-        flash(res?.message || "Translation finished.");
-      }
-      loadData();
-    } catch (err: unknown) {
-      flash(err instanceof Error ? err.message : "Translation failed", true);
-    } finally {
-      setTranslating(false);
-    }
   };
 
   const deleteClub = async (id: number) => {
@@ -476,34 +453,18 @@ export default function AdminPage() {
                     Runs automatically twice a day; tap below to trigger it manually.
                   </p>
                 </div>
-                <div className="flex gap-2 shrink-0 flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={handleScrapeNow}
-                    disabled={scraping || translating}
-                    className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
-                  >
-                    {scraping ? (
-                      <><Loader2 size={14} className="animate-spin" /> Scraping…</>
-                    ) : (
-                      <><Download size={14} /> Scrape now</>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleTranslatePending}
-                    disabled={scraping || translating}
-                    variant="outline"
-                    title="Re-runs the AI translator on existing Korean job rows. Use this once after setting GROQ_API_KEY."
-                    className="gap-2"
-                  >
-                    {translating ? (
-                      <><Loader2 size={14} className="animate-spin" /> Translating…</>
-                    ) : (
-                      <>🌐 Translate pending</>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  onClick={handleScrapeNow}
+                  disabled={scraping}
+                  className="gap-2 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white"
+                >
+                  {scraping ? (
+                    <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                  ) : (
+                    <><Download size={14} /> Scrape now</>
+                  )}
+                </Button>
               </div>
 
               {/* ── Live status panel ─────────────────────────────── */}

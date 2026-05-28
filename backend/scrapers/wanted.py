@@ -134,7 +134,12 @@ def _join_sections(*sections: str) -> str:
 _TRANSLATION_PROMPT = """You translate Korean job postings from Wanted.co.kr to clean English for an audience of international students in Korea, and determine whether foreign applicants are welcome.
 
 Rules:
-- Translate naturally (don't be overly literal). Keep company names, brand names, and addresses in their original script when more readable.
+- Translate EVERY field, including company names and location. For well-known
+  Korean brands keep the established English name (Samsung, Kakao, Naver,
+  LG, Coupang, etc.). For lesser-known company names, transliterate
+  phonetically (e.g. "넥스트그라운드" → "Nextground", "비자르큐브" → "Visarcube").
+- Translate cities and addresses to English: 서울 → Seoul, 전주 → Jeonju,
+  부산 → Busan, 강남구 → Gangnam-gu, etc.
 - Keep formatting: line breaks between sections, bullet points if present.
 - For the foreigner_friendly field, decide one of:
     "yes"      → the posting explicitly welcomes foreigners, says English-OK, no Korean fluency required, or English is the working language.
@@ -145,6 +150,8 @@ Rules:
 Return STRICT JSON only — no markdown, no commentary. Schema:
 {
   "title": "<English title>",
+  "company": "<English company>",
+  "location": "<English location>",
   "description": "<English description>",
   "requirements": "<English requirements>",
   "foreigner_friendly": "yes" | "no" | "unclear",
@@ -254,6 +261,7 @@ def _translate_with_groq(parsed: dict) -> dict:
         payload_in = {
             "title": parsed.get("title", "")[:200],
             "company": parsed.get("company", "")[:150],
+            "location": parsed.get("location", "")[:150],
             "description": parsed.get("description", "")[:4000],
             "requirements": parsed.get("requirements", "")[:3000],
         }
@@ -274,6 +282,8 @@ def _translate_with_groq(parsed: dict) -> dict:
             data = json.loads(raw)
 
             title = _clean_text(data.get("title"))
+            company = _clean_text(data.get("company"))
+            location = _clean_text(data.get("location"))
             description = _clean_text(data.get("description"))
             requirements = _clean_text(data.get("requirements"))
             foreigner_friendly = _clean_text(data.get("foreigner_friendly")).lower()
@@ -282,6 +292,8 @@ def _translate_with_groq(parsed: dict) -> dict:
                 foreigner_friendly = "unclear"
 
             if title:        out["title"]        = title[:200]
+            if company:      out["company"]      = company[:150]
+            if location:     out["location"]     = location[:150]
             if description:  out["description"]  = description
             if requirements: out["requirements"] = requirements
             out["foreigner_friendly"] = foreigner_friendly
@@ -293,12 +305,14 @@ def _translate_with_groq(parsed: dict) -> dict:
 
     # ── Path B — Google Translate fallback ────────────────────────────────
     # Detect foreigner-friendly from the ORIGINAL Korean first (more signal
-    # than the translation), then translate the three text fields.
+    # than the translation), then translate every visible text field.
     original_req = parsed.get("requirements", "")
     original_desc = parsed.get("description", "")
     friendly, note = _detect_foreigner_friendly(original_req + "\n" + original_desc)
 
     out["title"]        = _google_translate(parsed.get("title", ""))[:200] or parsed.get("title", "")
+    out["company"]      = _google_translate(parsed.get("company", ""))[:150] or parsed.get("company", "")
+    out["location"]     = _google_translate(parsed.get("location", ""))[:150] or parsed.get("location", "")
     out["description"]  = _google_translate(parsed.get("description", "")) or parsed.get("description", "")
     out["requirements"] = _google_translate(parsed.get("requirements", "")) or parsed.get("requirements", "")
     out["foreigner_friendly"] = friendly
@@ -360,14 +374,39 @@ def _parse_job(detail: dict) -> Optional[dict]:
                 tag_keywords.append(keyword)
     tags = ", ".join(tag_keywords)
 
-    # Deadline: take only the date prefix in case Wanted returns ISO datetime
-    raw_deadline = _clean_text(detail.get("deadline"))
+    # Deadline: Wanted returns it under several different keys depending on
+    # the posting type. Try every candidate; take only the date prefix.
+    raw_deadline = ""
+    for k in ("deadline", "due_time", "application_deadline", "expires_at"):
+        v = detail.get(k)
+        if v:
+            raw_deadline = _clean_text(v)
+            break
     deadline = raw_deadline[:10] if raw_deadline else ""
+    # When Wanted has no deadline, default to 60 days from now so the row
+    # gets cleaned up automatically once it's stale.
+    if not deadline:
+        from datetime import datetime, timedelta
+        deadline = (datetime.utcnow() + timedelta(days=60)).strftime("%Y-%m-%d")
 
+    # Salary: try the structured "salary" object first, fall back to a few
+    # numeric range fields (annual_from/annual_to are in 10,000s of KRW).
+    salary = ""
     salary_obj = detail.get("salary") or {}
-    salary = _clean_text(
-        salary_obj.get("text") if isinstance(salary_obj, dict) else salary_obj
-    )
+    if isinstance(salary_obj, dict):
+        salary = _clean_text(salary_obj.get("text"))
+    elif salary_obj:
+        salary = _clean_text(salary_obj)
+    if not salary:
+        a_from = detail.get("annual_from")
+        a_to = detail.get("annual_to")
+        if a_from and a_to and (a_from or a_to):
+            try:
+                a_from_i, a_to_i = int(a_from), int(a_to)
+                if a_from_i > 0 and a_to_i > 0:
+                    salary = f"{a_from_i:,}–{a_to_i:,} ₩10,000/yr"
+            except (TypeError, ValueError):
+                pass
 
     apply_link = PUBLIC_URL.format(id=job_id)
 
@@ -399,6 +438,7 @@ def run_scraper(app) -> dict:
 
     summary = {
         "fetched": 0, "skipped_existing": 0, "skipped_invalid": 0,
+        "skipped_foreign_unfriendly": 0,
         "inserted": 0, "reactivated": 0, "errors": 0,
     }
 
@@ -462,9 +502,14 @@ def run_scraper(app) -> dict:
                 continue
 
             # Translate Korean → English + classify foreigner-friendly.
-            # If GROQ_API_KEY is missing or the call fails, parsed stays
-            # in Korean and foreigner_friendly comes back empty.
+            # Always works: tries Groq first, falls back to Google Translate.
             parsed = _translate_with_groq(parsed)
+
+            # Skip postings explicitly closed to foreign applicants — saves DB
+            # space and prevents misleading our international-student audience.
+            if (parsed.get("foreigner_friendly") or "").lower() == "no":
+                summary["skipped_foreign_unfriendly"] = summary.get("skipped_foreign_unfriendly", 0) + 1
+                continue
 
             # Is there an inactive row for this apply_link? If so, reactivate
             # it with fresh data instead of inserting a duplicate.
@@ -525,6 +570,7 @@ def run_scraper(app) -> dict:
             f"reactivated={summary['reactivated']} "
             f"skipped_existing={summary['skipped_existing']} "
             f"skipped_invalid={summary['skipped_invalid']} "
+            f"skipped_foreign_unfriendly={summary.get('skipped_foreign_unfriendly', 0)} "
             f"errors={summary['errors']}"
         )
         if inserted_links:
