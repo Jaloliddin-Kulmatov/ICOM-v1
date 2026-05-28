@@ -168,18 +168,30 @@ SCRAPER_SECRET = os.environ.get("SCRAPER_SECRET", "")
 @admin_bp.route("/jobs/scrape-now", methods=["POST"])
 @jwt_required()
 def scrape_now():
-    """Manually trigger the internship scraper. Admin only."""
+    """Manually trigger the Wanted.co.kr internship scraper. Admin only.
+    Runs in a background thread so this request returns immediately."""
     user, err = _require_admin()
     if err:
         return err
     try:
         from flask import current_app
-        from scraper import run_scraper
+        from scrapers.wanted import run_scraper
         import threading
-        threading.Thread(target=run_scraper, args=[current_app._get_current_object()], daemon=True).start()
-        return jsonify({"message": "Scraper started in background."}), 202
+
+        flask_app = current_app._get_current_object()
+
+        def _worker():
+            try:
+                run_scraper(flask_app)
+            except Exception as e:
+                print(f"[wanted] background worker crashed: {e}")
+
+        threading.Thread(target=_worker, daemon=True, name="wanted-scrape-now").start()
+        return jsonify({
+            "message": "Scraper started in the background. Check server logs for results."
+        }), 202
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Could not start scraper: {e}"}), 500
 
 
 @admin_bp.route("/jobs/bulk-ingest", methods=["POST"])

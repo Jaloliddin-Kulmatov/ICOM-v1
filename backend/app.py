@@ -85,29 +85,7 @@ def create_app():
         _seed_communities()
         _seed_university_clubs()
 
-    _start_scheduler(app)
-
     return app
-
-
-def _start_scheduler(app):
-    """Start the background job scheduler (APScheduler).
-    Skipped in testing environments or when DISABLE_SCHEDULER=1."""
-    if os.environ.get("DISABLE_SCHEDULER") == "1":
-        return
-    # Avoid double-scheduling when Flask reloader spawns a second process in dev
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
-        try:
-            from apscheduler.schedulers.background import BackgroundScheduler
-            from scraper import run_scraper
-
-            scheduler = BackgroundScheduler(timezone="UTC")
-            # Run at 6 AM and 6 PM UTC every day
-            scheduler.add_job(run_scraper, "cron", args=[app], hour="6,18", minute=0)
-            scheduler.start()
-            print("[scheduler] Internship scraper scheduled at 06:00 and 18:00 UTC")
-        except Exception as e:
-            print(f"[scheduler] Failed to start: {e}")
 
 
 def _run_lightweight_migrations():
