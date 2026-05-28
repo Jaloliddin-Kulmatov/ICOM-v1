@@ -96,6 +96,15 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Persistent scrape status panel — sticks around until the next click, so
+  // the admin doesn't miss a result that fades away in 3 seconds.
+  type ScrapeStatus =
+    | { kind: "idle" }
+    | { kind: "running"; startedAt: number }
+    | { kind: "done"; newCount: number; finishedAt: number }
+    | { kind: "error"; message: string };
+  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>({ kind: "idle" });
+
   // ── Add Job form ───────────────────────────────────────────────
   const [jobForm, setJobForm] = useState({
     title: "", company: "", location: "", type: "part-time",
@@ -172,20 +181,56 @@ export default function AdminPage() {
     finally { setBusy(false); }
   };
 
-  // Fires the Wanted.co.kr scraper on the backend. The endpoint returns 202
-  // immediately while the work happens in a background thread, so we wait
-  // ~6 seconds before re-loading the jobs list to give the scraper a head start.
+  // Fires the Wanted scraper on the backend. The endpoint returns 202
+  // immediately while the work happens in a background thread, so we:
+  //   1. Snapshot the current job count
+  //   2. Poll /admin/jobs every 3s for up to ~30s
+  //   3. Stop when the count jumps (success) or timeout hits (no new postings)
+  // The scrapeStatus panel stays visible the whole time so the admin sees
+  // progress instead of a 3-second toast.
   const handleScrapeNow = async () => {
     if (scraping) return;
     setScraping(true);
+    setScrapeStatus({ kind: "running", startedAt: Date.now() });
+
     try {
       await apiCall("POST", "/admin/jobs/scrape-now");
-      flash("Scraper started — fetching latest internships from Wanted.co.kr. Refreshing in 6 seconds…");
-      setTimeout(() => { loadData(); setScraping(false); }, 6000);
     } catch (err: unknown) {
-      flash(err instanceof Error ? err.message : "Could not start scraper", true);
+      const msg = err instanceof Error ? err.message : "Could not start scraper";
+      setScrapeStatus({ kind: "error", message: msg });
       setScraping(false);
+      return;
     }
+
+    const startingCount = jobs.length;
+    const maxPolls = 10;       // 10 * 3s = 30s total budget
+    let polls = 0;
+
+    const poll = async () => {
+      polls += 1;
+      try {
+        const fresh = await apiCall("GET", "/admin/jobs");
+        const freshJobs: Job[] = fresh.jobs || [];
+        setJobs(freshJobs);
+        const delta = freshJobs.length - startingCount;
+        if (delta > 0) {
+          setScrapeStatus({ kind: "done", newCount: delta, finishedAt: Date.now() });
+          setScraping(false);
+          return;
+        }
+      } catch { /* keep polling */ }
+
+      if (polls >= maxPolls) {
+        // No new rows after 30s — either Wanted returned nothing fresh, or
+        // every posting was already in our DB. Report 0 and stop.
+        setScrapeStatus({ kind: "done", newCount: 0, finishedAt: Date.now() });
+        setScraping(false);
+        return;
+      }
+      setTimeout(poll, 3000);
+    };
+
+    setTimeout(poll, 3000);  // first poll after 3s — give the scraper a head start
   };
 
   const deleteClub = async (id: number) => {
@@ -394,29 +439,101 @@ export default function AdminPage() {
         {tab === "jobs" && (
           <div className="space-y-6">
             {/* ── Auto-scrape internships from Wanted.co.kr ── */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <Download size={18} className="text-emerald-400" />
+            <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 overflow-hidden">
+              <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                  <Download size={18} className="text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Fetch from Wanted.co.kr</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Pulls the latest Korean internships and inserts up to 15 new postings.
+                    Runs automatically twice a day; tap below to trigger it manually.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleScrapeNow}
+                  disabled={scraping}
+                  className="gap-2 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white"
+                >
+                  {scraping ? (
+                    <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                  ) : (
+                    <><Download size={14} /> Scrape now</>
+                  )}
+                </Button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Fetch from Wanted.co.kr</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Pulls the latest Korean internships and inserts up to 15 new postings.
-                  Runs automatically twice a day; tap below to trigger it manually.
-                </p>
-              </div>
-              <Button
-                type="button"
-                onClick={handleScrapeNow}
-                disabled={scraping}
-                className="gap-2 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white"
-              >
-                {scraping ? (
-                  <><Loader2 size={14} className="animate-spin" /> Scraping…</>
-                ) : (
-                  <><Download size={14} /> Scrape now</>
-                )}
-              </Button>
+
+              {/* ── Live status panel ─────────────────────────────── */}
+              {scrapeStatus.kind === "running" && (
+                <div className="border-t border-emerald-500/20 bg-emerald-500/8 px-5 py-3 flex items-center gap-3">
+                  <Loader2 size={15} className="text-emerald-500 animate-spin shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-emerald-500">
+                      Scraping Wanted.co.kr…
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Fetching listings · checking each for duplicates · inserting new
+                      postings. This usually takes 10-30 seconds.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {scrapeStatus.kind === "done" && (
+                <div className={`border-t px-5 py-3 flex items-center gap-3 ${
+                  scrapeStatus.newCount > 0
+                    ? "border-emerald-500/20 bg-emerald-500/8"
+                    : "border-amber-500/20 bg-amber-500/8"
+                }`}>
+                  {scrapeStatus.newCount > 0 ? (
+                    <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-amber-500 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${
+                      scrapeStatus.newCount > 0 ? "text-emerald-500" : "text-amber-500"
+                    }`}>
+                      {scrapeStatus.newCount > 0
+                        ? `Added ${scrapeStatus.newCount} new internship${scrapeStatus.newCount > 1 ? "s" : ""} 🎉`
+                        : "Already up to date — no new internships found"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {scrapeStatus.newCount > 0
+                        ? "Scroll down to see the new postings in the table below."
+                        : "Wanted.co.kr didn't have any internships we hadn't already saved."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setScrapeStatus({ kind: "idle" })}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                    aria-label="Dismiss"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {scrapeStatus.kind === "error" && (
+                <div className="border-t border-red-500/20 bg-red-500/8 px-5 py-3 flex items-center gap-3">
+                  <AlertCircle size={15} className="text-red-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-red-500">Scrape failed</p>
+                    <p className="text-[11px] text-muted-foreground break-words">
+                      {scrapeStatus.message}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setScrapeStatus({ kind: "idle" })}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                    aria-label="Dismiss"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleAddJob} className="p-4 sm:p-6 rounded-2xl border border-white/8 bg-white/3 space-y-4">
