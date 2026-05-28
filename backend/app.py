@@ -61,6 +61,7 @@ def create_app():
     from routes.posts import posts_bp
     from routes.search import search_bp
     from routes.feedback import feedback_bp
+    from routes.chat import chat_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -70,6 +71,7 @@ def create_app():
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
+    app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
     @app.route("/")
     def index():
@@ -84,6 +86,7 @@ def create_app():
         _run_lightweight_migrations()
         _seed_communities()
         _seed_university_clubs()
+        _seed_chat_threads()
 
     return app
 
@@ -371,6 +374,142 @@ def _seed_university_clubs():
     except Exception as e:
         db.session.rollback()
         print(f"[seed] University clubs seed skipped: {e}")
+
+
+def _seed_chat_threads():
+    """Seed a handful of example Q&A threads (with answers) so the Chat page
+    isn't empty on first visit. All authored by the ICOM Team system user."""
+    from models import User, ChatPost, ChatAnswer
+
+    try:
+        system_user = User.query.filter_by(email="system@konect.kr").first()
+        if not system_user:
+            return  # the system bot is created by _seed_communities; if it
+                    # doesn't exist yet, the next deploy will run this seed.
+
+        seeds = [
+            {
+                "title": "How long does the D-2 visa extension actually take?",
+                "content": (
+                    "I'm at JBNU and my D-2 expires in 5 weeks. The Hi Korea "
+                    "site says 2–4 weeks but I've heard it can take longer "
+                    "around exam season. Anyone done it recently?"
+                ),
+                "answers": [
+                    (
+                        "It took me 8 working days at the Jeonju Immigration Office "
+                        "in November. I booked online via Hi Korea — walk-in was a "
+                        "3 hour wait. Bring the enrollment certificate fresh (same week)."
+                    ),
+                    (
+                        "Pro tip: bring your tuition receipt AND a printed bank balance "
+                        "of at least ₩10M-equivalent. They didn't ask but having it "
+                        "ready saved me a return trip."
+                    ),
+                ],
+            },
+            {
+                "title": "Best way to learn enough Korean to survive in 3 months?",
+                "content": (
+                    "I just arrived. TOPIK level 0. What worked for you in the "
+                    "first semester? I'm trying to balance classes + part-time job."
+                ),
+                "answers": [
+                    (
+                        "TTMIK Level 1 + 2 on YouTube is gold for grammar. For "
+                        "speaking, find a language exchange partner — JBNU has a "
+                        "free Buddy Program through the International Office."
+                    ),
+                    (
+                        "I used Naver Papago every day for daily-life translations "
+                        "AND screenshotted any signs I couldn't read. After 2 months "
+                        "you'll recognise most cafe/restaurant menus."
+                    ),
+                ],
+            },
+            {
+                "title": "Can I open Kakao Bank without a Korean ID number?",
+                "content": (
+                    "I have my ARC card but the Kakao Bank app keeps asking for "
+                    "주민등록번호 (Korean national ID). Is there a workaround?"
+                ),
+                "answers": [
+                    (
+                        "Yes — choose '외국인' (Foreigner) on the first screen, then "
+                        "it'll switch to asking for ARC number. The flow is slightly "
+                        "different. Make sure your ARC is fully issued (the physical "
+                        "card delivered) not just stamped in passport."
+                    ),
+                ],
+            },
+            {
+                "title": "Where can I find halal food near JBNU?",
+                "content": (
+                    "Muslim student, just moved to Jeonju. Are there any halal "
+                    "spots near the campus? Anyone has tried Itaewon-Halal-Restaurant "
+                    "delivery options?"
+                ),
+                "answers": [
+                    (
+                        "There's a small halal Uzbek place near the JBNU back gate "
+                        "called Samarkand. Tashkent Restaurant in Wansan-gu also "
+                        "has halal options. For groceries the Mosque area in Seoul "
+                        "has the closest big halal market."
+                    ),
+                ],
+            },
+            {
+                "title": "Is it safe to use Daangn Market (당근마켓) as a foreigner?",
+                "content": (
+                    "I want to buy a used desk and chair for my dorm. Daangn "
+                    "looks much cheaper than Coupang. Any safety tips for "
+                    "first-time foreign buyers?"
+                ),
+                "answers": [
+                    (
+                        "Always meet in public + daylight. The app has a built-in "
+                        "chat — don't move to KakaoTalk until you've seen the item. "
+                        "Don't send money before inspecting in person."
+                    ),
+                    (
+                        "Use 'Daangn Pay' (escrow) for items over ₩50K. Seller doesn't "
+                        "get paid until you confirm the item is OK. Saved me twice."
+                    ),
+                ],
+            },
+        ]
+
+        added = 0
+        for seed in seeds:
+            # Skip if a post with this exact title already exists.
+            if ChatPost.query.filter_by(title=seed["title"]).first():
+                continue
+            post = ChatPost(
+                user_id=system_user.id,
+                title=seed["title"],
+                content=seed["content"],
+                image_url="",
+                is_active=True,
+            )
+            db.session.add(post)
+            db.session.flush()  # so post.id is available
+            for answer_text in seed["answers"]:
+                db.session.add(ChatAnswer(
+                    post_id=post.id,
+                    user_id=system_user.id,
+                    content=answer_text,
+                    is_active=True,
+                ))
+            added += 1
+
+        if added:
+            db.session.commit()
+            print(f"[seed] Chat threads: added {added} example Q&A thread(s).")
+        else:
+            print("[seed] Chat threads already seeded — nothing to do.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[seed] Chat threads seed skipped: {e}")
 
 
 app = create_app()

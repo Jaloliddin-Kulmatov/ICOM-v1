@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
-  Users, Briefcase, BookOpen, Globe,
+  Users, Briefcase, BookOpen, Globe, MessageSquare,
   LayoutDashboard, LogIn, Home, LogOut, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { useNotifCount } from "@/hooks/use-notif-count";
 
 const navLinks = [
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/community", label: "Community", icon: Users },
   { href: "/jobs", label: "Internships", icon: Briefcase },
   { href: "/universities", label: "Universities", icon: BookOpen },

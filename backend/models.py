@@ -336,3 +336,66 @@ class Feedback(db.Model):
             "page_url": self.page_url or "",
             "created_at": self.created_at.isoformat() + "Z",
         }
+
+
+class ChatPost(db.Model):
+    """Reddit-style Q&A thread. Anyone signed in can post a question; anyone
+    signed in can answer. Image is stored as a data URL (base64) so we don't
+    depend on external image hosting."""
+    __tablename__ = "chat_posts"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    title      = db.Column(db.String(200), nullable=False)
+    content    = db.Column(db.Text, nullable=False)
+    image_url  = db.Column(db.Text)   # data:image/...;base64,... or external URL
+    is_active  = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    author = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self, include_answers=False):
+        out = {
+            "id": self.id,
+            "user_id": self.user_id,
+            "author_name": self.author.name if self.author else "Unknown",
+            "author_university": (self.author.university if self.author else "") or "",
+            "author_country": (self.author.country if self.author else "") or "",
+            "title": self.title,
+            "content": self.content,
+            "image_url": self.image_url or "",
+            "answer_count": ChatAnswer.query.filter_by(post_id=self.id, is_active=True).count(),
+            "created_at": self.created_at.isoformat() + "Z",
+        }
+        if include_answers:
+            answers = (
+                ChatAnswer.query.filter_by(post_id=self.id, is_active=True)
+                .order_by(ChatAnswer.created_at.asc()).all()
+            )
+            out["answers"] = [a.to_dict() for a in answers]
+        return out
+
+
+class ChatAnswer(db.Model):
+    __tablename__ = "chat_answers"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    post_id    = db.Column(db.Integer, db.ForeignKey("chat_posts.id"), nullable=False, index=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    content    = db.Column(db.Text, nullable=False)
+    is_active  = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    author = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "post_id": self.post_id,
+            "user_id": self.user_id,
+            "author_name": self.author.name if self.author else "Unknown",
+            "author_university": (self.author.university if self.author else "") or "",
+            "author_country": (self.author.country if self.author else "") or "",
+            "content": self.content,
+            "created_at": self.created_at.isoformat() + "Z",
+        }
