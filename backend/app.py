@@ -380,3 +380,40 @@ def _seed_university_clubs():
 
 
 app = create_app()
+
+
+# ── Background scheduler (Wanted.co.kr scraper, twice a day UTC) ─────────────
+def _start_scheduler(flask_app):
+    """Start APScheduler exactly once: not when DISABLE_SCHEDULER=1, and not
+    inside Flask's debug auto-reloader parent process (which would launch the
+    scheduler twice)."""
+    if os.environ.get("DISABLE_SCHEDULER") == "1":
+        print("[scheduler] DISABLE_SCHEDULER=1 → skipping startup")
+        return
+
+    # In debug mode, only the child reloader process should start the scheduler.
+    if flask_app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from scrapers.wanted import run_scraper
+    except Exception as e:
+        print(f"[scheduler] failed to import dependencies — scheduler off: {e}")
+        return
+
+    scheduler = BackgroundScheduler(timezone="UTC")
+    scheduler.add_job(
+        lambda: run_scraper(flask_app),
+        trigger="cron",
+        hour="6,18",
+        minute=0,
+        id="wanted_scraper",
+        replace_existing=True,
+        misfire_grace_time=3600,  # if a fire is missed, still run it within 1h
+    )
+    scheduler.start()
+    print("[scheduler] started — Wanted scraper runs at 06:00 and 18:00 UTC")
+
+
+_start_scheduler(app)

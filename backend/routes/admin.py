@@ -262,6 +262,7 @@ def create_job():
         visa_compatible=(data.get("visa_compatible") or "D-2, D-4").strip(),
         deadline=(data.get("deadline") or "").strip(),
         tags=(data.get("tags") or "").strip(),
+        apply_link=(data.get("apply_link") or "").strip(),
         created_by=user.id,
     )
     db.session.add(job)
@@ -313,6 +314,39 @@ def delete_job(job_id):
     job.is_active = False
     db.session.commit()
     return jsonify({"message": "Job removed."}), 200
+
+
+# ── Trigger Wanted scraper on demand ─────────────────────────────────────────
+
+@admin_bp.route("/jobs/scrape-now", methods=["POST"])
+@jwt_required()
+def scrape_now():
+    """Fire the Wanted.co.kr scraper in a background thread so the admin
+    request returns immediately. Logs go to the Render console."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    try:
+        from flask import current_app
+        from scrapers.wanted import run_scraper
+        import threading
+
+        # Capture the underlying app so the background thread has a context.
+        flask_app = current_app._get_current_object()
+
+        def _worker():
+            try:
+                run_scraper(flask_app)
+            except Exception as e:
+                print(f"[wanted] background worker crashed: {e}")
+
+        threading.Thread(target=_worker, daemon=True, name="wanted-scrape-now").start()
+        return jsonify({
+            "message": "Scraper started in the background. Check server logs for results."
+        }), 202
+    except Exception as e:
+        return jsonify({"error": f"Could not start scraper: {e}"}), 500
 
 
 # ── Make user admin (dev helper) ─────────────────────────────────────────────
