@@ -7,10 +7,13 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, Clock, DollarSign, CheckCircle2,
   Briefcase, Tag, Calendar, Loader2, AlertCircle, Building2, ExternalLink,
+  Bookmark, BookmarkCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/utils";
+import { Bookmarks } from "@/lib/bookmarks";
+import type { Job as JobType } from "@/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -34,6 +37,7 @@ interface JobDetail {
   visa_compatible: string[];
   deadline?: string;
   tags: string[];
+  apply_link?: string;
   isNew?: boolean;
   created_at: string;
 }
@@ -43,14 +47,49 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/admin/jobs/${id}`)
       .then(r => r.ok ? r.json() : Promise.reject("Not found"))
-      .then(d => setJob(d.job))
+      .then(d => {
+        setJob(d.job);
+        if (d.job) setBookmarked(Bookmarks.jobs.has(String(d.job.id)));
+      })
       .catch(() => setError("Job not found or no longer available."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Convert API shape (snake_case, numeric id) → bookmarks-store shape
+  // (camelCase, string id) so the saved-jobs page can render them.
+  const toBookmarkShape = (j: JobDetail): JobType => ({
+    id: String(j.id),
+    title: j.title,
+    company: j.company,
+    location: j.location,
+    type: (j.type || "internship") as JobType["type"],
+    salary: j.salary,
+    description: j.description,
+    requirements: j.requirements,
+    visaCompatible: j.visa_compatible,
+    postedAt: j.created_at,
+    deadline: j.deadline,
+    applications: 0,
+    tags: j.tags,
+    isNew: j.isNew,
+    applyLink: j.apply_link,
+  });
+
+  const toggleBookmark = () => {
+    if (!job) return;
+    const nowSaved = Bookmarks.jobs.toggle(toBookmarkShape(job));
+    setBookmarked(nowSaved);
+  };
+
+  const handleApply = () => {
+    if (!job?.apply_link) return;
+    window.open(job.apply_link, "_blank", "noopener,noreferrer");
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-background">
@@ -178,11 +217,45 @@ export default function JobDetailPage() {
           {/* Sidebar */}
           <div className="space-y-4">
             <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/5 to-transparent p-5">
-              <Button className="w-full mb-3" size="lg">
-                Apply Now
-              </Button>
-              <p className="text-[11px] text-muted-foreground text-center">
-                Contact the employer directly or visit their website to apply.
+              {job.apply_link ? (
+                <Button
+                  onClick={handleApply}
+                  className="w-full mb-2 gap-2"
+                  size="lg"
+                >
+                  Apply Now <ExternalLink size={14} />
+                </Button>
+              ) : (
+                <Button
+                  className="w-full mb-2"
+                  size="lg"
+                  disabled
+                  title="No application link provided — contact the employer directly"
+                >
+                  Apply Now
+                </Button>
+              )}
+
+              <button
+                onClick={toggleBookmark}
+                className={`w-full h-10 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                  bookmarked
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/15"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-indigo-500/30"
+                }`}
+                aria-pressed={bookmarked}
+              >
+                {bookmarked ? (
+                  <><BookmarkCheck size={14} /> Saved</>
+                ) : (
+                  <><Bookmark size={14} /> Save for later</>
+                )}
+              </button>
+
+              <p className="text-[11px] text-muted-foreground text-center mt-3">
+                {job.apply_link
+                  ? "Apply Now opens the employer's official page in a new tab."
+                  : "Contact the employer directly or visit their website to apply."}
               </p>
             </div>
 

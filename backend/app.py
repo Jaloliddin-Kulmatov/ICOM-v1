@@ -360,11 +360,62 @@ def _seed_university_clubs():
 app = create_app()
 
 
-# ── Background scheduler (Wanted.co.kr scraper, twice a day UTC) ─────────────
+# ── Expired-job cleanup ──────────────────────────────────────────────────────
+def _cleanup_expired_jobs(flask_app):
+    """Soft-delete jobs whose deadline date is in the past.
+
+    Deadlines are stored as VARCHAR(50) and come in mixed shapes:
+      - "2025-08-31"        (scraped from Wanted — always ISO)
+      - "Jun 30"            (admin free text — skipped, can't parse year)
+      - "Open" / "" / None  (skipped)
+
+    We only deactivate rows whose deadline parses cleanly as YYYY-MM-DD and
+    that date is strictly before today (UTC). Free-text deadlines are left
+    alone — they're admin-managed.
+    """
+    from datetime import date, datetime
+    from models import Job
+
+    with flask_app.app_context():
+        try:
+            today = datetime.utcnow().date()
+            active = Job.query.filter_by(is_active=True).all()
+            deactivated = 0
+            for job in active:
+                raw = (job.deadline or "").strip()
+                if len(raw) < 10:
+                    continue
+                try:
+                    dl = date.fromisoformat(raw[:10])
+                except ValueError:
+                    continue  # not an ISO date — leave it
+                if dl < today:
+                    job.is_active = False
+                    deactivated += 1
+            if deactivated:
+                db.session.commit()
+                print(f"[cleanup] deactivated {deactivated} expired job(s)")
+            else:
+                print("[cleanup] no expired jobs found")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[cleanup] failed: {e}")
+
+
+# Run once at boot so legacy expired jobs disappear immediately on next deploy.
+_cleanup_expired_jobs(app)
+
+
+# ── Background scheduler ─────────────────────────────────────────────────────
 def _start_scheduler(flask_app):
     """Start APScheduler exactly once: not when DISABLE_SCHEDULER=1, and not
     inside Flask's debug auto-reloader parent process (which would launch the
-    scheduler twice)."""
+    scheduler twice).
+
+    Jobs:
+      • wanted_scraper: 06:00 and 18:00 UTC — pull fresh internships
+      • cleanup_expired: 00:30 UTC daily — hide jobs past their deadline
+    """
     if os.environ.get("DISABLE_SCHEDULER") == "1":
         print("[scheduler] DISABLE_SCHEDULER=1 → skipping startup")
         return
@@ -381,6 +432,8 @@ def _start_scheduler(flask_app):
         return
 
     scheduler = BackgroundScheduler(timezone="UTC")
+
+    # Twice-daily Wanted scrape
     scheduler.add_job(
         lambda: run_scraper(flask_app),
         trigger="cron",
@@ -388,10 +441,26 @@ def _start_scheduler(flask_app):
         minute=0,
         id="wanted_scraper",
         replace_existing=True,
-        misfire_grace_time=3600,  # if a fire is missed, still run it within 1h
+        misfire_grace_time=3600,
     )
+
+    # Daily expired-job sweep — runs at 00:30 UTC so it lands between days
+    # and doesn't overlap with the scraper.
+    scheduler.add_job(
+        lambda: _cleanup_expired_jobs(flask_app),
+        trigger="cron",
+        hour=0,
+        minute=30,
+        id="cleanup_expired",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
     scheduler.start()
-    print("[scheduler] started — Wanted scraper runs at 06:00 and 18:00 UTC")
+    print(
+        "[scheduler] started — Wanted scraper: 06:00/18:00 UTC · "
+        "Expired-job cleanup: 00:30 UTC daily"
+    )
 
 
 _start_scheduler(app)
