@@ -437,3 +437,81 @@ def run_scraper(app) -> dict:
             print(f"[wanted] reactivated postings:\n  " + "\n  ".join(reactivated_links))
 
     return summary
+
+
+# Retroactive translation -----------------------------------------------------
+
+def _looks_korean(text: str) -> bool:
+    """True if the string contains any Hangul characters (Korean syllabary)."""
+    if not text:
+        return False
+    return any("가" <= ch <= "힣" for ch in text)
+
+
+def translate_pending(app, limit: int = 80) -> dict:
+    """Find active job rows whose title still contains Korean OR whose
+    foreigner_friendly column is empty (meaning they were scraped before
+    AI translation existed) and translate them in place via Groq.
+
+    Returns a small summary so admin trigger can display it.
+    """
+    from app import db
+    from models import Job
+
+    summary = {"scanned": 0, "translated": 0, "skipped": 0, "errors": 0}
+
+    if not os.environ.get("GROQ_API_KEY", "").strip():
+        print("[wanted] translate_pending skipped — GROQ_API_KEY not configured")
+        summary["errors"] = -1  # sentinel: no API key
+        return summary
+
+    with app.app_context():
+        # Pull at most `limit` candidates per run so we never block forever.
+        rows = (
+            Job.query.filter(Job.is_active == True)  # noqa: E712
+            .order_by(Job.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        for job in rows:
+            summary["scanned"] += 1
+            needs = _looks_korean(job.title or "") or not (job.foreigner_friendly or "")
+            if not needs:
+                summary["skipped"] += 1
+                continue
+
+            parsed = {
+                "title":        job.title or "",
+                "company":      job.company or "",
+                "description":  job.description or "",
+                "requirements": job.requirements or "",
+            }
+            translated = _translate_with_groq(parsed)
+            # If translate failed silently, the dict comes back unchanged with
+            # foreigner_friendly == "". Count that as an error so the admin sees it.
+            if (
+                translated.get("title") == parsed["title"]
+                and translated.get("foreigner_friendly") in ("", None)
+            ):
+                summary["errors"] += 1
+                continue
+
+            try:
+                job.title              = translated.get("title", job.title)[:200]
+                job.description        = translated.get("description", job.description)
+                job.requirements       = translated.get("requirements", job.requirements)
+                job.foreigner_friendly = translated.get("foreigner_friendly", "")
+                job.foreigner_note     = translated.get("foreigner_note", "")[:300]
+                db.session.commit()
+                summary["translated"] += 1
+            except Exception as e:
+                db.session.rollback()
+                summary["errors"] += 1
+                print(f"[wanted] translate write failed for job {job.id}: {e}")
+
+        print(
+            f"[wanted] translate_pending — scanned={summary['scanned']} "
+            f"translated={summary['translated']} skipped={summary['skipped']} "
+            f"errors={summary['errors']}"
+        )
+    return summary

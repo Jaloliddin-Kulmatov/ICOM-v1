@@ -194,6 +194,41 @@ def scrape_now():
         return jsonify({"error": f"Could not start scraper: {e}"}), 500
 
 
+@admin_bp.route("/jobs/translate-pending", methods=["POST"])
+@jwt_required()
+def translate_pending_jobs():
+    """Backfill: translate any active job rows still in Korean (or missing
+    the foreigner_friendly classification) via Groq. Admin only.
+
+    Returns 200 with a summary so the frontend can display "Translated N of M".
+    Runs synchronously so the response carries real numbers — caller should
+    expect this to take 30-90 seconds for ~50 rows.
+    """
+    user, err = _require_admin()
+    if err:
+        return err
+    try:
+        from flask import current_app
+        from scrapers.wanted import translate_pending
+        flask_app = current_app._get_current_object()
+        summary = translate_pending(flask_app, limit=80)
+
+        if summary.get("errors") == -1:
+            return jsonify({
+                "error": "GROQ_API_KEY is not set on the backend. Add it in Render → "
+                         "icom-backend → Environment, then try again."
+            }), 503
+
+        return jsonify({
+            "message": (
+                f"Translated {summary['translated']} of {summary['scanned']} job(s)."
+            ),
+            "summary": summary,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Translate-pending failed: {e}"}), 500
+
+
 @admin_bp.route("/jobs/bulk-ingest", methods=["POST"])
 def bulk_ingest_jobs():
     """Scraper-only endpoint. Protected by SCRAPER_SECRET header, not JWT."""
