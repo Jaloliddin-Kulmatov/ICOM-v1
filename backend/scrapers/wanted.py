@@ -55,11 +55,11 @@ def _query() -> str:
 
 
 def _limit() -> int:
-    return _env_int("WANTED_LIMIT", 40)
+    return _env_int("WANTED_LIMIT", 80)
 
 
 def _max_per_run() -> int:
-    return _env_int("MAX_PER_RUN", 15)
+    return _env_int("MAX_PER_RUN", 40)
 
 
 # HTTP helpers ----------------------------------------------------------------
@@ -216,7 +216,7 @@ def run_scraper(app) -> dict:
 
     summary = {
         "fetched": 0, "skipped_existing": 0, "skipped_invalid": 0,
-        "inserted": 0, "errors": 0,
+        "inserted": 0, "reactivated": 0, "errors": 0,
     }
 
     with app.app_context():
@@ -232,17 +232,21 @@ def run_scraper(app) -> dict:
             print("[wanted] no listings returned — bailing out")
             return summary
 
-        # One-shot lookup of every apply_link we already have, so dedup is O(1)
-        # rather than N queries.
-        existing_links = {
-            row[0] for row in db.session.query(Job.apply_link).all() if row[0]
+        # Snapshot only ACTIVE existing links — so deactivated rows (e.g. ones
+        # the cleanup job killed for being past their deadline) don't block
+        # us from re-listing them if Wanted is showing them again.
+        active_links = {
+            row[0] for row in db.session.query(Job.apply_link)
+                .filter(Job.is_active == True, Job.apply_link.isnot(None))  # noqa: E712
+                .all()
         }
 
         max_inserts = _max_per_run()
         inserted_links: list[str] = []
+        reactivated_links: list[str] = []
 
         for raw in listings:
-            if summary["inserted"] >= max_inserts:
+            if summary["inserted"] + summary["reactivated"] >= max_inserts:
                 break
 
             job_id = raw.get("id") if isinstance(raw, dict) else None
@@ -251,7 +255,8 @@ def run_scraper(app) -> dict:
                 continue
 
             candidate_link = PUBLIC_URL.format(id=job_id)
-            if candidate_link in existing_links:
+            if candidate_link in active_links:
+                # Already live in our DB — nothing to do.
                 summary["skipped_existing"] += 1
                 continue
 
@@ -268,12 +273,36 @@ def run_scraper(app) -> dict:
                 summary["skipped_invalid"] += 1
                 continue
 
-            # Re-check apply_link in case detail endpoint returned a different id.
-            if parsed["apply_link"] in existing_links:
+            # Detail endpoint might have a different id than the listing — recheck.
+            if parsed["apply_link"] in active_links:
                 summary["skipped_existing"] += 1
                 continue
 
+            # Is there an inactive row for this apply_link? If so, reactivate
+            # it with fresh data instead of inserting a duplicate.
             try:
+                existing = (
+                    Job.query.filter_by(apply_link=parsed["apply_link"]).first()
+                )
+                if existing:
+                    existing.title           = parsed["title"]
+                    existing.company         = parsed["company"]
+                    existing.location        = parsed["location"]
+                    existing.job_type        = parsed["job_type"]
+                    existing.salary          = parsed["salary"]
+                    existing.description     = parsed["description"]
+                    existing.requirements    = parsed["requirements"]
+                    existing.visa_compatible = parsed["visa_compatible"]
+                    existing.deadline        = parsed["deadline"]
+                    existing.tags            = parsed["tags"]
+                    existing.is_active       = True
+                    db.session.commit()
+                    active_links.add(parsed["apply_link"])
+                    reactivated_links.append(parsed["apply_link"])
+                    summary["reactivated"] += 1
+                    continue
+
+                # Truly new posting — insert.
                 job = Job(
                     title=parsed["title"],
                     company=parsed["company"],
@@ -290,22 +319,25 @@ def run_scraper(app) -> dict:
                 )
                 db.session.add(job)
                 db.session.commit()
-                existing_links.add(parsed["apply_link"])
+                active_links.add(parsed["apply_link"])
                 inserted_links.append(parsed["apply_link"])
                 summary["inserted"] += 1
             except Exception as e:
                 db.session.rollback()
                 summary["errors"] += 1
-                print(f"[wanted] insert failed for {parsed['apply_link']}: {e}")
+                print(f"[wanted] write failed for {parsed['apply_link']}: {e}")
 
         print(
             f"[wanted] done — fetched={summary['fetched']} "
             f"inserted={summary['inserted']} "
+            f"reactivated={summary['reactivated']} "
             f"skipped_existing={summary['skipped_existing']} "
             f"skipped_invalid={summary['skipped_invalid']} "
             f"errors={summary['errors']}"
         )
         if inserted_links:
             print(f"[wanted] new postings:\n  " + "\n  ".join(inserted_links))
+        if reactivated_links:
+            print(f"[wanted] reactivated postings:\n  " + "\n  ".join(reactivated_links))
 
     return summary

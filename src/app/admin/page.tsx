@@ -203,7 +203,9 @@ export default function AdminPage() {
     }
 
     const startingCount = jobs.length;
-    const maxPolls = 10;       // 10 * 3s = 30s total budget
+    // Default scrape pulls up to 40 listings with a 0.3s delay between detail
+    // fetches → ~30-60s typical, longer on cold start. 30 polls * 3s = 90s.
+    const maxPolls = 30;
     let polls = 0;
 
     const poll = async () => {
