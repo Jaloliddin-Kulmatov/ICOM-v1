@@ -1,24 +1,72 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Navbar from "@/components/layout/navbar";
 import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2 } from "lucide-react";
-import { JOB_CATEGORIES } from "@/lib/constants";
+import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin } from "lucide-react";
+import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
+// Korean translations of cities/provinces so we can match against location
+// strings like "서울" or "전주" that come straight from Wanted.co.kr.
+const CITY_KO: Record<string, string> = {
+  Jeonju:  "전주",  Iksan:  "익산",  Gunsan:  "군산",
+  Seoul:   "서울",  Incheon: "인천",  Suwon:   "수원",
+  Daejeon: "대전",  Daegu:  "대구",   Gwangju: "광주",
+  Busan:   "부산",  Ulsan:  "울산",   Sejong:  "세종",
+  Pohang:  "포항",  Changwon: "창원",  Yongin: "용인",
+};
+const PROVINCE_KO: Record<string, string> = {
+  "Jeollabuk-do": "전라북도",
+  "Jeollanam-do": "전라남도",
+  "Gyeonggi-do":  "경기도",
+  "Gangwon-do":   "강원도",
+  "Chungbuk":     "충청북도",
+  "Chungnam":     "충청남도",
+  "Gyeongbuk":    "경상북도",
+  "Gyeongnam":    "경상남도",
+};
+
 export default function JobsPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [visaFilter, setVisaFilter] = useState<string[]>([]);
+  const [regionFilter, setRegionFilter] = useState(false);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Resolve the user's university to a region (city + province + Korean
+  // translations). Match by id, short name, or full name so any of the
+  // values we save in user.university work.
+  const myRegion = useMemo(() => {
+    const uniId = (user?.university || "").trim();
+    if (!uniId) return null;
+    const lc = uniId.toLowerCase();
+    const uni = UNIVERSITIES.find(
+      (u) =>
+        u.id.toLowerCase() === lc ||
+        u.shortName.toLowerCase() === lc ||
+        u.name.toLowerCase() === lc
+    );
+    if (!uni) return null;
+    const keywords = [
+      uni.city,
+      uni.province,
+      CITY_KO[uni.city] ?? "",
+      PROVINCE_KO[uni.province] ?? "",
+    ]
+      .filter(Boolean)
+      .map((k) => k.toLowerCase());
+    return { city: uni.city, province: uni.province, keywords };
+  }, [user?.university]);
 
   React.useEffect(() => {
     fetch(`${API}/admin/jobs`)
@@ -47,7 +95,16 @@ export default function JobsPage() {
     const matchSearch = !search || job.title.toLowerCase().includes(search.toLowerCase()) || job.company.toLowerCase().includes(search.toLowerCase());
     const matchCategory = activeCategory === "All" || job.type.toLowerCase().replace("-", " ") === activeCategory.toLowerCase() || (activeCategory === "Remote" && job.location.includes("Remote"));
     const matchVisa = visaFilter.length === 0 || visaFilter.some((v) => job.visaCompatible.includes(v));
-    return matchSearch && matchCategory && matchVisa;
+
+    // Region filter: when on, keep only jobs whose location string contains
+    // any of the user's region keywords (English or Korean city/province).
+    let matchRegion = true;
+    if (regionFilter && myRegion) {
+      const loc = (job.location || "").toLowerCase();
+      matchRegion = myRegion.keywords.some((k) => loc.includes(k));
+    }
+
+    return matchSearch && matchCategory && matchVisa && matchRegion;
   });
 
   return (
@@ -118,8 +175,8 @@ export default function JobsPage() {
                 ))}
               </div>
 
-              {/* Visa filter pills */}
-              <div className="flex items-center gap-2">
+              {/* Visa + region filter pills */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
                   <CheckCircle2 size={11} />
                   Visa compatible:
@@ -137,6 +194,28 @@ export default function JobsPage() {
                     {v}
                   </button>
                 ))}
+
+                {/* My Region — only shown for signed-in users with a
+                    recognised university. Keywords include English +
+                    Korean city/province so it matches Wanted.co.kr's
+                    Korean location strings ("서울", "전주") too. */}
+                {myRegion && (
+                  <>
+                    <span className="text-xs text-muted-foreground/40 px-1">·</span>
+                    <button
+                      onClick={() => setRegionFilter((p) => !p)}
+                      title={`Show internships near ${myRegion.city} (${myRegion.province})`}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5 ${
+                        regionFilter
+                          ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/40"
+                          : "text-muted-foreground border-white/10 hover:border-white/20 hover:text-foreground"
+                      }`}
+                    >
+                      <MapPin size={11} />
+                      My Region · {myRegion.city}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
