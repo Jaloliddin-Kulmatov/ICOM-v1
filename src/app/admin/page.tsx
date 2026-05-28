@@ -8,6 +8,7 @@ import {
   ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2,
   AlertCircle, Star, CheckCircle2, XCircle, GraduationCap,
   Globe, Calendar, Search, Pencil, X, MessageSquarePlus, Mail,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -91,6 +92,7 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scraping, setScraping] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -168,6 +170,22 @@ export default function AdminPage() {
       loadData();
     } catch (err: unknown) { flash(err instanceof Error ? err.message : "Failed", true); }
     finally { setBusy(false); }
+  };
+
+  // Fires the Wanted.co.kr scraper on the backend. The endpoint returns 202
+  // immediately while the work happens in a background thread, so we wait
+  // ~6 seconds before re-loading the jobs list to give the scraper a head start.
+  const handleScrapeNow = async () => {
+    if (scraping) return;
+    setScraping(true);
+    try {
+      await apiCall("POST", "/admin/jobs/scrape-now");
+      flash("Scraper started — fetching latest internships from Wanted.co.kr. Refreshing in 6 seconds…");
+      setTimeout(() => { loadData(); setScraping(false); }, 6000);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not start scraper", true);
+      setScraping(false);
+    }
   };
 
   const deleteClub = async (id: number) => {
@@ -375,6 +393,32 @@ export default function AdminPage() {
         {/* ══════════════════ JOBS TAB ══════════════════ */}
         {tab === "jobs" && (
           <div className="space-y-6">
+            {/* ── Auto-scrape internships from Wanted.co.kr ── */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <Download size={18} className="text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Fetch from Wanted.co.kr</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Pulls the latest Korean internships and inserts up to 15 new postings.
+                  Runs automatically twice a day; tap below to trigger it manually.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleScrapeNow}
+                disabled={scraping}
+                className="gap-2 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white"
+              >
+                {scraping ? (
+                  <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                ) : (
+                  <><Download size={14} /> Scrape now</>
+                )}
+              </Button>
+            </div>
+
             <form onSubmit={handleAddJob} className="p-4 sm:p-6 rounded-2xl border border-white/8 bg-white/3 space-y-4">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Plus size={15} className="text-indigo-400" /> Post a Job / Internship
