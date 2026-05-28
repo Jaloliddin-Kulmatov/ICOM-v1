@@ -67,6 +67,9 @@ def _max_per_run() -> int:
 def _fetch_list() -> list[dict]:
     """Fetch the list page; return the raw items array (may be empty on error)."""
     params = {
+        # As of 2026 the Wanted API rejects requests without a country with
+        # 422 "Missing data for required field". Defaults to Korea.
+        "country": os.environ.get("WANTED_COUNTRY", "kr"),
         "query": _query(),
         "limit": _limit(),
         "job_sort": "job.latest_order",
@@ -159,8 +162,10 @@ def _parse_job(detail: dict) -> Optional[dict]:
         _clean_text(detail_obj.get("benefits")),
     )
 
+    # As of 2026 Wanted uses "requirements" inside detail.* (the original spec
+    # called it "qualifications"). Accept both for safety in case it changes.
     requirements = _join_sections(
-        _clean_text(detail_obj.get("qualifications")),
+        _clean_text(detail_obj.get("requirements") or detail_obj.get("qualifications")),
         _clean_text(detail_obj.get("preferred_points")),
     )
 

@@ -449,7 +449,7 @@ export default function AdminPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">Fetch from Wanted.co.kr</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Pulls the latest Korean internships and inserts up to 15 new postings.
+                    Pulls the latest Korean internships and inserts up to 40 new postings.
                     Runs automatically twice a day; tap below to trigger it manually.
                   </p>
                 </div>
