@@ -212,13 +212,6 @@ def translate_pending_jobs():
         from scrapers.wanted import translate_pending
         flask_app = current_app._get_current_object()
         summary = translate_pending(flask_app, limit=80)
-
-        if summary.get("errors") == -1:
-            return jsonify({
-                "error": "GROQ_API_KEY is not set on the backend. Add it in Render → "
-                         "icom-backend → Environment, then try again."
-            }), 503
-
         return jsonify({
             "message": (
                 f"Translated {summary['translated']} of {summary['scanned']} job(s)."

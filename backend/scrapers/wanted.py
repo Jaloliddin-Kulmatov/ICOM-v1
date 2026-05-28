@@ -153,60 +153,156 @@ Return STRICT JSON only — no markdown, no commentary. Schema:
 """
 
 
+# Google Translate (unofficial public endpoint) — free, no key required ---------
+# Used as a fallback when GROQ_API_KEY is not configured. Slower-quality
+# translation than Groq, but reliable and zero-cost.
+
+_GTRANS_URL = "https://translate.googleapis.com/translate_a/single"
+_GTRANS_MAX_CHARS = 4500  # Google rejects requests over ~5000 chars
+
+
+def _google_translate(text: str) -> str:
+    """Translate Korean → English via Google's public endpoint. Returns the
+    original text on any failure so we never lose data."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    # Chunk long text on paragraph boundaries to stay under the limit
+    if len(text) > _GTRANS_MAX_CHARS:
+        # Split on blank lines, translate each chunk, rejoin
+        chunks: list[str] = []
+        buf = ""
+        for para in text.split("\n\n"):
+            if len(buf) + len(para) + 2 > _GTRANS_MAX_CHARS:
+                if buf:
+                    chunks.append(buf)
+                buf = para
+            else:
+                buf = (buf + "\n\n" + para) if buf else para
+        if buf:
+            chunks.append(buf)
+        return "\n\n".join(_google_translate(c) for c in chunks)
+
+    try:
+        res = requests.get(
+            _GTRANS_URL,
+            params={
+                "client": "gtx",
+                "sl": "ko",
+                "tl": "en",
+                "dt": "t",
+                "q": text,
+            },
+            headers={"User-Agent": HEADERS["User-Agent"]},
+            timeout=15,
+        )
+        res.raise_for_status()
+        data = res.json()
+        # Response shape: [[ ["en chunk", "ko chunk", null, null, …], … ], …]
+        if not isinstance(data, list) or not data or not isinstance(data[0], list):
+            return text
+        out_parts = [seg[0] for seg in data[0] if isinstance(seg, list) and seg]
+        return "".join(out_parts) or text
+    except Exception as e:
+        print(f"[wanted] google translate failed: {e}")
+        return text
+
+
+# Korean keyword heuristic for foreigner-friendliness (only used when Groq
+# isn't available). Matches against the ORIGINAL Korean text so we don't lose
+# signal in translation noise.
+_KOREAN_NEGATIVE = (
+    "한국어 능통", "한국어능통", "원어민",
+    "병역", "군필", "한국 국적", "한국국적",
+)
+_ENGLISH_POSITIVE = (
+    "영어 가능", "영어가능", "영어 능통", "영어능통",
+    "english", "English", "외국인 환영", "글로벌",
+)
+
+
+def _detect_foreigner_friendly(text: str) -> tuple[str, str]:
+    """Cheap keyword-based classification used as a fallback when Groq
+    isn't available. Returns (foreigner_friendly, foreigner_note)."""
+    if not text:
+        return ("unclear", "")
+    has_neg = any(kw in text for kw in _KOREAN_NEGATIVE)
+    has_pos = any(kw in text for kw in _ENGLISH_POSITIVE)
+    if has_neg and not has_pos:
+        return ("no", "Korean fluency or local citizenship mentioned in requirements.")
+    if has_pos and not has_neg:
+        return ("yes", "Mentions English / welcomes foreigners.")
+    return ("unclear", "Eligibility for foreign applicants not explicitly stated.")
+
+
 def _translate_with_groq(parsed: dict) -> dict:
-    """Translate Korean job fields to English via Groq + classify
-    foreigner-friendliness. Returns a copy of `parsed` with title/description/
-    requirements replaced (when translation succeeds) and two new keys:
-    foreigner_friendly + foreigner_note. On any failure, returns the input
-    untouched with empty foreigner fields so the row still inserts."""
+    """Translate Korean job fields to English and classify foreigner-friendliness.
+
+    Tries Groq first (best quality + accurate classification). Falls back to
+    free Google Translate + keyword heuristic when GROQ_API_KEY is missing or
+    Groq errors out. Either way the function never loses data — on total
+    failure the original Korean is preserved.
+    """
     out = dict(parsed)
     out.setdefault("foreigner_friendly", "")
     out.setdefault("foreigner_note", "")
 
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if not api_key:
-        return out  # no Groq configured → store Korean as-is
 
-    payload_in = {
-        "title": parsed.get("title", "")[:200],
-        "company": parsed.get("company", "")[:150],
-        "description": parsed.get("description", "")[:4000],
-        "requirements": parsed.get("requirements", "")[:3000],
-    }
+    # ── Path A — Groq (best) ──────────────────────────────────────────────
+    if api_key:
+        payload_in = {
+            "title": parsed.get("title", "")[:200],
+            "company": parsed.get("company", "")[:150],
+            "description": parsed.get("description", "")[:4000],
+            "requirements": parsed.get("requirements", "")[:3000],
+        }
+        try:
+            from groq import Groq
+            client = Groq(api_key=api_key)
+            resp = client.chat.completions.create(
+                model=os.environ.get("WANTED_TRANSLATE_MODEL", "llama-3.3-70b-versatile"),
+                messages=[
+                    {"role": "system", "content": _TRANSLATION_PROMPT},
+                    {"role": "user", "content": json.dumps(payload_in, ensure_ascii=False)},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.2,
+                max_tokens=2000,
+            )
+            raw = resp.choices[0].message.content or "{}"
+            data = json.loads(raw)
 
-    try:
-        from groq import Groq  # imported lazily so missing dep doesn't kill the run
-        client = Groq(api_key=api_key)
-        resp = client.chat.completions.create(
-            model=os.environ.get("WANTED_TRANSLATE_MODEL", "llama-3.3-70b-versatile"),
-            messages=[
-                {"role": "system", "content": _TRANSLATION_PROMPT},
-                {"role": "user", "content": json.dumps(payload_in, ensure_ascii=False)},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.2,
-            max_tokens=2000,
-        )
-        raw = resp.choices[0].message.content or "{}"
-        data = json.loads(raw)
-    except Exception as e:
-        print(f"[wanted] translation failed for '{payload_in['title'][:60]}': {e}")
-        return out
+            title = _clean_text(data.get("title"))
+            description = _clean_text(data.get("description"))
+            requirements = _clean_text(data.get("requirements"))
+            foreigner_friendly = _clean_text(data.get("foreigner_friendly")).lower()
+            foreigner_note = _clean_text(data.get("foreigner_note"))
+            if foreigner_friendly not in {"yes", "no", "unclear"}:
+                foreigner_friendly = "unclear"
 
-    title = _clean_text(data.get("title"))
-    description = _clean_text(data.get("description"))
-    requirements = _clean_text(data.get("requirements"))
-    foreigner_friendly = _clean_text(data.get("foreigner_friendly")).lower()
-    foreigner_note = _clean_text(data.get("foreigner_note"))
+            if title:        out["title"]        = title[:200]
+            if description:  out["description"]  = description
+            if requirements: out["requirements"] = requirements
+            out["foreigner_friendly"] = foreigner_friendly
+            out["foreigner_note"]     = foreigner_note[:300]
+            return out
+        except Exception as e:
+            print(f"[wanted] Groq translation failed, falling back to Google: {e}")
+            # fall through to Path B
 
-    if foreigner_friendly not in {"yes", "no", "unclear"}:
-        foreigner_friendly = "unclear"
+    # ── Path B — Google Translate fallback ────────────────────────────────
+    # Detect foreigner-friendly from the ORIGINAL Korean first (more signal
+    # than the translation), then translate the three text fields.
+    original_req = parsed.get("requirements", "")
+    original_desc = parsed.get("description", "")
+    friendly, note = _detect_foreigner_friendly(original_req + "\n" + original_desc)
 
-    if title:        out["title"]        = title[:200]
-    if description:  out["description"]  = description
-    if requirements: out["requirements"] = requirements
-    out["foreigner_friendly"] = foreigner_friendly
-    out["foreigner_note"]     = foreigner_note[:300]
+    out["title"]        = _google_translate(parsed.get("title", ""))[:200] or parsed.get("title", "")
+    out["description"]  = _google_translate(parsed.get("description", "")) or parsed.get("description", "")
+    out["requirements"] = _google_translate(parsed.get("requirements", "")) or parsed.get("requirements", "")
+    out["foreigner_friendly"] = friendly
+    out["foreigner_note"]     = note[:300]
     return out
 
 
@@ -460,10 +556,9 @@ def translate_pending(app, limit: int = 80) -> dict:
 
     summary = {"scanned": 0, "translated": 0, "skipped": 0, "errors": 0}
 
-    if not os.environ.get("GROQ_API_KEY", "").strip():
-        print("[wanted] translate_pending skipped — GROQ_API_KEY not configured")
-        summary["errors"] = -1  # sentinel: no API key
-        return summary
+    # No GROQ_API_KEY check anymore — _translate_with_groq now falls back to
+    # the free Google Translate endpoint when Groq isn't configured, so this
+    # function always has a working translator available.
 
     with app.app_context():
         # Pull at most `limit` candidates per run so we never block forever.
