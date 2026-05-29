@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>ICOM — Final Poster</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #06060f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    min-height: 100vh;
+    padding: 40px;
+  }
+
+  .hint {
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* LinkedIn-recommended aspect: 1200x627 (landscape) */
+  .poster {
+    width: 1200px;
+    height: 627px;
+    background:
+      radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.38), transparent 55%),
+      radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.38), transparent 55%),
+      radial-gradient(ellipse at center, rgba(56, 189, 248, 0.12), transparent 60%),
+      linear-gradient(135deg, #07070f 0%, #14142b 50%, #07070f 100%);
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    color: white;
+    display: grid;
+    grid-template-columns: 1.42fr 1fr;
+    box-shadow: 0 40px 120px rgba(99,102,241,0.18);
+  }
+
+  /* Dot grid overlay */
+  .poster::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+
+  /* Glowing accent blobs */
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .blob-1 { top: -110px; left: -110px; width: 420px; height: 420px; background: #6366f1; }
+  .blob-2 { bottom: -130px; right: -110px; width: 460px; height: 460px; background: #8b5cf6; }
+  .blob-3 { top: 40%; left: 45%; width: 260px; height: 260px; background: #38bdf8; opacity: 0.28; }
+
+  /* ── Left column ── */
+  .left {
+    padding: 64px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    z-index: 2;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #a5b4fc;
+    width: fit-content;
+    margin-bottom: 24px;
+  }
+
+  .badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 12px #10b981;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  h1 {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-bottom: 22px;
+    background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  h1 .accent {
+    background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    font-size: 21px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.4;
+    margin-bottom: 32px;
+    max-width: 560px;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 13px 22px;
+    margin-bottom: 32px;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+  }
+
+  .feature-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
+    border: 1px solid rgba(139,92,246,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .author {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .author-avatar {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+    color: white;
+  }
+
+  .author-info p:first-child {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+  }
+  .author-info p:last-child {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 2px;
+  }
+
+  .url {
+    padding: 12px 22px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.18), rgba(192,132,252,0.12));
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    font-family: 'SF Mono', Menlo, monospace;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Right column (visual) ── */
+  .right {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 56px;
+    z-index: 2;
+  }
+
+  .phone {
+    width: 320px;
+    height: 490px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+    border-radius: 36px;
+    border: 8px solid #07070f;
+    box-shadow:
+      0 30px 80px rgba(99, 102, 241, 0.45),
+      0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+    transform: rotate(-4deg);
+  }
+
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 24px;
+    background: #07070f;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    z-index: 10;
+  }
+
+  .phone-content {
+    padding: 40px 16px 16px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .phone-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .phone-logo {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    color: white;
+  }
+  .phone-title { font-size: 13px; font-weight: 700; color: white; }
+  .phone-title .dot { color: #818cf8; }
+
+  .phone-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 11px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .phone-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .icon-chat  { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .icon-jobs  { background: linear-gradient(135deg, #10b981, #06b6d4); }
+  .icon-ai    { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+  .icon-club  { background: linear-gradient(135deg, #ec4899, #8b5cf6); }
+
+  .phone-card-text { flex: 1; min-width: 0; }
+  .phone-card-title { font-size: 11px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phone-card-sub { font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  .phone-pill {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+    flex-shrink: 0;
+  }
+  .pill-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .pill-indigo { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+  /* Floating mini-cards around phone */
+  .float-card {
+    position: absolute;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .float-1 { top: 54px; right: -12px; transform: rotate(5deg); }
+  .float-2 { bottom: 72px; left: -22px; transform: rotate(-3deg); }
+
+  .float-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .float-text { font-size: 12px; font-weight: 600; color: white; white-space: nowrap; }
+  .float-sub  { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Left content -->
+    <div class="left">
+      <div>
+        <div class="badge">
+          <span class="badge-dot"></span>
+          Live at icom.ai.kr · Built by a student, for students
+        </div>
+
+        <h1>The OS for<br><span class="accent">international students</span><br>in Korea</h1>
+
+        <p class="subtitle">
+          Community Q&amp;A, visa-matched internships, and an AI guide — all in one place.
+          Built for the 200,000+ students who came to Korea to study.
+        </p>
+
+        <div class="features">
+          <div class="feature"><span class="feature-icon">💬</span> University &amp; All-Korea chat</div>
+          <div class="feature"><span class="feature-icon">💼</span> Foreigner-friendly internships</div>
+          <div class="feature"><span class="feature-icon">🤖</span> AI Korea guide</div>
+          <div class="feature"><span class="feature-icon">🌍</span> Clubs &amp; national communities</div>
+          <div class="feature"><span class="feature-icon">📖</span> Visa · housing · banking guides</div>
+          <div class="feature"><span class="feature-icon">🗺️</span> Daily-life &amp; food maps</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="author">
+          <div class="author-avatar">KJ</div>
+          <div class="author-info">
+            <p>Kulmatov Jaloliddin</p>
+            <p>Founder · JBNU</p>
+          </div>
+        </div>
+        <div class="url">icom.ai.kr</div>
+      </div>
+    </div>
+
+    <!-- Right visual: phone mockup -->
+    <div class="right">
+      <div class="phone">
+        <div class="phone-content">
+          <div class="phone-header">
+            <div class="phone-logo">IC</div>
+            <div class="phone-title">ICOM<span class="dot">.</span></div>
+          </div>
+
+          <div class="phone-card">
+            <div class="phone-card-icon icon-chat">💬</div>
+            <div class="phone-card-text">
+              <div class="phone-card-title">Halal food near JBNU?</div>
+              <div class="phone-card-sub">JBNU Chat · 3 answers</div>
+            </div>
+            <span class="phone-pill pill-indigo">JBNU</span>
+          </div>
+
+          <div class="phone-card">
+            <div class="phone-card-icon icon-jobs">💼</div>
+            <div class="phone-card-text">
+              <div class="phone-card-title">North America Marketing Intern</div>
+              <div class="phone-card-sub">D-2 · Seoul · Rolling</div>
+            </div>
+            <span class="phone-pill pill-green">Welcome</span>
+          </div>
+
+          <div class="phone-card">
+            <div class="phone-card-icon icon-ai">🤖</div>
+            <div class="phone-card-text">
+              <div class="phone-card-title">Ask ICOM AI</div>
+              <div class="phone-card-sub">D-2 visa extension steps</div>
+            </div>
+          </div>
+
+          <div class="phone-card">
+            <div class="phone-card-icon icon-club">🇺🇿</div>
+            <div class="phone-card-text">
+              <div class="phone-card-title">Uzbeks in Korea</div>
+              <div class="phone-card-sub">1,240 members</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating accent cards -->
+      <div class="float-card float-1">
+        <div class="float-icon" style="background: linear-gradient(135deg, #10b981, #06b6d4);">✨</div>
+        <div>
+          <div class="float-text">AI Assistant</div>
+          <div class="float-sub">Visa · Banking · Jobs</div>
+        </div>
+      </div>
+
+      <div class="float-card float-2">
+        <div class="float-icon" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">🔥</div>
+        <div>
+          <div class="float-text">47 universities</div>
+          <div class="float-sub">Auto-translated jobs, daily</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">Open in a browser, then screenshot the 1200×627 card — ready for LinkedIn / X / posters.</p>
+</body>
+</html>

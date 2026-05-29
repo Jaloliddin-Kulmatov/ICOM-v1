@@ -14,8 +14,9 @@
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 14 (App Router), TypeScript, TailwindCSS |
-| Backend | Flask (Python), SQLAlchemy, Flask-JWT |
+| Backend | Flask (Python), SQLAlchemy, Flask-JWT-Extended |
 | AI | Groq API (llama-3.3-70b-versatile) |
+| Internship scraper | Wanted.co.kr API + Groq/Google Translate auto-translation, APScheduler (06:00 & 18:00 UTC) |
 | Database | SQLite (dev) → PostgreSQL (production) |
 | Deployment | Render.com |
 
@@ -209,29 +210,39 @@ icom/
 ├── src/                        # Next.js frontend
 │   ├── app/                    # App Router pages
 │   │   ├── page.tsx            # Landing page
-│   │   ├── jobs/               # Internships page
+│   │   ├── chat/               # Community Q&A (All Korea + per-university chat)
+│   │   ├── jobs/               # Internships (list + detail)
 │   │   ├── community/          # Clubs & News
 │   │   ├── support/            # Guides (visa, housing, etc.)
 │   │   ├── universities/       # University directory
 │   │   ├── daily-life/         # Maps, restaurants, transport
+│   │   ├── admin/              # Admin panel (scraper controls, moderation)
 │   │   └── dashboard/          # User dashboard + AI chat
 │   ├── components/             # Shared UI components
+│   │   ├── layout/             # Navbar, Footer, MobileBottomNav
+│   │   └── ai/                 # Floating AI chat widget
 │   └── lib/                    # Auth, utils, constants
 │
 ├── backend/                    # Flask API
-│   ├── app.py                  # App factory
+│   ├── app.py                  # App factory + migrations + scheduler + seeds
 │   ├── models.py               # SQLAlchemy models
 │   ├── run.py                  # Entry point
 │   ├── requirements.txt        # Python dependencies
+│   ├── scrapers/
+│   │   └── wanted.py           # Wanted.co.kr internship scraper + translation
 │   └── routes/
 │       ├── auth.py             # Register / Login / Profile
 │       ├── ai.py               # Groq AI chat + restaurants
+│       ├── chat.py             # Community Q&A (posts, answers, moderation, scope)
 │       ├── clubs.py            # Clubs & communities
 │       ├── posts.py            # News feed
-│       ├── admin.py            # Job management
+│       ├── search.py           # Global search
+│       ├── feedback.py         # User feedback inbox
+│       ├── admin.py            # Job management + scraper triggers
 │       └── ambassador.py       # Ambassador applications
 │
 ├── render.yaml                 # Render deploy config
+├── poster-final.html           # Promotional poster (1200×627, LinkedIn-ready)
 └── README.md
 ```
 
@@ -239,13 +250,16 @@ icom/
 
 ## Key Features
 
-- 🌍 **Community** — Join clubs and national communities, member-only chat
-- 💼 **Internships** — Real internship listings at top companies with direct apply links
-- 🤖 **AI Assistant** — Powered by Groq, answers visa/housing/banking questions
+- 💬 **Community Q&A (Chat)** — Reddit-style questions & answers with image uploads and automatic content moderation (terror / sexual / hate content is blocked). Two scopes: **All Korea** (global) and a **per-university chat** (e.g. "JBNU Chat") — university posts stay private to that university and never leak into the global feed. Local questions surface first by region.
+- 🌍 **Community** — Join clubs and national communities, member-only club chat
+- 💼 **Internships** — Live listings scraped twice daily from Wanted.co.kr, **auto-translated to English** (Groq → Google Translate fallback) and **AI-classified for foreigner-friendliness** (Korean-only postings are flagged or skipped). Real apply links, real deadlines (rolling when none is published), apply-click tracking, opt-in job alerts, and live "Top Hiring Companies".
+- 🤖 **AI Assistant** — Powered by Groq, answers visa/housing/banking questions. Reachable from every page via a floating chat widget.
 - 📖 **Support Guides** — Step-by-step guides for visa, banking, housing, insurance, transport, Korean language
-- 🏫 **Universities** — JBNU and Korean university information
+- 🏫 **Universities** — JBNU and Korean university directory + ambassador program
 - 🗺️ **Daily Life** — Nearby restaurants (personalised by nationality), transport tips
 - 📰 **News** — Ambassadors and club owners can post updates
+- 📱 **Mobile-first** — Dedicated bottom navigation, responsive layouts, iOS safe-area handling
+- 🛠️ **Admin panel** — One-click scraper run / reset & re-scrape with an accurate "added N new internships" report, deadline cleanup, and content moderation
 
 ---
 
@@ -258,6 +272,20 @@ icom/
 **CORS errors** — Make sure `FRONTEND_URL` in your backend env exactly matches your frontend Render URL (no trailing slash).
 
 **Build fails** — Make sure `gunicorn` and `psycopg2-binary` are in `requirements.txt` (they are already included).
+
+---
+
+## Author
+
+**Kulmatov Jaloliddin** — Founder, JBNU (Jeonbuk National University)
+
+- 🌐 Portfolio — https://portfolio-n5v3.vercel.app/
+- 💼 LinkedIn — https://www.linkedin.com/in/jaloliddin-kulmatov-69a81a406/
+- 🐙 GitHub — https://github.com/Jaloliddin-Kulmatov
+- ✈️ Telegram — https://t.me/jaloliddinkulmatov
+- ✉️ Email — jaloliddinqulmatov12@gmail.com
+
+Built by a student, for students. Live at **[icom.ai.kr](https://icom.ai.kr/)**.
 
 ---
 
