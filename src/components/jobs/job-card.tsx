@@ -48,6 +48,19 @@ interface JobCardProps {
   featured?: boolean;
 }
 
+// Format an ISO deadline ("2026-08-15") into "Aug 15, 2026". Non-ISO free
+// text (e.g. "Open until filled") is shown as-is. Empty/missing → null so the
+// caller can fall back to the rolling label.
+function formatDeadline(raw?: string): string | null {
+  const s = (raw || "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+  const d = new Date(`${m[0]}T00:00:00Z`);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default function JobCard({ job, featured = false }: JobCardProps) {
   const [bookmarked, setBookmarked] = useState(() => Bookmarks.jobs.has(job.id));
   // Optimistic apply count — bumps immediately on click so the UI feels
@@ -170,12 +183,23 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        {job.deadline && (
-          <div className="flex items-center gap-1 text-xs text-amber-400">
-            <Zap size={11} />
-            <span>Apply by {job.deadline}</span>
-          </div>
-        )}
+        {(() => {
+          const dl = formatDeadline(job.deadline);
+          // A real date is urgency-worthy (amber); a rolling listing is calmer
+          // (muted) but we still show *something* so every card has a clear
+          // deadline status instead of a blank space.
+          return dl ? (
+            <div className="flex items-center gap-1 text-xs text-amber-400">
+              <Zap size={11} />
+              <span>Apply by {dl}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock size={11} />
+              <span>Rolling — apply anytime</span>
+            </div>
+          );
+        })()}
         {job.applyLink ? (
           <a
             href={job.applyLink}
