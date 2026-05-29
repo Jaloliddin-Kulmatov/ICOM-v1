@@ -352,23 +352,6 @@ def translate_pending_jobs():
         return jsonify({"error": f"Translate-pending failed: {e}"}), 500
 
 
-@admin_bp.route("/jobs/scrape-now", methods=["POST"])
-@jwt_required()
-def scrape_now():
-    """Manually trigger the internship scraper. Admin only."""
-    user, err = _require_admin()
-    if err:
-        return err
-    try:
-        from flask import current_app
-        from scraper import run_scraper
-        import threading
-        threading.Thread(target=run_scraper, args=[current_app._get_current_object()], daemon=True).start()
-        return jsonify({"message": "Scraper started in background."}), 202
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
 @admin_bp.route("/jobs/bulk-ingest", methods=["POST"])
 def bulk_ingest_jobs():
     """Scraper-only endpoint. Protected by SCRAPER_SECRET header, not JWT."""
