@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import or_, func, text
 
 from app import db
-from models import Club, Job
+from models import Club, Job, ClubMembership
 
 search_bp = Blueprint("search", __name__)
 
@@ -22,6 +22,19 @@ def search():
 
     q_lower = q.lower()
 
+    # Correlated subquery: number of approved members per club. Used to order
+    # results "most popular first". `Club.member_count` is NOT a real column
+    # (it's only computed in Club.to_dict), so it cannot be used in order_by.
+    member_count_sq = (
+        db.session.query(func.count(ClubMembership.id))
+        .filter(
+            ClubMembership.club_id == Club.id,
+            ClubMembership.status == "approved",
+        )
+        .correlate(Club)
+        .scalar_subquery()
+    )
+
     # ── Clubs & communities ───────────────────────────────────────
     # Use ilike for PostgreSQL (index-friendly) and LIKE fallback for SQLite
     try:
@@ -37,7 +50,7 @@ def search():
                     Club.country.ilike(f"%{q}%"),
                 )
             )
-            .order_by(Club.member_count.desc(), Club.created_at.desc())
+            .order_by(member_count_sq.desc(), Club.created_at.desc())
             .limit(limit)
             .all()
         )
@@ -55,7 +68,7 @@ def search():
                     func.lower(Club.country).contains(q_lower),
                 )
             )
-            .order_by(Club.member_count.desc(), Club.created_at.desc())
+            .order_by(member_count_sq.desc(), Club.created_at.desc())
             .limit(limit)
             .all()
         )
@@ -100,8 +113,26 @@ def search():
 
     results = []
 
+    # Batch-fetch approved member counts for the matched clubs in one query
+    # (avoids N+1 and the previous getattr() that always returned 0).
+    club_ids = [c.id for c in clubs]
+    approved_counts: dict[int, int] = {}
+    if club_ids:
+        rows = (
+            db.session.query(ClubMembership.club_id, func.count(ClubMembership.id))
+            .filter(
+                ClubMembership.club_id.in_(club_ids),
+                ClubMembership.status == "approved",
+            )
+            .group_by(ClubMembership.club_id)
+            .all()
+        )
+        approved_counts = {cid: int(n) for cid, n in rows}
+
     for c in clubs:
         ctype = (c.club_type or "club").lower()
+        # +1 for the creator (mirrors Club.to_dict's member_count default).
+        member_count = approved_counts.get(c.id, 0) + 1
         results.append({
             "type": "community" if ctype == "community" else "club",
             "id": c.id,
@@ -110,7 +141,7 @@ def search():
             "category": c.category,
             "university": c.university,
             "country": c.country,
-            "member_count": getattr(c, "member_count", 0),
+            "member_count": member_count,
             "href": f"/community/{c.id}",   # direct link to club page
         })
 
