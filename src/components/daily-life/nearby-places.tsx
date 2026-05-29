@@ -33,7 +33,7 @@ const CATEGORIES: Category[] = [
   {
     key: "hospital",
     label: "Hospital",
-    desc: "Foreigner-friendly hospitals",
+    desc: "Foreigner-friendly general hospitals",
     query: "외국인 병원",
     Icon: Hospital,
     color: "text-red-500",
@@ -42,7 +42,7 @@ const CATEGORIES: Category[] = [
   {
     key: "pharmacy",
     label: "Pharmacy",
-    desc: "약국 (24h options highlighted)",
+    desc: "Pharmacies with 24-hour service",
     query: "약국",
     Icon: Pill,
     color: "text-pink-500",
@@ -51,7 +51,7 @@ const CATEGORIES: Category[] = [
   {
     key: "bank",
     label: "Bank",
-    desc: "Foreigner accounts (KB, Woori, Shinhan)",
+    desc: "KB, Woori, Shinhan — foreigner accounts",
     query: "은행 외국인",
     Icon: Landmark,
     color: "text-emerald-500",
@@ -60,7 +60,7 @@ const CATEGORIES: Category[] = [
   {
     key: "immigration",
     label: "Immigration",
-    desc: "출입국·외국인청 (visa & ARC)",
+    desc: "Visa extensions and ARC services",
     query: "출입국 외국인청",
     Icon: Building2,
     color: "text-indigo-500",
@@ -69,7 +69,7 @@ const CATEGORIES: Category[] = [
   {
     key: "convenience",
     label: "Convenience store",
-    desc: "GS25 / CU / 7-Eleven (24h)",
+    desc: "GS25, CU, 7-Eleven — open 24/7",
     query: "편의점",
     Icon: ShoppingCart,
     color: "text-amber-500",
@@ -78,7 +78,7 @@ const CATEGORIES: Category[] = [
   {
     key: "atm",
     label: "Foreign-card ATM",
-    desc: "Citi, GS25 — Visa/Mastercard friendly",
+    desc: "Citi and GS25 — Visa/Mastercard friendly",
     query: "외국인 ATM",
     Icon: Phone,
     color: "text-cyan-500",
@@ -86,8 +86,8 @@ const CATEGORIES: Category[] = [
   },
   {
     key: "halal",
-    label: "Halal / foreign food",
-    desc: "Halal market & international groceries",
+    label: "Halal & foreign food",
+    desc: "Halal market and international groceries",
     query: "할랄 식료품",
     Icon: Utensils,
     color: "text-orange-500",
@@ -96,7 +96,7 @@ const CATEGORIES: Category[] = [
   {
     key: "cafe",
     label: "Study café",
-    desc: "Wi-Fi · power outlets · quiet hours",
+    desc: "Wi-Fi, power outlets, quiet hours",
     query: "스터디카페",
     Icon: Coffee,
     color: "text-violet-500",
@@ -114,7 +114,7 @@ const CATEGORIES: Category[] = [
   {
     key: "subway",
     label: "Subway station",
-    desc: "Closest 지하철 entrance",
+    desc: "Find the closest metro entrance",
     query: "지하철역",
     Icon: Train,
     color: "text-blue-500",
@@ -228,7 +228,10 @@ export default function NearbyPlaces() {
       </div>
 
       {/* ── Categories grid ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      {/* 2 cols on phone, 3 on tablets, 5 on PC — same density as before
+          but each card has a larger icon and a bit more breathing room so
+          it reads at desktop sizes without looking sparse. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {CATEGORIES.map((c) => {
           const href = naverMapSearchUrl(c.query, city ?? undefined);
           return (
@@ -237,14 +240,14 @@ export default function NearbyPlaces() {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col gap-2 p-4 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all"
+              className="group flex flex-col gap-3 p-4 lg:p-5 rounded-2xl border border-border bg-card hover:border-indigo-500/40 hover:shadow-md transition-all min-h-[152px]"
             >
-              <div className={`w-9 h-9 rounded-xl ${c.bg} ${c.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                <c.Icon size={16} />
+              <div className={`w-11 h-11 rounded-2xl ${c.bg} ${c.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                <c.Icon size={20} strokeWidth={2.25} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground leading-tight">{c.label}</p>
-                <p className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{c.desc}</p>
+                <p className="text-[11px] text-muted-foreground leading-snug mt-1 line-clamp-2">{c.desc}</p>
               </div>
               <div className="flex items-center text-[10px] text-indigo-500 font-semibold">
                 Open in Naver Map <ChevronRight size={11} className="ml-0.5 group-hover:translate-x-0.5 transition-transform" />

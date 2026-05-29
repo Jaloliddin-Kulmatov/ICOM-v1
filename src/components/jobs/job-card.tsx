@@ -20,8 +20,20 @@ import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import type { Job } from "@/types";
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
 // Strip the "db-" prefix from the list page so we can route to /jobs/<numeric id>
 const detailHref = (id: string) => `/jobs/${id.replace(/^db-/, "")}`;
+const dbId = (id: string) => id.replace(/^db-/, "");
+
+// Fire-and-forget hit to the apply-counter endpoint. We don't await it —
+// it shouldn't slow the click → external-window jump. Failures are silent.
+function trackApplyClick(id: string) {
+  const numeric = dbId(id);
+  if (!/^\d+$/.test(numeric)) return;  // ignore non-DB demo cards
+  fetch(`${API}/admin/jobs/${numeric}/apply-click`, { method: "POST" })
+    .catch(() => { /* ignore */ });
+}
 
 const typeConfig: Record<Job["type"], { label: string; variant: "default" | "success" | "cyan" | "warning" | "violet" }> = {
   "part-time": { label: "Part-time", variant: "default" },
@@ -38,6 +50,9 @@ interface JobCardProps {
 
 export default function JobCard({ job, featured = false }: JobCardProps) {
   const [bookmarked, setBookmarked] = useState(() => Bookmarks.jobs.has(job.id));
+  // Optimistic apply count — bumps immediately on click so the UI feels
+  // responsive even before the network call returns.
+  const [applies, setApplies] = useState(job.applyCount ?? job.applications ?? 0);
   const typeInfo = typeConfig[job.type];
 
   return (
@@ -111,7 +126,7 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
         </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Users size={11} />
-          <span>{job.applications} applied</span>
+          <span>{applies} applied</span>
         </div>
       </div>
 
@@ -168,8 +183,13 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
             rel="noopener noreferrer"
             className="ml-auto"
             // Don't bubble into the wrapping <Link> — Apply should go to the
-            // employer site in a new tab, not to our detail page.
-            onClick={(e) => e.stopPropagation()}
+            // employer site in a new tab, not to our detail page. Also bump
+            // the apply counter so cards rank by real interest.
+            onClick={(e) => {
+              e.stopPropagation();
+              setApplies((n) => n + 1);
+              trackApplyClick(job.id);
+            }}
           >
             <Button size="sm" variant={featured ? "default" : "outline"} className="gap-1">
               Apply ↗

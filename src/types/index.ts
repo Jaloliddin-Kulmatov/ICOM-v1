@@ -49,6 +49,7 @@ export interface Job {
   postedAt: string;
   deadline?: string;
   applications: number;
+  applyCount?: number;
   isBookmarked?: boolean;
   tags: string[];
   isNew?: boolean;

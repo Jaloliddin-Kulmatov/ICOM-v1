@@ -374,20 +374,54 @@ def _parse_job(detail: dict) -> Optional[dict]:
                 tag_keywords.append(keyword)
     tags = ", ".join(tag_keywords)
 
-    # Deadline: Wanted returns it under several different keys depending on
-    # the posting type. Try every candidate; take only the date prefix.
-    raw_deadline = ""
-    for k in ("deadline", "due_time", "application_deadline", "expires_at"):
+    # Deadline: Wanted nests it in a few different places depending on the
+    # posting type. Try the top-level keys, then the nested detail / period
+    # objects. Take only the date prefix (YYYY-MM-DD).
+    def _pick_date(*candidates) -> str:
+        for v in candidates:
+            if not v:
+                continue
+            s = _clean_text(v)[:10]
+            if len(s) == 10 and s[4] == "-" and s[7] == "-":
+                return s
+        return ""
+
+    period_obj = detail.get("period") or detail.get("recruitment_period") or {}
+    if not isinstance(period_obj, dict):
+        period_obj = {}
+
+    deadline = _pick_date(
+        detail.get("deadline"),
+        detail.get("due_time"),
+        detail.get("application_deadline"),
+        detail.get("expires_at"),
+        detail.get("end_at"),
+        detail.get("closing_date"),
+        detail.get("closing_at"),
+        detail.get("recruit_close"),
+        detail.get("recruit_end_at"),
+        period_obj.get("end") if isinstance(period_obj, dict) else None,
+        period_obj.get("end_date") if isinstance(period_obj, dict) else None,
+        period_obj.get("close") if isinstance(period_obj, dict) else None,
+        detail_obj.get("deadline") if isinstance(detail_obj, dict) else None,
+        detail_obj.get("due_time") if isinstance(detail_obj, dict) else None,
+    )
+
+    # "Until filled" / 상시채용 — Wanted sometimes sets a flag instead of a
+    # date. Treat as rolling.
+    rolling_hint = False
+    for k in ("recruitment_type", "is_always_open", "is_constant_recruit"):
         v = detail.get(k)
-        if v:
-            raw_deadline = _clean_text(v)
+        if v and ("상시" in _clean_text(v) or v is True):
+            rolling_hint = True
             break
-    deadline = raw_deadline[:10] if raw_deadline else ""
-    # When Wanted has no deadline, default to 60 days from now so the row
-    # gets cleaned up automatically once it's stale.
-    if not deadline:
-        from datetime import datetime, timedelta
-        deadline = (datetime.utcnow() + timedelta(days=60)).strftime("%Y-%m-%d")
+
+    # Final fallback: leave empty so the detail page renders "Rolling — apply
+    # anytime" instead of a fake "60-days-from-now" date. Cleanup safely
+    # ignores rows with empty deadlines (they stay live until manually pruned
+    # or until the scraper finds a real deadline on the next refresh).
+    if not deadline and rolling_hint:
+        deadline = ""
 
     # Salary: try the structured "salary" object first, fall back to a few
     # numeric range fields (annual_from/annual_to are in 10,000s of KRW).

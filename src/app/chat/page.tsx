@@ -1,17 +1,43 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
+import { UNIVERSITIES } from "@/lib/constants";
 import {
   MessageSquare, Plus, ImageIcon, X, Loader2, Sparkles,
-  AlertCircle, ShieldCheck, ArrowRight, Search,
+  AlertCircle, ShieldCheck, ArrowRight, Search, MapPin,
+  Globe2, GraduationCap,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
+// Korean translations of cities/provinces — same map as the jobs page so we
+// can match posts that mention "전주" or "전라북도" instead of the English name.
+const CITY_KO: Record<string, string> = {
+  Jeonju: "전주", Iksan: "익산", Gunsan: "군산",
+  Seoul: "서울", Incheon: "인천", Suwon: "수원",
+  Daejeon: "대전", Daegu: "대구", Gwangju: "광주",
+  Busan: "부산", Ulsan: "울산", Sejong: "세종",
+  Pohang: "포항", Changwon: "창원", Yongin: "용인",
+  Chuncheon: "춘천", Cheongju: "청주", Cheonan: "천안",
+  Gongju: "공주", Jinju: "진주", Gimhae: "김해",
+  Mokpo: "목포", Suncheon: "순천", Jeju: "제주",
+  Ansan: "안산", Seongnam: "성남", Gyeongsan: "경산",
+  Wonju: "원주",
+};
+const PROVINCE_KO: Record<string, string> = {
+  "Jeollabuk-do": "전라북도",
+  "Jeollanam-do": "전라남도",
+  "Gyeonggi-do":  "경기도",
+  "Gangwon-do":   "강원도",
+  "Chungcheong":  "충청도",
+  "Gyeongsang":   "경상도",
+  "Jeju-do":      "제주도",
+};
 
 interface ChatPost {
   id: number;
@@ -71,6 +97,10 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  // Two-tab view: "all" shows every question, "uni" filters to questions
+  // from students at the user's university (e.g. JBNU Chat). Defaults to
+  // "all" when the user has no university or isn't signed in.
+  const [tab, setTab] = useState<"all" | "uni">("all");
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -85,9 +115,88 @@ export default function ChatPage() {
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
+  // Resolve the signed-in user's university to a region (city + province +
+  // Korean translations + university name variants). Used to surface posts
+  // from your area first — JBNU students see Jeonju / Jeollabuk-do questions
+  // before random Seoul ones.
+  const myRegion = useMemo(() => {
+    const raw = (user?.university || "").trim();
+    if (!raw) return null;
+    const lc = raw.toLowerCase();
+    const uni = UNIVERSITIES.find(
+      (u) =>
+        u.id.toLowerCase() === lc ||
+        u.shortName.toLowerCase() === lc ||
+        u.name.toLowerCase() === lc
+    );
+    if (!uni) return null;
+    return {
+      uniLabel: uni.shortName,
+      uniTokens: [uni.id, uni.shortName, uni.name]
+        .filter(Boolean).map((s) => s.toLowerCase()),
+      cityTokens: [uni.city, CITY_KO[uni.city] ?? ""]
+        .filter(Boolean).map((s) => s.toLowerCase()),
+      provinceTokens: [uni.province, PROVINCE_KO[uni.province] ?? ""]
+        .filter(Boolean).map((s) => s.toLowerCase()),
+    };
+  }, [user?.university]);
+
+  // Posts that mention your university/city/province bubble to the top.
+  //   +3 university (incl. shortName + Korean name)
+  //   +2 city  (e.g. "Jeonju" / "전주")
+  //   +1 province (e.g. "Jeollabuk-do" / "전라북도")
+  // Ties break on created_at (newest first), which is what the backend
+  // already returns — so when myRegion is null the order is unchanged.
+  const rankPost = useCallback((p: ChatPost): number => {
+    if (!myRegion) return 0;
+    const hay = `${p.title} ${p.content} ${p.author_university} ${p.author_country}`.toLowerCase();
+    let score = 0;
+    if (myRegion.uniTokens.some((t) => hay.includes(t))) score += 3;
+    if (myRegion.cityTokens.some((t) => hay.includes(t))) score += 2;
+    if (myRegion.provinceTokens.some((t) => hay.includes(t))) score += 1;
+    return score;
+  }, [myRegion]);
+
+  const sortedPosts = useMemo(() => {
+    if (!myRegion) return posts;
+    // Stable sort by score desc, falling back to original (newest-first) order
+    return [...posts]
+      .map((p, idx) => ({ p, idx, score: rankPost(p) }))
+      .sort((a, b) => (b.score - a.score) || (a.idx - b.idx))
+      .map((x) => x.p);
+  }, [posts, myRegion, rankPost]);
+
+  const localPostCount = useMemo(
+    () => (myRegion ? sortedPosts.filter((p) => rankPost(p) > 0).length : 0),
+    [sortedPosts, myRegion, rankPost]
+  );
+
+  // True when this post should count toward the university tab. Match by
+  // author_university against the user's uni id / shortName / full name so
+  // any stored variant resolves (e.g. "jbnu", "JBNU", "Jeonbuk National…").
+  const isFromMyUniversity = useCallback((p: ChatPost): boolean => {
+    if (!myRegion) return false;
+    const au = (p.author_university || "").toLowerCase().trim();
+    if (!au) return false;
+    return myRegion.uniTokens.some((t) => au === t || au.includes(t));
+  }, [myRegion]);
+
+  const uniPostCount = useMemo(
+    () => (myRegion ? sortedPosts.filter(isFromMyUniversity).length : 0),
+    [sortedPosts, myRegion, isFromMyUniversity]
+  );
+
+  // Apply tab filter first, then search. When the user picks the uni tab
+  // we keep only posts authored by students from that university — strictly
+  // narrower than the region ranking, which also surfaces nearby content.
+  const tabFilteredPosts = useMemo(() => {
+    if (tab !== "uni" || !myRegion) return sortedPosts;
+    return sortedPosts.filter(isFromMyUniversity);
+  }, [sortedPosts, tab, myRegion, isFromMyUniversity]);
+
   const visiblePosts = !search
-    ? posts
-    : posts.filter(p =>
+    ? tabFilteredPosts
+    : tabFilteredPosts.filter(p =>
         p.title.toLowerCase().includes(search.toLowerCase()) ||
         p.content.toLowerCase().includes(search.toLowerCase())
       );
@@ -109,6 +218,49 @@ export default function ChatPage() {
               Stuck on something? Ask a question — international students who&apos;ve
               been there will share their experience.
             </p>
+
+            {myRegion && localPostCount > 0 && tab === "all" && (
+              <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
+                <MapPin size={11} />
+                Showing {localPostCount} question{localPostCount === 1 ? "" : "s"} from your area first ({myRegion.uniLabel})
+              </div>
+            )}
+
+            {/* Tabs — only render when the user belongs to a recognised
+                university. Tabs let you switch between the global feed and
+                a uni-only feed (e.g. "JBNU Chat"). */}
+            {myRegion && (
+              <div className="mt-5 inline-flex items-center gap-1 p-1 rounded-xl border border-border bg-card">
+                <button
+                  onClick={() => setTab("all")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    tab === "all"
+                      ? "bg-indigo-500/15 text-indigo-500"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Globe2 size={12} />
+                  All Korea
+                  <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
+                    tab === "all" ? "bg-indigo-500/20" : "bg-muted"
+                  }`}>{sortedPosts.length}</span>
+                </button>
+                <button
+                  onClick={() => setTab("uni")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    tab === "uni"
+                      ? "bg-indigo-500/15 text-indigo-500"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <GraduationCap size={12} />
+                  {myRegion.uniLabel} Chat
+                  <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
+                    tab === "uni" ? "bg-indigo-500/20" : "bg-muted"
+                  }`}>{uniPostCount}</span>
+                </button>
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3 flex-col sm:flex-row">
               <div className="relative flex-1">
@@ -146,14 +298,24 @@ export default function ChatPage() {
             </div>
           ) : visiblePosts.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground text-sm">
-              {search ? `No questions matching "${search}".` : "No questions yet. Be the first to ask!"}
+              {search
+                ? `No questions matching "${search}".`
+                : tab === "uni" && myRegion
+                  ? `No questions yet from ${myRegion.uniLabel} students. Be the first to ask!`
+                  : "No questions yet. Be the first to ask!"}
             </div>
           ) : (
-            visiblePosts.map((p) => (
+            visiblePosts.map((p) => {
+              const isLocal = rankPost(p) > 0;
+              return (
               <Link
                 key={p.id}
                 href={`/chat/${p.id}`}
-                className="block p-4 sm:p-5 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all"
+                className={`block p-4 sm:p-5 rounded-2xl border bg-card hover:shadow-sm transition-all ${
+                  isLocal
+                    ? "border-indigo-500/30 ring-1 ring-indigo-500/10"
+                    : "border-border hover:border-indigo-500/30"
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -165,6 +327,11 @@ export default function ChatPage() {
                       {p.author_university && <span>· {p.author_university}</span>}
                       {p.author_country && <span>· {p.author_country}</span>}
                       <span>· {formatRelativeTime(p.created_at)}</span>
+                      {isLocal && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-full font-semibold">
+                          <MapPin size={9} /> Near you
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-sm font-bold text-foreground leading-snug mb-1">
                       {p.title}
@@ -192,7 +359,8 @@ export default function ChatPage() {
                   </div>
                 </div>
               </Link>
-            ))
+              );
+            })
           )}
         </div>
       </main>

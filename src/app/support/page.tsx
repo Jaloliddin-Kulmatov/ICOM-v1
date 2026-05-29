@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import {
   FileText, Home, CreditCard, Shield, Train, BookOpen,
   ArrowRight, Sparkles, Search, Clock, ThumbsUp, ChevronRight, ChevronDown,
@@ -316,6 +317,7 @@ export default function SupportPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -164,6 +164,52 @@ def delete_club(club_id):
 
 SCRAPER_SECRET = os.environ.get("SCRAPER_SECRET", "")
 
+# Last scrape result, shared across requests so the admin panel can poll for an
+# accurate "added N new internships" count instead of guessing from job totals.
+# Lives in-process (resets on restart) — that's fine, it's just a status board.
+import threading as _threading
+from datetime import datetime as _dt
+
+_SCRAPE_LOCK = _threading.Lock()
+_LAST_SCRAPE = {"state": "idle"}  # state: idle | running | done | error
+
+
+def _set_scrape(**fields):
+    with _SCRAPE_LOCK:
+        _LAST_SCRAPE.clear()
+        _LAST_SCRAPE.update(fields)
+
+
+def _run_scraper_tracked(flask_app, kind="scrape", deactivated=0):
+    """Run the scraper, recording start/finish status + summary for polling."""
+    from scrapers.wanted import run_scraper
+    _set_scrape(state="running", kind=kind, started_at=_dt.utcnow().isoformat() + "Z")
+    try:
+        summary = run_scraper(flask_app) or {}
+        added = int(summary.get("inserted", 0)) + int(summary.get("reactivated", 0))
+        _set_scrape(
+            state="done", kind=kind,
+            finished_at=_dt.utcnow().isoformat() + "Z",
+            added=added,
+            deactivated=deactivated,
+            summary=summary,
+        )
+    except Exception as e:
+        print(f"[wanted] {kind} worker crashed: {e}")
+        _set_scrape(state="error", kind=kind,
+                    finished_at=_dt.utcnow().isoformat() + "Z", error=str(e))
+
+
+@admin_bp.route("/jobs/scrape-status", methods=["GET"])
+@jwt_required()
+def scrape_status():
+    """Poll the result of the most recent manual scrape/reset. Admin only."""
+    user, err = _require_admin()
+    if err:
+        return err
+    with _SCRAPE_LOCK:
+        return jsonify(dict(_LAST_SCRAPE)), 200
+
 
 @admin_bp.route("/jobs/scrape-now", methods=["POST"])
 @jwt_required()
@@ -175,23 +221,107 @@ def scrape_now():
         return err
     try:
         from flask import current_app
-        from scrapers.wanted import run_scraper
         import threading
 
         flask_app = current_app._get_current_object()
-
-        def _worker():
-            try:
-                run_scraper(flask_app)
-            except Exception as e:
-                print(f"[wanted] background worker crashed: {e}")
-
-        threading.Thread(target=_worker, daemon=True, name="wanted-scrape-now").start()
+        threading.Thread(
+            target=_run_scraper_tracked, args=(flask_app,),
+            kwargs={"kind": "scrape"}, daemon=True, name="wanted-scrape-now",
+        ).start()
         return jsonify({
-            "message": "Scraper started in the background. Check server logs for results."
+            "message": "Scraper started. Poll /jobs/scrape-status for results.",
+            "state": "running",
         }), 202
     except Exception as e:
         return jsonify({"error": f"Could not start scraper: {e}"}), 500
+
+
+@admin_bp.route("/jobs/reset", methods=["POST"])
+@jwt_required()
+def reset_jobs():
+    """Nuke-and-pave: deactivate every current job, then kick off a fresh
+    scrape. The scraper's reactivation logic will revive any postings still
+    live on Wanted with fully-translated English data + real deadlines.
+    Korean-only rows that never get re-scraped stay inactive (hidden).
+    Admin only. Returns 202 immediately; scrape runs in the background."""
+    user, err = _require_admin()
+    if err:
+        return err
+    try:
+        from flask import current_app
+        import threading
+
+        # Count and deactivate everything that's currently visible. We don't
+        # hard-delete because that would lose history (saved bookmarks, etc.)
+        # — the scraper will flip is_active back to True for anything still
+        # live on Wanted.
+        active_jobs = Job.query.filter_by(is_active=True).all()
+        deactivated = len(active_jobs)
+        for j in active_jobs:
+            j.is_active = False
+        db.session.commit()
+
+        flask_app = current_app._get_current_object()
+        threading.Thread(
+            target=_run_scraper_tracked, args=(flask_app,),
+            kwargs={"kind": "reset", "deactivated": deactivated},
+            daemon=True, name="wanted-reset",
+        ).start()
+        return jsonify({
+            "message": (
+                f"Deactivated {deactivated} job(s). Re-scrape started — fresh "
+                "English data will replace them shortly."
+            ),
+            "deactivated": deactivated,
+        }), 202
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Could not reset jobs: {e}"}), 500
+
+
+@admin_bp.route("/jobs/fix-deadlines", methods=["POST"])
+@jwt_required()
+def fix_job_deadlines():
+    """Clear the "today + 60 days" fake deadlines that the old scraper set
+    when Wanted returned no real date. Detection: deadline == created_at
+    date + 60 days. Those rows become rolling ("Apply anytime"); rows with
+    a genuine date or a manually-edited one are left untouched. Admin only."""
+    user, err = _require_admin()
+    if err:
+        return err
+    from datetime import timedelta, date
+
+    try:
+        cleared = 0
+        scanned = 0
+        for job in Job.query.filter_by(is_active=True).all():
+            scanned += 1
+            raw = (job.deadline or "").strip()
+            if len(raw) < 10:
+                continue
+            try:
+                dl = date.fromisoformat(raw[:10])
+            except ValueError:
+                continue
+            # Re-derive what the old default would have been: created_at + 60d.
+            if not job.created_at:
+                continue
+            bogus = (job.created_at.date() + timedelta(days=60))
+            # Allow a +/- 1 day tolerance for boundary cases caused by UTC
+            # rollover between created_at and the original computation.
+            if abs((dl - bogus).days) <= 1:
+                job.deadline = ""
+                cleared += 1
+        if cleared:
+            db.session.commit()
+        return jsonify({
+            "message": f"Cleared {cleared} fake deadlines (of {scanned} active jobs).",
+            "cleared": cleared,
+            "scanned": scanned,
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Could not fix deadlines: {e}"}), 500
 
 
 @admin_bp.route("/jobs/translate-pending", methods=["POST"])
@@ -354,6 +484,73 @@ def delete_job(job_id):
     job.is_active = False
     db.session.commit()
     return jsonify({"message": "Job removed."}), 200
+
+
+# ── Apply-click counter (anonymous) ──────────────────────────────────────────
+# Fire-and-forget POST from both the listings + detail Apply buttons. Cheap
+# counter — no idempotency guards. If a curious user clicks 100× we just
+# count 100; that's fine signal for sorting "Most Applied".
+
+@admin_bp.route("/jobs/<int:job_id>/apply-click", methods=["POST"])
+def track_apply_click(job_id):
+    job = Job.query.filter_by(id=job_id, is_active=True).first()
+    if not job:
+        return jsonify({"error": "Job not found."}), 404
+    job.apply_count = (job.apply_count or 0) + 1
+    db.session.commit()
+    return jsonify({"apply_count": job.apply_count}), 200
+
+
+# ── Top hiring companies ─────────────────────────────────────────────────────
+# Group active jobs by company name and return the top N. Used by the
+# Internships sidebar to replace the hard-coded Kakao/Samsung/Naver list with
+# real data from whatever's currently scraped.
+
+@admin_bp.route("/jobs/top-companies", methods=["GET"])
+def top_hiring_companies():
+    try:
+        limit = max(1, min(20, int(request.args.get("limit", 5))))
+    except ValueError:
+        limit = 5
+
+    rows = (
+        db.session.query(Job.company, db.func.count(Job.id).label("n"))
+        .filter(Job.is_active == True, Job.company.isnot(None))  # noqa: E712
+        .group_by(Job.company)
+        .order_by(db.func.count(Job.id).desc())
+        .limit(limit)
+        .all()
+    )
+    companies = [{"name": (c or "").strip(), "jobs": int(n)} for c, n in rows if (c or "").strip()]
+    return jsonify({"companies": companies}), 200
+
+
+# ── Job alerts subscription ──────────────────────────────────────────────────
+# Simple boolean flag on the user row. Daily-digest emails are out of scope
+# for now — flipping this on is what the "Enable Alerts" button does, and we
+# render a subscribed/unsubscribed state from it.
+
+@admin_bp.route("/jobs/alerts", methods=["GET"])
+@jwt_required()
+def get_job_alerts():
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
+
+
+@admin_bp.route("/jobs/alerts", methods=["POST"])
+@jwt_required()
+def toggle_job_alerts():
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    data = request.get_json(silent=True) or {}
+    # Accept explicit {"enabled": true/false}; default = toggle current value.
+    if "enabled" in data:
+        user.job_alerts_enabled = bool(data["enabled"])
+    else:
+        user.job_alerts_enabled = not bool(user.job_alerts_enabled)
+    db.session.commit()
+    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
 
 
 # ── Make user admin (dev helper) ─────────────────────────────────────────────

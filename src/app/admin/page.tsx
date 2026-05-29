@@ -8,7 +8,7 @@ import {
   ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2,
   AlertCircle, Star, CheckCircle2, XCircle, GraduationCap,
   Globe, Calendar, Search, Pencil, X, MessageSquarePlus, Mail,
-  Download,
+  Download, RefreshCw, CalendarOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -93,6 +93,7 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [scraping, setScraping] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -202,29 +203,33 @@ export default function AdminPage() {
       return;
     }
 
-    const startingCount = jobs.length;
     // Default scrape pulls up to 40 listings with a 0.3s delay between detail
     // fetches → ~30-60s typical, longer on cold start. 30 polls * 3s = 90s.
+    // We poll the server's own scrape-status board, which reports the exact
+    // inserted + reactivated count — no guessing from job totals.
     const maxPolls = 30;
     let polls = 0;
 
     const poll = async () => {
       polls += 1;
       try {
-        const fresh = await apiCall("GET", "/admin/jobs");
-        const freshJobs: Job[] = fresh.jobs || [];
-        setJobs(freshJobs);
-        const delta = freshJobs.length - startingCount;
-        if (delta > 0) {
-          setScrapeStatus({ kind: "done", newCount: delta, finishedAt: Date.now() });
+        const st = await apiCall("GET", "/admin/jobs/scrape-status");
+        if (st.state === "done") {
+          const added = typeof st.added === "number" ? st.added : 0;
+          setScrapeStatus({ kind: "done", newCount: added, finishedAt: Date.now() });
+          setScraping(false);
+          // Refresh the table so the new rows show.
+          try { const f = await apiCall("GET", "/admin/jobs"); setJobs(f.jobs || []); } catch {}
+          return;
+        }
+        if (st.state === "error") {
+          setScrapeStatus({ kind: "error", message: st.error || "Scraper failed." });
           setScraping(false);
           return;
         }
       } catch { /* keep polling */ }
 
       if (polls >= maxPolls) {
-        // No new rows after 30s — either Wanted returned nothing fresh, or
-        // every posting was already in our DB. Report 0 and stop.
         setScrapeStatus({ kind: "done", newCount: 0, finishedAt: Date.now() });
         setScraping(false);
         return;
@@ -233,6 +238,80 @@ export default function AdminPage() {
     };
 
     setTimeout(poll, 3000);  // first poll after 3s — give the scraper a head start
+  };
+
+  // Reset & re-scrape: deactivate every current job, then kick off a fresh
+  // scrape so any still-live Korean postings get reinserted with full English
+  // translations and real deadlines. Same polling UX as scrape-now, but the
+  // status panel reports the "deactivated" count too.
+  const handleResetJobs = async () => {
+    if (resetting || scraping) return;
+    if (!confirm(
+      "This will hide every current internship and re-pull them from Wanted.co.kr " +
+      "with English translations. Continue?"
+    )) return;
+    setResetting(true);
+    setScrapeStatus({ kind: "running", startedAt: Date.now() });
+
+    try {
+      await apiCall("POST", "/admin/jobs/reset");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not reset internships";
+      setScrapeStatus({ kind: "error", message: msg });
+      setResetting(false);
+      return;
+    }
+
+    // Poll the server's scrape-status board for the exact count of postings
+    // brought back (inserted + reactivated), or 90s elapses.
+    const maxPolls = 30;
+    let polls = 0;
+
+    const poll = async () => {
+      polls += 1;
+      try {
+        const st = await apiCall("GET", "/admin/jobs/scrape-status");
+        if (st.state === "done") {
+          const added = typeof st.added === "number" ? st.added : 0;
+          setScrapeStatus({ kind: "done", newCount: added, finishedAt: Date.now() });
+          setResetting(false);
+          try { const f = await apiCall("GET", "/admin/jobs"); setJobs(f.jobs || []); } catch {}
+          return;
+        }
+        if (st.state === "error") {
+          setScrapeStatus({ kind: "error", message: st.error || "Re-scrape failed." });
+          setResetting(false);
+          return;
+        }
+      } catch { /* keep polling */ }
+
+      if (polls >= maxPolls) {
+        setScrapeStatus({ kind: "done", newCount: 0, finishedAt: Date.now() });
+        setResetting(false);
+        return;
+      }
+      setTimeout(poll, 3000);
+    };
+
+    setTimeout(poll, 3000);
+  };
+
+  // Strip the fake "today+60" deadlines that the older scraper set when
+  // Wanted didn't return a real date. Affected rows become rolling so the
+  // detail page reads "Apply anytime" instead of a misleading date.
+  const [fixingDeadlines, setFixingDeadlines] = useState(false);
+  const handleFixDeadlines = async () => {
+    if (fixingDeadlines) return;
+    setFixingDeadlines(true);
+    try {
+      const data = await apiCall("POST", "/admin/jobs/fix-deadlines");
+      flash(data.message || `Cleared ${data.cleared || 0} fake deadlines.`);
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not fix deadlines.", true);
+    } finally {
+      setFixingDeadlines(false);
+    }
   };
 
   const deleteClub = async (id: number) => {
@@ -453,18 +532,48 @@ export default function AdminPage() {
                     Runs automatically twice a day; tap below to trigger it manually.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleScrapeNow}
-                  disabled={scraping}
-                  className="gap-2 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white"
-                >
-                  {scraping ? (
-                    <><Loader2 size={14} className="animate-spin" /> Scraping…</>
-                  ) : (
-                    <><Download size={14} /> Scrape now</>
-                  )}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    onClick={handleScrapeNow}
+                    disabled={scraping || resetting}
+                    className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    {scraping ? (
+                      <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                    ) : (
+                      <><Download size={14} /> Scrape now</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleResetJobs}
+                    disabled={scraping || resetting}
+                    variant="outline"
+                    className="gap-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                    title="Hide all current internships, then re-scrape with English translations"
+                  >
+                    {resetting ? (
+                      <><Loader2 size={14} className="animate-spin" /> Resetting…</>
+                    ) : (
+                      <><RefreshCw size={14} /> Reset & re-scrape</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleFixDeadlines}
+                    disabled={scraping || resetting || fixingDeadlines}
+                    variant="outline"
+                    className="gap-2 border-sky-500/40 text-sky-500 hover:bg-sky-500/10"
+                    title="Clear fake 'today + 60 days' deadlines so they show as Rolling instead"
+                  >
+                    {fixingDeadlines ? (
+                      <><Loader2 size={14} className="animate-spin" /> Fixing…</>
+                    ) : (
+                      <><CalendarOff size={14} /> Fix deadlines</>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {/* ── Live status panel ─────────────────────────────── */}

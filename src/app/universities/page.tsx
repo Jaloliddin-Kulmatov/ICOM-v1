@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import { UNIVERSITIES } from "@/lib/constants";
 import { Users, MapPin, ExternalLink, Search, Star, CheckCircle2, GraduationCap, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -269,6 +270,7 @@ export default function UniversitiesPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

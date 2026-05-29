@@ -6,18 +6,21 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  Sparkles,
+  MessageSquare,
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useNotifCount } from "@/hooks/use-notif-count";
 
+// AI moved to a floating action button (ChatWidget) so it's reachable from
+// every page. We swapped that bottom-nav slot for the Chat Q&A feed, which
+// is one of the highest-engagement pages.
 const tabs = [
   { href: "/dashboard",    icon: LayoutDashboard, label: "Home"      },
   { href: "/community",    icon: Users,           label: "Community" },
+  { href: "/chat",         icon: MessageSquare,   label: "Chat"      },
   { href: "/jobs",         icon: Briefcase,       label: "Internships"},
-  { href: "/dashboard/ai", icon: Sparkles,        label: "AI"        },
   { href: "/dashboard/settings", icon: User,      label: "Profile"   },
 ];
 
@@ -40,7 +43,6 @@ export default function MobileBottomNav() {
         <div className="flex items-stretch">
           {tabs.map(({ href, icon: Icon, label }) => {
             const active = isActive(href);
-            const isAI = href === "/dashboard/ai";
             return (
               <Link
                 key={href}
@@ -52,41 +54,25 @@ export default function MobileBottomNav() {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {/* AI tab gets a special pill background */}
-                {isAI ? (
-                  <div className={cn(
-                    "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
-                    active
-                      ? "bg-indigo-500 shadow-[0_4px_14px_rgba(99,102,241,0.5)]"
-                      : "bg-muted"
-                  )}>
-                    <Icon
-                      size={18}
-                      className={active ? "text-white" : "text-muted-foreground"}
-                    />
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                    {/* Notification dot for profile */}
-                    {href === "/dashboard/settings" && notifCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
-                    )}
-                  </div>
-                )}
+                <div className="relative">
+                  <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                  {/* Indigo dot for profile when there are unread notifs —
+                      red was too alarmist and clashed with the rest of the
+                      bottom nav's indigo theme. */}
+                  {href === "/dashboard/settings" && notifCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-background" />
+                  )}
+                </div>
 
-                {/* Active dot under non-AI tabs */}
-                {!isAI && (
-                  <span className={cn(
-                    "text-[10px] font-medium leading-none",
-                    active ? "text-indigo-500 dark:text-indigo-400" : ""
-                  )}>
-                    {label}
-                  </span>
-                )}
+                <span className={cn(
+                  "text-[10px] font-medium leading-none",
+                  active ? "text-indigo-500 dark:text-indigo-400" : ""
+                )}>
+                  {label}
+                </span>
 
                 {/* Active indicator bar at top */}
-                {active && !isAI && (
+                {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-indigo-500 dark:bg-indigo-400" />
                 )}
               </Link>

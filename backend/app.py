@@ -154,10 +154,12 @@ def _run_lightweight_migrations():
         print(f"[migration] clubs.website failed (probably already done): {e}")
 
     # foreigner_friendly + foreigner_note on jobs (AI-detected from Korean
-    # job posts during scraping)
+    # job posts during scraping). apply_count tracks how many users clicked
+    # the Apply button — shown as "N applied" on cards.
     for col_name, col_def in [
         ("foreigner_friendly", "VARCHAR(20) DEFAULT ''"),
         ("foreigner_note",     "VARCHAR(300) DEFAULT ''"),
+        ("apply_count",        "INTEGER DEFAULT 0"),
     ]:
         try:
             if "jobs" in insp.get_table_names():
@@ -168,6 +170,19 @@ def _run_lightweight_migrations():
                     print(f"[migration] Added jobs.{col_name}")
         except Exception as e:
             print(f"[migration] jobs.{col_name} failed (probably already done): {e}")
+
+    # job_alerts_enabled on users — opt-in for new-internship digests.
+    try:
+        if "users" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("users")]
+            if "job_alerts_enabled" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE users ADD COLUMN job_alerts_enabled BOOLEAN DEFAULT FALSE"
+                    ))
+                print("[migration] Added users.job_alerts_enabled")
+    except Exception as e:
+        print(f"[migration] users.job_alerts_enabled failed (probably already done): {e}")
 
     # cover_image on clubs (optional user-set cover photo URL)
     try:
@@ -474,6 +489,54 @@ def _seed_chat_threads():
                     (
                         "Use 'Daangn Pay' (escrow) for items over ₩50K. Seller doesn't "
                         "get paid until you confirm the item is OK. Saved me twice."
+                    ),
+                ],
+            },
+            # ── Seoul-area seed (so SNU/Yonsei/Korea Uni students see local content) ──
+            {
+                "title": "Cheapest way to commute Seoul ↔ Yongin every weekend?",
+                "content": (
+                    "I'm studying at Yonsei in Seoul but my part-time is in Yongin "
+                    "(Gyeonggi-do). Round trip twice a week is killing my budget. "
+                    "Anyone using a M-Bus or commuter pass?"
+                ),
+                "answers": [
+                    (
+                        "Get the T-money 'Climate Card' (기후동행카드) — ₩65,000/month "
+                        "covers all Seoul subways + buses. For the Yongin leg, "
+                        "M5107 from Gangnam is the fastest red bus."
+                    ),
+                ],
+            },
+            # ── Busan-area seed ───────────────────────────────────────────────────
+            {
+                "title": "PNU dorm vs. off-campus goshiwon in Busan — worth it?",
+                "content": (
+                    "Got into Pusan National University but the dorm waitlist is "
+                    "long. Is a goshiwon near Jangjeon Station decent? Looking at "
+                    "₩350K/month range."
+                ),
+                "answers": [
+                    (
+                        "Jangjeon goshiwons are fine but tiny — like 5m². If you can "
+                        "stretch to ₩500K, a one-room officetel near PNU is way more "
+                        "comfortable. Busan rents are noticeably cheaper than Seoul."
+                    ),
+                ],
+            },
+            # ── Daejeon-area seed (KAIST/CNU) ─────────────────────────────────────
+            {
+                "title": "Best place to buy electronics in Daejeon — Yongsan-style?",
+                "content": (
+                    "At KAIST and my old laptop died. Don't want to ship from Seoul "
+                    "if there's somewhere local. Is there a Yongsan-style electronics "
+                    "market in Daejeon?"
+                ),
+                "answers": [
+                    (
+                        "Try Junggu Electronics Street (중구 전자상가) near Daejeon "
+                        "Station — about 50 small shops, can haggle. For brand-new, "
+                        "Coupang next-day to Daejeon is faster than a Seoul trip."
                     ),
                 ],
             },

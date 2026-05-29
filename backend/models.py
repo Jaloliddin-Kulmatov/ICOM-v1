@@ -14,6 +14,10 @@ class User(db.Model):
     country = db.Column(db.String(100))
     role = db.Column(db.String(20), default="student")
     is_verified = db.Column(db.Boolean, default=False)
+    # When True, this user gets daily-digest emails about new internships
+    # matching their university / region. Toggled from the Internships page
+    # "Enable Alerts" button.
+    job_alerts_enabled = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -27,6 +31,7 @@ class User(db.Model):
             "country": self.country,
             "role": self.role,
             "is_verified": self.is_verified,
+            "job_alerts_enabled": bool(self.job_alerts_enabled),
             "created_at": self.created_at.isoformat() + "Z",
         }
 
@@ -282,6 +287,10 @@ class Job(db.Model):
     # Values: "yes" | "no" | "unclear" | "" (legacy/admin-entered)
     foreigner_friendly = db.Column(db.String(20), default="")
     foreigner_note = db.Column(db.String(300), default="")
+    # Number of times a user clicked the "Apply" link. Tracked client-side
+    # via a fire-and-forget POST and shown on cards as "N applied" so the
+    # most-clicked listings get visible social proof.
+    apply_count = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -302,6 +311,7 @@ class Job(db.Model):
             "apply_link": self.apply_link or "",
             "foreigner_friendly": self.foreigner_friendly or "",
             "foreigner_note": self.foreigner_note or "",
+            "apply_count": self.apply_count or 0,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() + "Z",
             "isNew": (datetime.utcnow() - self.created_at).days < 3,

@@ -2,11 +2,12 @@
 
 import React, { useState, useMemo } from "react";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2 } from "lucide-react";
 import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
@@ -42,6 +43,8 @@ export default function JobsPage() {
   const [regionFilter, setRegionFilter] = useState(false);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [alertsBusy, setAlertsBusy] = useState(false);
 
   // Resolve the user's university to a region (city + province + Korean
   // translations). Match by id, short name, or full name so any of the
@@ -79,6 +82,7 @@ export default function JobsPage() {
             deadline: string; tags: string[]; isNew: boolean; apply_link: string;
             created_at?: string;
             foreigner_friendly?: string; foreigner_note?: string;
+            apply_count?: number;
           }) => ({
             id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
             type: "internship" as Job["type"], salary: j.salary || "", description: j.description || "",
@@ -86,7 +90,11 @@ export default function JobsPage() {
             // Use the real creation timestamp from the DB so "Posted X ago"
             // shows the actual age instead of "just now" every render.
             postedAt: j.created_at || new Date().toISOString(),
-            deadline: j.deadline, applications: 0,
+            deadline: j.deadline,
+            // applications = real click count from the backend, so cards
+            // show "12 applied" instead of always "0 applied".
+            applications: j.apply_count || 0,
+            applyCount: j.apply_count || 0,
             tags: j.tags, isNew: j.isNew, isHot: false, isBookmarked: false,
             applyLink: j.apply_link || "",
             foreignerFriendly: (j.foreigner_friendly || "") as Job["foreignerFriendly"],
@@ -98,6 +106,59 @@ export default function JobsPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  // Load the current user's alerts subscription state so the button can
+  // render "Alerts on" vs "Enable Alerts" correctly on refresh.
+  React.useEffect(() => {
+    if (!user) { setAlertsEnabled(false); return; }
+    const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+    if (!token) return;
+    fetch(`${API}/admin/jobs/alerts`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setAlertsEnabled(!!d.enabled); })
+      .catch(() => { /* harmless */ });
+  }, [user]);
+
+  // Top hiring companies — counted from currently-active jobs. Falls back
+  // to nothing when the DB is empty (the sidebar block hides itself).
+  const topCompanies = useMemo(() => {
+    const tallies = new Map<string, number>();
+    for (const j of allJobs) {
+      const name = (j.company || "").trim();
+      if (!name) continue;
+      tallies.set(name, (tallies.get(name) || 0) + 1);
+    }
+    return Array.from(tallies.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, jobs]) => ({ name, jobs }));
+  }, [allJobs]);
+
+  const toggleAlerts = async () => {
+    if (alertsBusy) return;
+    if (!user) {
+      // Send unauthenticated users to the login page so they can sign in
+      // before subscribing. The button is also the only visible CTA on this
+      // sidebar block.
+      window.location.href = "/login?force=1";
+      return;
+    }
+    setAlertsBusy(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+      const res = await fetch(`${API}/admin/jobs/alerts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ enabled: !alertsEnabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setAlertsEnabled(!!data.enabled);
+    } catch { /* keep last known state */ }
+    finally { setAlertsBusy(false); }
+  };
 
   const toggleVisa = (v: string) =>
     setVisaFilter((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
@@ -275,40 +336,60 @@ export default function JobsPage() {
             {/* Sidebar — desktop only */}
             <div className="space-y-4 hidden lg:block">
               {/* Job alerts */}
-              <div className="p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
+              <div className={`p-5 rounded-2xl border ${alertsEnabled ? "border-emerald-500/30 bg-emerald-500/5" : "border-indigo-500/20 bg-indigo-500/5"}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp size={14} className="text-indigo-400" />
-                  <h3 className="text-sm font-semibold text-foreground">Job Alerts</h3>
+                  {alertsEnabled
+                    ? <BellRing size={14} className="text-emerald-400" />
+                    : <TrendingUp size={14} className="text-indigo-400" />}
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {alertsEnabled ? "Alerts active" : "Job Alerts"}
+                  </h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">Get notified of new listings matching your profile</p>
-                <Button size="sm" className="w-full text-xs">
-                  Enable Alerts
+                <p className="text-xs text-muted-foreground mb-3">
+                  {alertsEnabled
+                    ? "We'll email you when a new internship matches your university or region."
+                    : "Get notified of new listings matching your profile."}
+                </p>
+                <Button
+                  size="sm"
+                  variant={alertsEnabled ? "outline" : "default"}
+                  className="w-full text-xs gap-1.5"
+                  onClick={toggleAlerts}
+                  disabled={alertsBusy}
+                >
+                  {alertsBusy ? (
+                    <><Loader2 size={12} className="animate-spin" /> Saving…</>
+                  ) : alertsEnabled ? (
+                    <><BellOff size={12} /> Turn off alerts</>
+                  ) : (
+                    <><BellRing size={12} /> Enable Alerts</>
+                  )}
                 </Button>
               </div>
 
-              {/* Top companies */}
-              <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Top Hiring Companies</h3>
-                <div className="space-y-2.5">
-                  {[
-                    { name: "Kakao", jobs: 24, logo: "K" },
-                    { name: "Samsung", jobs: 18, logo: "S" },
-                    { name: "Naver", jobs: 15, logo: "N" },
-                    { name: "LG", jobs: 12, logo: "L" },
-                    { name: "Coupang", jobs: 9, logo: "C" },
-                  ].map(({ name, jobs, logo }) => (
-                    <div key={name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-xs font-bold text-foreground/60">
-                          {logo}
+              {/* Top companies — computed from the live job list, so it
+                  reflects what's actually scraped (e.g. "Ssuksuk Company")
+                  instead of a stale Kakao/Samsung/Naver placeholder. */}
+              {topCompanies.length > 0 && (
+                <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Top Hiring Companies</h3>
+                  <div className="space-y-2.5">
+                    {topCompanies.map(({ name, jobs }) => (
+                      <div key={name} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-xs font-bold text-foreground/60 shrink-0">
+                            {name[0]?.toUpperCase() || "?"}
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground truncate">{name}</span>
                         </div>
-                        <span className="text-xs font-medium text-muted-foreground">{name}</span>
+                        <Badge variant="outline" className="text-[10px] border-white/10 shrink-0">
+                          {jobs} {jobs === 1 ? "job" : "jobs"}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="text-[10px] border-white/10">{jobs} jobs</Badge>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Salary guide */}
               <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
@@ -334,6 +415,7 @@ export default function JobsPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

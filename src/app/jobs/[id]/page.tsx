@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, Clock, DollarSign, CheckCircle2,
   Briefcase, Tag, Calendar, Loader2, AlertCircle, Building2, ExternalLink,
-  Bookmark, BookmarkCheck, Globe,
+  Bookmark, BookmarkCheck, Globe, Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ interface JobDetail {
   apply_link?: string;
   foreigner_friendly?: "yes" | "no" | "unclear" | "";
   foreigner_note?: string;
+  apply_count?: number;
   isNew?: boolean;
   created_at: string;
 }
@@ -92,6 +93,11 @@ export default function JobDetailPage() {
 
   const handleApply = () => {
     if (!job?.apply_link) return;
+    // Fire-and-forget: bump the apply counter so cards/lists can show
+    // "N applied" reflecting real click-through, not a placeholder zero.
+    fetch(`${API}/admin/jobs/${job.id}/apply-click`, { method: "POST" })
+      .catch(() => { /* counter failure shouldn't block the apply jump */ });
+    setJob((prev) => prev ? { ...prev, apply_count: (prev.apply_count || 0) + 1 } : prev);
     window.open(job.apply_link, "_blank", "noopener,noreferrer");
   };
 
@@ -166,6 +172,7 @@ export default function JobDetailPage() {
                   <span className="flex items-center gap-1"><MapPin size={11} />{job.location}</span>
                   {job.salary && <span className="flex items-center gap-1"><DollarSign size={11} />{job.salary}</span>}
                   <span className="flex items-center gap-1"><Clock size={11} />{formatRelativeTime(job.created_at)}</span>
+                  <span className="flex items-center gap-1"><Users size={11} />{job.apply_count || 0} applied</span>
                   {job.deadline && (
                     <span className="flex items-center gap-1 text-amber-500">
                       <Calendar size={11} />

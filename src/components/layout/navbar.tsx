@@ -16,11 +16,22 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useNotifCount } from "@/hooks/use-notif-count";
 
-const navLinks = [
+// Desktop nav keeps the full set, including Universities. Mobile menu
+// drops Universities (it lives on the phone in the dashboard sub-pages
+// instead — the page itself stays reachable via direct URL or sidebar).
+const desktopNavLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/community", label: "Community", icon: Users },
   { href: "/jobs", label: "Internships", icon: Briefcase },
   { href: "/universities", label: "Universities", icon: BookOpen },
+  { href: "/daily-life", label: "Daily Life", icon: Home },
+  { href: "/support", label: "Support", icon: Globe },
+];
+
+const mobileNavLinks = [
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/community", label: "Community", icon: Users },
+  { href: "/jobs", label: "Internships", icon: Briefcase },
   { href: "/daily-life", label: "Daily Life", icon: Home },
   { href: "/support", label: "Support", icon: Globe },
 ];
@@ -91,7 +102,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-0.5">
-            {navLinks.map(({ href, label, icon: Icon }) => (
+            {desktopNavLinks.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -196,7 +207,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
         <>
           <div className="fixed inset-0 z-40 md:hidden bg-background/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div className="fixed top-16 inset-x-0 z-40 md:hidden bg-background border-b border-border p-4 space-y-1 shadow-lg animate-slide-up">
-            {navLinks.map(({ href, label, icon: Icon }) => (
+            {mobileNavLinks.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}

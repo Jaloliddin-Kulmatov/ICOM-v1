@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -866,6 +867,7 @@ export default function CommunityPage() {
 
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
