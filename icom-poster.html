@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ICOM — Poster</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #050508;
+    --surface:  #0e0e14;
+    --border:   rgba(255,255,255,0.08);
+    --indigo:   #6366f1;
+    --violet:   #8b5cf6;
+    --emerald:  #10b981;
+    --text:     #f1f1f3;
+    --muted:    rgba(255,255,255,0.45);
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+  }
+
+  .poster {
+    width: 900px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── ambient glows ── */
+  .glow-tl {
+    position: absolute; top: -120px; left: -120px;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .glow-br {
+    position: absolute; bottom: -100px; right: -100px;
+    width: 450px; height: 450px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 48px 48px 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-wrap {
+    position: relative;
+    width: 64px; height: 64px;
+  }
+  .logo-ring {
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #6366f1, #8b5cf6, #6366f1);
+    opacity: 0.35;
+  }
+  .logo-img {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    position: relative;
+    z-index: 1;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .logo-ic {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .brand-text h1 {
+    font-size: 36px; font-weight: 900; letter-spacing: -1px;
+    line-height: 1;
+  }
+  .brand-text h1 span { color: var(--indigo); }
+  .brand-text p {
+    font-size: 12px; color: var(--muted); margin-top: 3px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  .badge-live {
+    display: flex; align-items: center; gap-8px;
+    gap: 6px;
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 12px; font-weight: 600; color: var(--emerald);
+    letter-spacing: 0.05em;
+  }
+  .badge-live::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 8px var(--emerald);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; } 50% { opacity:0.4; }
+  }
+
+  /* ── hero ── */
+  .hero {
+    padding: 44px 48px 0;
+    position: relative; z-index: 1;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 12px; font-weight: 600; color: var(--indigo);
+    margin-bottom: 20px;
+    letter-spacing: 0.05em;
+  }
+  .hero h2 {
+    font-size: 52px; font-weight: 900; letter-spacing: -2px; line-height: 1.08;
+    max-width: 620px;
+  }
+  .hero h2 .grad {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    margin-top: 18px;
+    font-size: 17px; color: var(--muted); line-height: 1.65;
+    max-width: 560px;
+  }
+
+  /* ── stats row ── */
+  .stats {
+    display: flex; gap: 0;
+    margin: 36px 48px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative; z-index: 1;
+  }
+  .stat {
+    flex: 1;
+    padding: 24px 28px;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num {
+    font-size: 32px; font-weight: 900; letter-spacing: -1px;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+  /* ── features grid ── */
+  .section-title {
+    padding: 44px 48px 20px;
+    font-size: 11px; font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    padding: 0 48px;
+    position: relative; z-index: 1;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);
+  }
+  .card-icon {
+    font-size: 26px; margin-bottom: 14px; display: block;
+  }
+  .card h3 {
+    font-size: 15px; font-weight: 700; margin-bottom: 8px;
+    color: var(--text);
+  }
+  .card p {
+    font-size: 12.5px; color: var(--muted); line-height: 1.6;
+  }
+  .card-tag {
+    display: inline-block;
+    margin-top: 12px;
+    background: rgba(99,102,241,0.12);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 10.5px; font-weight: 600; color: var(--indigo);
+  }
+  .card-tag.green {
+    background: rgba(16,185,129,0.1);
+    border-color: rgba(16,185,129,0.2);
+    color: var(--emerald);
+  }
+  .card-tag.violet {
+    background: rgba(139,92,246,0.12);
+    border-color: rgba(139,92,246,0.2);
+    color: #a78bfa;
+  }
+
+  /* span 2 cols */
+  .card.wide { grid-column: span 2; }
+
+  /* ── unique features banner ── */
+  .unique {
+    margin: 14px 48px 0;
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 16px;
+    padding: 28px 32px;
+    display: flex; align-items: center; gap: 32px;
+    position: relative; z-index: 1;
+  }
+  .unique-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--indigo);
+    white-space: nowrap;
+  }
+  .unique-items {
+    display: flex; flex-wrap: wrap; gap: 10px;
+  }
+  .unique-item {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 500;
+  }
+  .unique-item span { color: var(--indigo); }
+
+  /* ── tech stack ── */
+  .tech {
+    margin: 14px 48px 0;
+    display: flex; align-items: center; gap: 14px;
+    position: relative; z-index: 1;
+  }
+  .tech-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--muted);
+    white-space: nowrap;
+  }
+  .tech-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .chip {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11.5px; font-weight: 500; color: var(--muted);
+  }
+
+  /* ── footer ── */
+  .footer {
+    margin: 32px 48px 0;
+    padding: 24px 0 48px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; z-index: 1;
+  }
+  .footer-left { font-size: 12px; color: var(--muted); }
+  .footer-left strong { color: var(--text); }
+  .footer-url {
+    font-size: 13px; font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="glow-tl"></div>
+  <div class="glow-br"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo-wrap">
+        <div class="logo-ring"></div>
+        <div class="logo-img">
+          <span class="logo-ic">IC</span>
+        </div>
+      </div>
+      <div class="brand-text">
+        <h1>ICOM<span>.</span></h1>
+        <p>International Community in Korea</p>
+      </div>
+    </div>
+    <div class="badge-live">Live on icom.ai.kr</div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-tag">🌏 Built for International Students</div>
+    <h2>The <span class="grad">Operating System</span><br/>for Students in Korea</h2>
+    <p>One platform for every international student in Korea — find your community, land an internship, get visa guidance, and ask the AI assistant anything.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">89</div>
+      <div class="stat-label">Countries Represented</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">47+</div>
+      <div class="stat-label">Korean Universities</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">2×</div>
+      <div class="stat-label">Daily Job Scraping</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">D-2/D-4</div>
+      <div class="stat-label">Visa-Compatible Jobs</div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="section-title">Core Features</div>
+  <div class="grid">
+
+    <div class="card">
+      <span class="card-icon">🤝</span>
+      <h3>Community & Clubs</h3>
+      <p>Join nationality-based communities and university clubs. Real-time chat, posts, events, and member management.</p>
+      <span class="card-tag">Real-time Chat</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">💼</span>
+      <h3>Jobs & Internships</h3>
+      <p>Internship listings auto-scraped from Wanted.co.kr twice daily. Filtered for D-2/D-4 visa holders.</p>
+      <span class="card-tag green">Auto-scraped</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">🤖</span>
+      <h3>AI Assistant</h3>
+      <p>Powered by Groq. Answers any question about life in Korea — visa rules, housing, banking, university admin.</p>
+      <span class="card-tag violet">Groq LLM</span>
+    </div>
+
+    <div class="card wide">
+      <span class="card-icon">🛡️</span>
+      <h3>Google OAuth + Email Validation</h3>
+      <p>Sign up with Google — only verified accounts accepted. Email addresses are validated in real-time via Abstract API (blocks disposable and non-existent emails). No fake accounts.</p>
+      <span class="card-tag">Google Auth</span>
+      <span class="card-tag" style="margin-left:6px">Abstract API</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">🗺️</span>
+      <h3>Support Guides</h3>
+      <p>Step-by-step guides for visa applications, housing search, banking setup, and Korean daily life.</p>
+      <span class="card-tag violet">8 Categories</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">🔖</span>
+      <h3>Bookmarks</h3>
+      <p>Save jobs and community posts. Persisted locally — no backend needed, instant access anytime.</p>
+      <span class="card-tag">localStorage</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">📱</span>
+      <h3>Mobile-First Design</h3>
+      <p>Full bottom navigation on mobile, horizontal category pills, responsive layouts across all pages.</p>
+      <span class="card-tag green">PWA-Ready</span>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">🎓</span>
+      <h3>Universities</h3>
+      <p>Profiles for 47+ Korean universities with clubs, communities, and student resources all in one place.</p>
+      <span class="card-tag">47+ Unis</span>
+    </div>
+
+  </div>
+
+  <!-- Unique -->
+  <div class="unique">
+    <div class="unique-label">What makes<br/>ICOM unique</div>
+    <div class="unique-items">
+      <div class="unique-item"><span>✦</span> Only platform built for int'l students in Korea</div>
+      <div class="unique-item"><span>✦</span> Internships auto-scraped — always fresh</div>
+      <div class="unique-item"><span>✦</span> Visa-type aware (D-2, D-4, F-2, E-7)</div>
+      <div class="unique-item"><span>✦</span> AI trained on Korean student life</div>
+      <div class="unique-item"><span>✦</span> No fake signups — real email verified</div>
+      <div class="unique-item"><span>✦</span> 89 nationalities, one community</div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="tech">
+    <div class="tech-label">Tech Stack</div>
+    <div class="tech-chips">
+      <span class="chip">Next.js 14</span>
+      <span class="chip">Tailwind CSS</span>
+      <span class="chip">Flask</span>
+      <span class="chip">PostgreSQL</span>
+      <span class="chip">Groq AI</span>
+      <span class="chip">APScheduler</span>
+      <span class="chip">Google OAuth</span>
+      <span class="chip">Abstract API</span>
+      <span class="chip">Vercel</span>
+      <span class="chip">Render</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">
+      Built by <strong>Jaloliddin Kulmatov</strong> &nbsp;·&nbsp; 2025 &nbsp;·&nbsp; Open to international students across Korea
+    </div>
+    <div class="footer-url">icom.ai.kr</div>
+  </div>
+
+</div>
+</body>
+</html>
