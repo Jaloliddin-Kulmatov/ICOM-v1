@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
@@ -382,6 +383,8 @@ export default function ChatPage() {
           )}
         </div>
       </main>
+
+      <Footer />
 
       {showComposer && (
         <ComposerModal
