@@ -128,6 +128,15 @@ def create_post():
     content = (data.get("content") or "").strip()
     image_url = (data.get("image_url") or "").strip()
 
+    # Audience scope. The client sends "university" (post to my own uni chat)
+    # or "all"/"" (global). We DERIVE the stored token from the author's own
+    # university — a user can only post into their own university's chat, never
+    # someone else's. Posts with a non-empty scope never surface in All Korea.
+    scope_choice = (data.get("scope") or "").strip().lower()
+    post_scope = ""
+    if scope_choice in ("university", "uni") and (user.university or "").strip():
+        post_scope = (user.university or "").strip().lower()[:80]
+
     if not title or not content:
         return jsonify({"error": "Title and question are both required."}), 400
     if len(title) > 200:
@@ -155,6 +164,7 @@ def create_post():
         title=title,
         content=content,
         image_url=img_or_err if image_url else "",
+        scope=post_scope,
         is_active=True,
     )
     db.session.add(post)

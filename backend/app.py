@@ -184,6 +184,20 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] users.job_alerts_enabled failed (probably already done): {e}")
 
+    # scope on chat_posts — audience targeting. Empty = global ("All Korea"),
+    # a university token (e.g. "jbnu") = that university's chat only.
+    try:
+        if "chat_posts" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("chat_posts")]
+            if "scope" not in cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE chat_posts ADD COLUMN scope VARCHAR(80) DEFAULT ''"
+                    ))
+                print("[migration] Added chat_posts.scope")
+    except Exception as e:
+        print(f"[migration] chat_posts.scope failed (probably already done): {e}")
+
     # cover_image on clubs (optional user-set cover photo URL)
     try:
         if "clubs" in insp.get_table_names():
@@ -405,6 +419,7 @@ def _seed_chat_threads():
         seeds = [
             {
                 "title": "How long does the D-2 visa extension actually take?",
+                "scope": "jbnu",
                 "content": (
                     "I'm at JBNU and my D-2 expires in 5 weeks. The Hi Korea "
                     "site says 2–4 weeks but I've heard it can take longer "
@@ -459,6 +474,7 @@ def _seed_chat_threads():
             },
             {
                 "title": "Where can I find halal food near JBNU?",
+                "scope": "jbnu",
                 "content": (
                     "Muslim student, just moved to Jeonju. Are there any halal "
                     "spots near the campus? Anyone has tried Itaewon-Halal-Restaurant "
@@ -543,15 +559,23 @@ def _seed_chat_threads():
         ]
 
         added = 0
+        backfilled = 0
         for seed in seeds:
-            # Skip if a post with this exact title already exists.
-            if ChatPost.query.filter_by(title=seed["title"]).first():
+            seed_scope = seed.get("scope", "")
+            # If it already exists, just make sure its scope is current
+            # (idempotent backfill for DBs seeded before scope existed), then skip.
+            existing = ChatPost.query.filter_by(title=seed["title"]).first()
+            if existing:
+                if (existing.scope or "") != seed_scope:
+                    existing.scope = seed_scope
+                    backfilled += 1
                 continue
             post = ChatPost(
                 user_id=system_user.id,
                 title=seed["title"],
                 content=seed["content"],
                 image_url="",
+                scope=seed_scope,
                 is_active=True,
             )
             db.session.add(post)
@@ -565,9 +589,10 @@ def _seed_chat_threads():
                 ))
             added += 1
 
-        if added:
+        if added or backfilled:
             db.session.commit()
-            print(f"[seed] Chat threads: added {added} example Q&A thread(s).")
+            print(f"[seed] Chat threads: added {added} thread(s), "
+                  f"backfilled scope on {backfilled}.")
         else:
             print("[seed] Chat threads already seeded — nothing to do.")
     except Exception as e:

@@ -359,6 +359,10 @@ class ChatPost(db.Model):
     title      = db.Column(db.String(200), nullable=False)
     content    = db.Column(db.Text, nullable=False)
     image_url  = db.Column(db.Text)   # data:image/...;base64,... or external URL
+    # Audience scope. Empty = global ("All Korea"). A normalized university
+    # token (e.g. "jbnu") = visible ONLY inside that university's chat, never
+    # in the global feed.
+    scope      = db.Column(db.String(80), default="", index=True)
     is_active  = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -373,6 +377,7 @@ class ChatPost(db.Model):
             "author_country": (self.author.country if self.author else "") or "",
             "title": self.title,
             "content": self.content,
+            "scope": (self.scope or ""),
             "image_url": self.image_url or "",
             "answer_count": ChatAnswer.query.filter_by(post_id=self.id, is_active=True).count(),
             "created_at": self.created_at.isoformat() + "Z",

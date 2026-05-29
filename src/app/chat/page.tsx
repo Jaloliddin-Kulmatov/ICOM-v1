@@ -48,6 +48,9 @@ interface ChatPost {
   title: string;
   content: string;
   image_url: string;
+  // "" = global (All Korea). A university token (e.g. "jbnu") = visible only
+  // inside that university's chat, never in the global feed.
+  scope: string;
   answer_count: number;
   created_at: string;
 }
@@ -166,33 +169,37 @@ export default function ChatPage() {
       .map((x) => x.p);
   }, [posts, myRegion, rankPost]);
 
-  const localPostCount = useMemo(
-    () => (myRegion ? sortedPosts.filter((p) => rankPost(p) > 0).length : 0),
-    [sortedPosts, myRegion, rankPost]
-  );
-
-  // True when this post should count toward the university tab. Match by
-  // author_university against the user's uni id / shortName / full name so
-  // any stored variant resolves (e.g. "jbnu", "JBNU", "Jeonbuk National…").
-  const isFromMyUniversity = useCallback((p: ChatPost): boolean => {
+  // True when a post's scope targets *my* university (so it belongs in my
+  // "{UNI} Chat" tab). Tolerant match against id / shortName / full name.
+  const scopeMatchesMyUni = useCallback((scope: string): boolean => {
     if (!myRegion) return false;
-    const au = (p.author_university || "").toLowerCase().trim();
-    if (!au) return false;
-    return myRegion.uniTokens.some((t) => au === t || au.includes(t));
+    const s = (scope || "").toLowerCase().trim();
+    if (!s) return false;
+    return myRegion.uniTokens.some((t) => s === t || s.includes(t) || t.includes(s));
   }, [myRegion]);
 
-  const uniPostCount = useMemo(
-    () => (myRegion ? sortedPosts.filter(isFromMyUniversity).length : 0),
-    [sortedPosts, myRegion, isFromMyUniversity]
+  // The global feed ("All Korea") shows ONLY posts with no scope. Posts written
+  // inside a university chat (non-empty scope) are deliberately excluded here —
+  // they're private to that university and never leak into the global feed,
+  // even for students of other universities or signed-out visitors.
+  const allKoreaPosts = useMemo(
+    () => sortedPosts.filter((p) => !(p.scope || "").trim()),
+    [sortedPosts]
   );
 
-  // Apply tab filter first, then search. When the user picks the uni tab
-  // we keep only posts authored by students from that university — strictly
-  // narrower than the region ranking, which also surfaces nearby content.
-  const tabFilteredPosts = useMemo(() => {
-    if (tab !== "uni" || !myRegion) return sortedPosts;
-    return sortedPosts.filter(isFromMyUniversity);
-  }, [sortedPosts, tab, myRegion, isFromMyUniversity]);
+  // My university chat: posts scoped to my university.
+  const uniPosts = useMemo(
+    () => (myRegion ? sortedPosts.filter((p) => scopeMatchesMyUni(p.scope)) : []),
+    [sortedPosts, myRegion, scopeMatchesMyUni]
+  );
+
+  const localPostCount = useMemo(
+    () => (myRegion ? allKoreaPosts.filter((p) => rankPost(p) > 0).length : 0),
+    [allKoreaPosts, myRegion, rankPost]
+  );
+
+  // Pick the feed for the active tab, then apply the search filter.
+  const tabFilteredPosts = tab === "uni" && myRegion ? uniPosts : allKoreaPosts;
 
   const visiblePosts = !search
     ? tabFilteredPosts
@@ -226,6 +233,13 @@ export default function ChatPage() {
               </div>
             )}
 
+            {myRegion && tab === "uni" && (
+              <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
+                <GraduationCap size={11} />
+                Private to {myRegion.uniLabel} students — these questions aren&apos;t shown in All Korea
+              </div>
+            )}
+
             {/* Tabs — only render when the user belongs to a recognised
                 university. Tabs let you switch between the global feed and
                 a uni-only feed (e.g. "JBNU Chat"). */}
@@ -243,7 +257,7 @@ export default function ChatPage() {
                   All Korea
                   <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
                     tab === "all" ? "bg-indigo-500/20" : "bg-muted"
-                  }`}>{sortedPosts.length}</span>
+                  }`}>{allKoreaPosts.length}</span>
                 </button>
                 <button
                   onClick={() => setTab("uni")}
@@ -257,7 +271,7 @@ export default function ChatPage() {
                   {myRegion.uniLabel} Chat
                   <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
                     tab === "uni" ? "bg-indigo-500/20" : "bg-muted"
-                  }`}>{uniPostCount}</span>
+                  }`}>{uniPosts.length}</span>
                 </button>
               </div>
             )}
@@ -327,7 +341,11 @@ export default function ChatPage() {
                       {p.author_university && <span>· {p.author_university}</span>}
                       {p.author_country && <span>· {p.author_country}</span>}
                       <span>· {formatRelativeTime(p.created_at)}</span>
-                      {isLocal && (
+                      {p.scope && scopeMatchesMyUni(p.scope) ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded-full font-semibold">
+                          <GraduationCap size={9} /> {myRegion?.uniLabel} only
+                        </span>
+                      ) : isLocal && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-full font-semibold">
                           <MapPin size={9} /> Near you
                         </span>
@@ -367,6 +385,8 @@ export default function ChatPage() {
 
       {showComposer && (
         <ComposerModal
+          uniLabel={myRegion?.uniLabel ?? null}
+          defaultScope={tab === "uni" && myRegion ? "uni" : "all"}
           onClose={() => setShowComposer(false)}
           onCreated={(p) => {
             setPosts((prev) => [p, ...prev]);
@@ -379,8 +399,10 @@ export default function ChatPage() {
 }
 
 function ComposerModal({
-  onClose, onCreated,
+  uniLabel, defaultScope, onClose, onCreated,
 }: {
+  uniLabel: string | null;
+  defaultScope: "all" | "uni";
   onClose: () => void;
   onCreated: (post: ChatPost) => void;
 }) {
@@ -389,6 +411,9 @@ function ComposerModal({
   const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Audience: "all" (global) or "uni" (only my university's chat). The uni
+  // option is only offered when the user belongs to a recognised university.
+  const [scope, setScope] = useState<"all" | "uni">(uniLabel ? defaultScope : "all");
 
   const handleImage = async (file?: File | null) => {
     if (!file) return;
@@ -419,6 +444,7 @@ function ComposerModal({
           title: title.trim(),
           content: content.trim(),
           image_url: imageUrl,
+          scope: scope === "uni" ? "university" : "all",
         }),
       });
       const data = await res.json();
@@ -467,6 +493,40 @@ function ComposerModal({
             />
             <p className="text-[10px] text-muted-foreground mt-1 text-right">{title.length}/200</p>
           </div>
+
+          {/* Audience — only shown to students with a recognised university. */}
+          {uniLabel && (
+            <div>
+              <label className="text-xs font-medium text-foreground block mb-1.5">Post to</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScope("all")}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                    scope === "all"
+                      ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-500"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-indigo-500/30"
+                  }`}
+                >
+                  <Globe2 size={14} />
+                  <span className="text-left leading-tight">All Korea<br /><span className="text-[10px] font-normal opacity-70">Everyone sees it</span></span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope("uni")}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                    scope === "uni"
+                      ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-500"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-indigo-500/30"
+                  }`}
+                >
+                  <GraduationCap size={14} />
+                  <span className="text-left leading-tight">{uniLabel} Chat<br /><span className="text-[10px] font-normal opacity-70">Only {uniLabel} students</span></span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-medium text-foreground block mb-1.5">Your question *</label>
             <textarea

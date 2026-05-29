@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
-  Users, Briefcase, BookOpen, Globe, MessageSquare,
+  Users, Briefcase, Globe, MessageSquare,
   LayoutDashboard, LogIn, Home, LogOut, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,25 +16,19 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useNotifCount } from "@/hooks/use-notif-count";
 
-// Desktop nav keeps the full set, including Universities. Mobile menu
-// drops Universities (it lives on the phone in the dashboard sub-pages
-// instead — the page itself stays reachable via direct URL or sidebar).
+// Universities was retired from the primary nav on both desktop and mobile —
+// the page still exists at /universities (linked from ambassador flows / direct
+// URL) but it's no longer a top-level destination. Desktop and mobile now share
+// the same link set.
 const desktopNavLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/community", label: "Community", icon: Users },
   { href: "/jobs", label: "Internships", icon: Briefcase },
-  { href: "/universities", label: "Universities", icon: BookOpen },
   { href: "/daily-life", label: "Daily Life", icon: Home },
   { href: "/support", label: "Support", icon: Globe },
 ];
 
-const mobileNavLinks = [
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/community", label: "Community", icon: Users },
-  { href: "/jobs", label: "Internships", icon: Briefcase },
-  { href: "/daily-life", label: "Daily Life", icon: Home },
-  { href: "/support", label: "Support", icon: Globe },
-];
+const mobileNavLinks = desktopNavLinks;
 
 export default function Navbar({ transparent = false }: { transparent?: boolean }) {
   const pathname = usePathname();

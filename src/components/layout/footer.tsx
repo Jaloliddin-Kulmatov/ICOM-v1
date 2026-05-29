@@ -6,7 +6,7 @@ const footerLinks = {
   Platform: [
     { label: "Community", href: "/community" },
     { label: "Jobs & Internships", href: "/jobs" },
-    { label: "Universities", href: "/universities" },
+    { label: "Chat / Q&A", href: "/chat" },
     { label: "Support Guides", href: "/support" },
     { label: "AI Assistant", href: "/dashboard/ai" },
   ],
