@@ -33,7 +33,10 @@ _BANNED_PATTERNS = [
     # English — sexual / explicit
     r"\bporn(?:ography)?\b", r"\bxxx\b", r"\bnsfw\b",
     r"\bmasturbat\w*\b", r"\bfetish\b",
-    r"\bsex(?:ual|ually|y|ting)?\b", r"\bnude\b", r"\bnaked\b",
+    # Target explicit terms only. We deliberately DON'T block bare "sex" /
+    # "sexual" / "sexually" so legitimate support questions (e.g. about sexual
+    # harassment, sexual health, sex education) aren't false-flagged.
+    r"\bsexting\b", r"\bnude\b", r"\bnaked\b",
     r"\bescort\b", r"\bprostitut\w*\b", r"\bbrothel\b",
     r"\bhooker\b", r"\bwhore\b", r"\bslut\b",
     r"\bonlyfans\b",

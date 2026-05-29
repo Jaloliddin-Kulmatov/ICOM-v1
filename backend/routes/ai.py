@@ -1,11 +1,61 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from functools import wraps
+import threading
+import time
 import os
 
 from app import db
 from models import User, AISession
 
 ai_bp = Blueprint("ai", __name__)
+
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+# These endpoints are intentionally usable without signing in (the chat widget
+# and restaurant finder serve anonymous visitors), so we can't gate them behind
+# JWT. Instead we throttle per client IP to stop a single caller from burning
+# the Groq quota / running up cost. Fixed-window counter, in-memory.
+#
+# NOTE: state is per-process, so with multiple gunicorn workers the effective
+# limit is (workers × AI_RATE_LIMIT). That's fine for basic abuse protection;
+# swap in Redis + flask-limiter if you need a hard global cap.
+_RATE_LIMIT = int(os.environ.get("AI_RATE_LIMIT", "30"))          # requests...
+_RATE_WINDOW = int(os.environ.get("AI_RATE_WINDOW_SEC", "600"))   # ...per N seconds
+_rate_lock = threading.Lock()
+_rate_hits: dict[str, tuple[float, int]] = {}  # ip -> (window_start, count)
+
+
+def _client_ip() -> str:
+    fwd = request.headers.get("X-Forwarded-For", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def rate_limited(fn):
+    """Throttle the wrapped view to _RATE_LIMIT calls per _RATE_WINDOW per IP."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        ip = _client_ip()
+        now = time.time()
+        with _rate_lock:
+            window_start, count = _rate_hits.get(ip, (now, 0))
+            if now - window_start >= _RATE_WINDOW:
+                window_start, count = now, 0  # window expired — reset
+            count += 1
+            _rate_hits[ip] = (window_start, count)
+            over_limit = count > _RATE_LIMIT
+            retry_after = int(_RATE_WINDOW - (now - window_start))
+        if over_limit:
+            resp = jsonify({
+                "error": "Too many AI requests. Please slow down and try again shortly."
+            })
+            resp.status_code = 429
+            resp.headers["Retry-After"] = str(max(1, retry_after))
+            return resp
+        return fn(*args, **kwargs)
+    return wrapper
 
 # Groq model — llama-3.3-70b-versatile is fast, free tier, and high quality.
 # Alternatives: "llama-3.1-8b-instant" (ultra-fast), "mixtral-8x7b-32768" (large context)
@@ -43,6 +93,7 @@ def _get_client():
 
 
 @ai_bp.route("/chat", methods=["POST"])
+@rate_limited
 def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
@@ -101,6 +152,7 @@ def chat():
 
 
 @ai_bp.route("/translate", methods=["POST"])
+@rate_limited
 def translate():
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
@@ -131,6 +183,7 @@ def translate():
 
 
 @ai_bp.route("/restaurants", methods=["POST"])
+@rate_limited
 def restaurants():
     data = request.get_json(silent=True) or {}
     city = (data.get("city") or "Jeonju").strip()

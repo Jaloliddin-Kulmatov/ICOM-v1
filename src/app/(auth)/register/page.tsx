@@ -118,7 +118,7 @@ export default function RegisterPage() {
   };
 
   const canNext = () => {
-    if (step === 0) return form.name.trim() && isValidEmail(form.email) && form.password.length >= 6 && emailStatus !== "invalid" && emailStatus !== "checking";
+    if (step === 0) return form.name.trim() && isValidEmail(form.email) && form.password.length >= 8 && emailStatus !== "invalid" && emailStatus !== "checking";
     if (step === 1) return !!form.university;
     return true;
   };
@@ -130,7 +130,7 @@ export default function RegisterPage() {
       if (!isValidEmail(form.email)) { setError("Please enter a valid email address (e.g. you@gmail.com)."); return; }
       if (emailStatus === "checking") { setError("Please wait while we check your email."); return; }
       if (emailStatus === "invalid") { setError(emailMessage || "This email address is not valid."); return; }
-      if (form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
+      if (form.password.length < 8) { setError("Password must be at least 8 characters."); return; }
       // If user skipped the blur, check now
       if (emailStatus === "idle") {
         const ok = await checkEmail(form.email);
@@ -253,7 +253,7 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">Password</label>
-                <Input type="password" placeholder="Min. 6 characters" value={form.password} onChange={(e) => set("password", e.target.value)} icon={<Lock size={14} />} />
+                <Input type="password" placeholder="Min. 8 characters" value={form.password} onChange={(e) => set("password", e.target.value)} icon={<Lock size={14} />} />
               </div>
             </div>
           )}

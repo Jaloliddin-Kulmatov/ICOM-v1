@@ -5,11 +5,20 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from markupsafe import escape
 
 from app import db
 from models import AmbassadorApplication, User
 
 ambassador_bp = Blueprint("ambassador", __name__)
+
+
+def _h(value) -> str:
+    """HTML-escape a value for safe interpolation into email templates.
+    Applicant-supplied fields (name, motivation, social, …) must never be
+    dropped into HTML raw — otherwise a crafted application could inject markup
+    into the confirmation/admin emails."""
+    return str(escape("" if value is None else value))
 
 
 # ── Email helpers ──────────────────────────────────────────────────────────────
@@ -112,17 +121,17 @@ def _send_application_emails_async(applicant_name: str, applicant_email: str,
   </div>
   <div style="background:#f8f9ff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb">
     <h2 style="color:#1a1a2e;margin-top:0">Application Received! 🎉</h2>
-    <p>Hi <strong>{applicant_name}</strong>,</p>
+    <p>Hi <strong>{_h(applicant_name)}</strong>,</p>
     <p>Thank you for applying to become an <strong>ICOM Ambassador</strong> for
-    <strong>{university}</strong>!</p>
+    <strong>{_h(university)}</strong>!</p>
     <p>We&apos;ve received your application and will review it within
     <strong>2–5 business days</strong>.</p>
     <div style="background:white;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0">
       <p style="margin:0;font-size:13px;color:#6b7280">Application summary:</p>
-      <p style="margin:8px 0 0;font-size:14px"><strong>Name:</strong> {applicant_name}</p>
-      <p style="margin:4px 0;font-size:14px"><strong>University:</strong> {university}</p>
-      <p style="margin:4px 0;font-size:14px"><strong>Department:</strong> {data.get('department') or '—'}</p>
-      <p style="margin:4px 0;font-size:14px"><strong>Visa:</strong> {data.get('visa_type') or '—'}</p>
+      <p style="margin:8px 0 0;font-size:14px"><strong>Name:</strong> {_h(applicant_name)}</p>
+      <p style="margin:4px 0;font-size:14px"><strong>University:</strong> {_h(university)}</p>
+      <p style="margin:4px 0;font-size:14px"><strong>Department:</strong> {_h(data.get('department') or '—')}</p>
+      <p style="margin:4px 0;font-size:14px"><strong>Visa:</strong> {_h(data.get('visa_type') or '—')}</p>
     </div>
     <p style="color:#6b7280;font-size:13px">
       While you wait, explore clubs and internships on
@@ -142,17 +151,17 @@ def _send_application_emails_async(applicant_name: str, applicant_email: str,
 <html><body style="font-family:Arial,sans-serif;max-width:560px;margin:auto">
   <h2>New Ambassador Application</h2>
   <table style="width:100%;border-collapse:collapse">
-    <tr><td style="padding:6px;color:#6b7280">Name</td><td style="padding:6px"><strong>{applicant_name}</strong></td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Email</td><td style="padding:6px">{applicant_email}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">University</td><td style="padding:6px">{university}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Department</td><td style="padding:6px">{data.get('department','—')}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Year</td><td style="padding:6px">{data.get('year','—')}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Country</td><td style="padding:6px">{data.get('country','—')}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Visa</td><td style="padding:6px">{data.get('visa_type','—')}</td></tr>
-    <tr><td style="padding:6px;color:#6b7280">Social</td><td style="padding:6px">{data.get('social','—')}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Name</td><td style="padding:6px"><strong>{_h(applicant_name)}</strong></td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Email</td><td style="padding:6px">{_h(applicant_email)}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">University</td><td style="padding:6px">{_h(university)}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Department</td><td style="padding:6px">{_h(data.get('department','—'))}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Year</td><td style="padding:6px">{_h(data.get('year','—'))}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Country</td><td style="padding:6px">{_h(data.get('country','—'))}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Visa</td><td style="padding:6px">{_h(data.get('visa_type','—'))}</td></tr>
+    <tr><td style="padding:6px;color:#6b7280">Social</td><td style="padding:6px">{_h(data.get('social','—'))}</td></tr>
   </table>
   <h3>Motivation</h3>
-  <p style="white-space:pre-wrap">{data.get('motivation','—')}</p>
+  <p style="white-space:pre-wrap">{_h(data.get('motivation','—'))}</p>
   <p><a href="https://icom-frontend.onrender.com/admin">Review in Admin Panel →</a></p>
 </body></html>"""
             _send_email(admin_email,
@@ -251,8 +260,8 @@ def update_application(app_id):
             if status == "approved":
                 subject = "🎉 You're now an ICOM Ambassador!"
                 body_html = f"""<html><body style="font-family:Arial,sans-serif">
-<h2>Congratulations, {app_record.name}! 🎉</h2>
-<p>Your application to become an ICOM Ambassador for <strong>{app_record.university}</strong>
+<h2>Congratulations, {_h(app_record.name)}! 🎉</h2>
+<p>Your application to become an ICOM Ambassador for <strong>{_h(app_record.university)}</strong>
 has been <strong style="color:#10b981">APPROVED</strong>.</p>
 <p>You now have access to post News on behalf of your university on ICOM.</p>
 <p>Welcome to the team! 🚀 — The ICOM Team</p>
@@ -260,7 +269,7 @@ has been <strong style="color:#10b981">APPROVED</strong>.</p>
             else:
                 subject = "ICOM Ambassador Application Update"
                 body_html = f"""<html><body style="font-family:Arial,sans-serif">
-<h2>Hi {app_record.name},</h2>
+<h2>Hi {_h(app_record.name)},</h2>
 <p>Thank you for your interest in becoming an ICOM Ambassador.</p>
 <p>Unfortunately, we were unable to approve your application at this time.
 You're welcome to apply again in the future.</p>

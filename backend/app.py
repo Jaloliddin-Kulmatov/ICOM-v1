@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
 
 load_dotenv()
@@ -29,7 +30,14 @@ def create_app():
         app.config["SQLALCHEMY_MAX_OVERFLOW"] = 10
         app.config["SQLALCHEMY_POOL_RECYCLE"] = 300
         app.config["SQLALCHEMY_POOL_TIMEOUT"] = 20
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False  # no expiry for dev; set timedelta in prod
+    # Access tokens expire after 30 days. A leaked/forgotten token shouldn't be
+    # valid forever. Override with JWT_ACCESS_TOKEN_DAYS if you need a different
+    # window. (The Google sign-in path already mints 30-day tokens explicitly.)
+    try:
+        _jwt_days = int(os.environ.get("JWT_ACCESS_TOKEN_DAYS", "30"))
+    except ValueError:
+        _jwt_days = 30
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=_jwt_days)
 
     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
@@ -220,7 +228,14 @@ def _run_lightweight_migrations():
     try:
         dialect = db.engine.dialect.name
         if dialect == "postgresql":
-            with db.engine.begin() as conn:
+            # CREATE INDEX CONCURRENTLY cannot run inside a transaction block,
+            # so we use an AUTOCOMMIT connection (db.engine.begin() would wrap
+            # these in a transaction and Postgres would reject them — which is
+            # why this previously always fell through to the B-tree fallback).
+            with db.engine.connect() as conn:
+                conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+                # pg_trgm powers the gin_trgm_ops operator class below.
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
                 conn.execute(text(
                     "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_clubs_name_trgm "
                     "ON clubs USING gin (lower(name) gin_trgm_ops)"
@@ -672,6 +687,27 @@ def _start_scheduler(flask_app):
     # In debug mode, only the child reloader process should start the scheduler.
     if flask_app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         return
+
+    # Under gunicorn with >1 worker, every worker process imports this module
+    # and would start its own scheduler → the scraper would run N times. Grab a
+    # host-wide exclusive file lock so exactly ONE worker owns the scheduler.
+    # The lock fd is intentionally leaked (kept for process lifetime) so the
+    # lock is held until the worker exits. Best-effort: if flock is unavailable
+    # (e.g. non-POSIX), fall through and start anyway.
+    try:
+        import fcntl
+        lock_path = os.environ.get("SCHEDULER_LOCK_PATH", "/tmp/icom-scheduler.lock")
+        _lock_fd = open(lock_path, "w")
+        try:
+            fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            print("[scheduler] another worker already owns the scheduler → skipping")
+            _lock_fd.close()
+            return
+        # Keep a module-level reference so the fd (and thus the lock) survives.
+        globals()["_SCHEDULER_LOCK_FD"] = _lock_fd
+    except ImportError:
+        pass  # no fcntl (non-POSIX) — proceed without the cross-worker guard
 
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
