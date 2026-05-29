@@ -26,18 +26,22 @@ export const metadata: Metadata = {
   description:
     "ICOM connects 28,000+ international students across 47 Korean universities. Community, jobs, visa guidance, and AI-powered support in one platform.",
   keywords: ["international students", "Korea", "university", "ICOM", "jobs", "visa", "community"],
-  metadataBase: new URL("https://icon.study"),
+  metadataBase: new URL("https://icom.ai.kr"),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ICOM",
+  },
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: "/favicon.svg",
   },
   openGraph: {
     title: "ICOM — The OS for International Students in Korea",
     description: "Community, jobs, visa guidance, and AI support for international students in Korea.",
     type: "website",
-    url: "https://icon.study",
+    url: "https://icom.ai.kr",
     images: [{ url: "/favicon.svg" }],
   },
 };

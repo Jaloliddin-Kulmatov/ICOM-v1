@@ -1,0 +1,14 @@
+{
+  "name": "ICOM — International Community in Korea",
+  "short_name": "ICOM",
+  "description": "The Operating System for International Students in Korea. Community, jobs, visa guidance, and AI support.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050508",
+  "theme_color": "#6366f1",
+  "categories": ["education", "social", "lifestyle"],
+  "icons": [
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
