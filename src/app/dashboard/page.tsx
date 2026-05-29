@@ -359,7 +359,10 @@ function ClubCard({ club, isOwner, onEdit, onLeave }: {
   const bgColor     = isCommunity ? "bg-violet-500/5"     : "bg-indigo-500/5";
 
   return (
-    <div className={`group p-4 rounded-2xl border ${borderColor} ${bgColor} flex flex-col gap-2.5`}>
+    <Link
+      href={`/community/${club.id}`}
+      className={`group p-4 rounded-2xl border ${borderColor} ${bgColor} flex flex-col gap-2.5 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200`}
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -377,17 +380,18 @@ function ClubCard({ club, isOwner, onEdit, onLeave }: {
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
           {isOwner && onEdit && (
-            <button onClick={onEdit} className={`p-1.5 rounded-lg ${accentColor} hover:bg-white/8 transition-all`} title="Edit">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); }} className={`p-1.5 rounded-lg ${accentColor} hover:bg-white/8 transition-all`} title="Edit">
               <Pencil size={12} />
             </button>
           )}
           {!isOwner && onLeave && (
-            <button onClick={onLeave} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/8 transition-all" title="Leave">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/8 transition-all" title="Leave">
               <LogOut size={12} />
             </button>
           )}
           {club.website && (
             <a href={club.website} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-indigo-400 hover:bg-white/8 transition-all" title="Website">
               <ExternalLink size={12} />
             </a>
@@ -406,6 +410,6 @@ function ClubCard({ club, isOwner, onEdit, onLeave }: {
         {club.member_count > 0 && <span className="flex items-center gap-1"><Users size={9} />{club.member_count} members</span>}
         {club.location && <span className="flex items-center gap-1"><Globe size={9} />{club.location}</span>}
       </div>
-    </div>
+    </Link>
   );
 }

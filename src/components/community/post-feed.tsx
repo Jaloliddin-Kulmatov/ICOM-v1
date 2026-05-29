@@ -351,7 +351,14 @@ export default function PostFeed() {
     });
     const d = await res.json();
     if (d.locked) { setLocked(true); setLoadingPosts(false); return; }
-    setPosts(d.posts || []);
+    const sorted = (d.posts || []).slice().sort((a: Post, b: Post) => {
+      const ageA = (Date.now() - new Date(a.created_at).getTime()) / 3_600_000;
+      const ageB = (Date.now() - new Date(b.created_at).getTime()) / 3_600_000;
+      const scoreA = a.comment_count * 3 + 1 / (ageA + 2);
+      const scoreB = b.comment_count * 3 + 1 / (ageB + 2);
+      return scoreB - scoreA;
+    });
+    setPosts(sorted);
     setLocked(false);
     setLoadingPosts(false);
   }, []);

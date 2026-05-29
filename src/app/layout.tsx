@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import ChatWidget from "@/components/ai/chat-widget";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import FeedbackWidget from "@/components/feedback/feedback-widget";
 import SplashScreen from "@/components/ui/splash-screen";
@@ -60,7 +59,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SplashScreen />
         {children}
         <MobileBottomNav />
-        <ChatWidget />
         <FeedbackWidget />
       </AuthProvider>
     </ThemeProvider>
