@@ -37,9 +37,9 @@ const footerLinks = {
 const socialLinks = [
   { icon: Send,     href: "https://t.me/jaloliddinkulmatov",                    label: "Telegram" },
   { icon: Github,   href: "https://github.com/Jaloliddin-Kulmatov",             label: "GitHub" },
-  { icon: Linkedin, href: "https://www.linkedin.com/in/jaloliddin-kulmatov/",   label: "LinkedIn" },
-  { icon: Globe,    href: "https://jaloliddin-kulmatov.vercel.app",             label: "Portfolio" },
-  { icon: Mail,     href: "mailto:jaloliddinkulmatov@gmail.com",                label: "Email" },
+  { icon: Linkedin, href: "https://www.linkedin.com/in/jaloliddin-kulmatov-69a81a406/", label: "LinkedIn" },
+  { icon: Globe,    href: "https://portfolio-n5v3.vercel.app/",                 label: "Portfolio" },
+  { icon: Mail,     href: "mailto:jaloliddinqulmatov12@gmail.com",              label: "Email" },
 ];
 
 export default function Footer() {
