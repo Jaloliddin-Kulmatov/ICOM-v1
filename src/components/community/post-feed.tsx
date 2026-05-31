@@ -442,8 +442,8 @@ export default function PostFeed() {
 
   return (
     <div className="space-y-4">
-      {/* Ambassador CTA — visible to logged-in users who can't post yet */}
-      {user && options.length === 0 && (
+      {/* Ambassador CTA — visible to non-ambassadors who can't post yet */}
+      {user && options.length === 0 && !["ambassador", "admin"].includes(user.role) && (
         <div className="p-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 flex flex-col sm:flex-row items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
             <Star size={16} className="text-white" />
@@ -516,16 +516,18 @@ export default function PostFeed() {
               Post
             </button>
           </div>
-          {/* Ambassador link — always accessible */}
-          <div className="pt-2 border-t border-border flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Want to post as a university ambassador?</span>
-            <button
-              onClick={() => setShowAmbassador(true)}
-              className="flex items-center gap-1 text-[11px] text-violet-500 hover:text-violet-600 font-semibold transition-colors"
-            >
-              <Star size={10} /> Apply as Ambassador
-            </button>
-          </div>
+          {/* Ambassador link — only for non-ambassadors */}
+          {user && !["ambassador", "admin"].includes(user.role) && (
+            <div className="pt-2 border-t border-border flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">Want to post as a university ambassador?</span>
+              <button
+                onClick={() => setShowAmbassador(true)}
+                className="flex items-center gap-1 text-[11px] text-violet-500 hover:text-violet-600 font-semibold transition-colors"
+              >
+                <Star size={10} /> Apply as Ambassador
+              </button>
+            </div>
+          )}
         </div>
       )}
 
