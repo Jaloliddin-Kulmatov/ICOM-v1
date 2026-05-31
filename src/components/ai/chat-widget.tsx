@@ -82,13 +82,15 @@ export default function ChatWidget() {
   // Keep posRef in sync
   useEffect(() => { posRef.current = pos; }, [pos]);
 
-  // Set initial position bottom-right after mount. On phones we lift the
-  // FAB higher so it sits above the bottom nav (~64px) instead of on top of
-  // the active tab.
+  // Set initial position bottom-right after mount.
+  // Desktop: placed above the Feedback button (which sits at bottom-6 / 24px).
+  // The FAB center is at (right: 90px, bottom: 120px) so there's a clear gap
+  // between the two floating buttons and the user can still drag the FAB anywhere.
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
-    const bottomGap = isMobile ? 110 : 80;
-    const p = { x: window.innerWidth - 50, y: window.innerHeight - bottomGap };
+    const bottomGap = isMobile ? 110 : 120;
+    const rightGap  = isMobile ? 50  : 90;
+    const p = { x: window.innerWidth - rightGap, y: window.innerHeight - bottomGap };
     setPos(p);
     posRef.current = p;
   }, []);

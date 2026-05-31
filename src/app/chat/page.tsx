@@ -227,13 +227,6 @@ export default function ChatPage() {
               been there will share their experience.
             </p>
 
-            {myRegion && localPostCount > 0 && tab === "all" && (
-              <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
-                <MapPin size={11} />
-                Showing {localPostCount} question{localPostCount === 1 ? "" : "s"} from your area first ({myRegion.uniLabel})
-              </div>
-            )}
-
             {myRegion && tab === "uni" && (
               <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
                 <GraduationCap size={11} />

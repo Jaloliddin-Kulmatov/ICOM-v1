@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import FeedbackWidget from "@/components/feedback/feedback-widget";
+import ChatWidget from "@/components/ai/chat-widget";
 import SplashScreen from "@/components/ui/splash-screen";
 import { AuthProvider } from "@/lib/auth";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -60,6 +61,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <MobileBottomNav />
         <FeedbackWidget />
+        {/* AI floating button — desktop only (hidden on mobile) */}
+        <div className="hidden md:block">
+          <ChatWidget />
+        </div>
       </AuthProvider>
     </ThemeProvider>
   );
