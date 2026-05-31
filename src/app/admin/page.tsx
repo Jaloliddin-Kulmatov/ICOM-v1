@@ -503,21 +503,6 @@ export default function AdminPage() {
         {/* ══════════════════ CLUBS TAB ══════════════════ */}
         {tab === "clubs" && (
           <div className="space-y-4">
-            {/* Seed ICOM Travel & Hiking */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
-              <div>
-                <p className="text-sm font-semibold text-foreground">ICOM Travel &amp; ICOM Hiking</p>
-                <p className="text-xs text-muted-foreground">Create these two communities owned by you (safe to run once).</p>
-              </div>
-              <Button
-                size="sm"
-                onClick={handleSeedIcomClubs}
-                disabled={seedingIcomClubs}
-                className="gap-1.5 bg-violet-500 hover:bg-violet-600 text-white shrink-0"
-              >
-                {seedingIcomClubs ? <><Loader2 size={13} className="animate-spin" /> Creating…</> : <><Plus size={13} /> Create Clubs</>}
-              </Button>
-            </div>
 
           <div className="space-y-2">
             {clubsOnly.length === 0 ? (
