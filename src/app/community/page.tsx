@@ -630,7 +630,17 @@ export default function CommunityPage() {
     if (data.club) setClubs(prev => prev.map(c => c.id === club.id ? { ...c, ...data.club } : c));
   };
 
-  const handleCreate = (newClub: Club) => setClubs(prev => [newClub, ...prev]);
+  const handleCreate = (newClub: Club) => {
+    setClubs(prev => [newClub, ...prev]);
+    // Celebrate! Show a toast and store in localStorage so Notifications page picks it up
+    const label = newClub.club_type === "community" ? "community" : "club";
+    setToast({ msg: `🎉 ${newClub.name} is live! You're now the owner.`, clubId: newClub.id });
+    try {
+      const existing = JSON.parse(localStorage.getItem("created_clubs") || "[]");
+      existing.unshift({ id: newClub.id, name: newClub.name, label, ts: new Date().toISOString() });
+      localStorage.setItem("created_clubs", JSON.stringify(existing.slice(0, 10)));
+    } catch { /**/ }
+  };
 
   const tabClubs = clubs.filter(c => (c.club_type || "club") === activeTab);
 
@@ -801,8 +811,10 @@ export default function CommunityPage() {
                 </div>
                 <div className="p-4 rounded-2xl border border-white/8 bg-white/3 text-xs text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">How it works</p>
-                  <p>Click <strong>Join</strong> on any club or community — you&apos;re in instantly.</p>
-                  <p>Once you join, you can chat with members and see the KakaoTalk group link and contact details.</p>
+                  <p>Click <strong>Join</strong> to request membership. Open clubs accept you instantly; others wait for owner approval.</p>
+                  <p>Once approved, you can chat with members, see the KakaoTalk link, and post news for your club.</p>
+                  <p>Click <strong>Reply</strong> on any comment or answer to start a thread.</p>
+                  <p>Hit <strong>Create</strong> above to start your own club or community.</p>
                 </div>
               </div>
             </div>

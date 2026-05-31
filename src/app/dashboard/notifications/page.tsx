@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
   Bell, Newspaper, CheckCheck,
-  Loader2, ExternalLink, RefreshCw, UserCheck,
+  Loader2, ExternalLink, RefreshCw, UserCheck, PartyPopper,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -33,7 +33,7 @@ interface Post {
 
 interface Notif {
   id: string;
-  type: "news" | "approval";
+  type: "news" | "approval" | "created";
   clubId?: number;
   clubName?: string;
   clubType?: "club" | "community";
@@ -127,8 +127,30 @@ export default function NotificationsPage() {
         }
       } catch { /* ignore */ }
 
+      // 3. Club-created celebrations (stored in localStorage by community page)
+      const createdNotifs: Notif[] = [];
+      try {
+        const raw = JSON.parse(localStorage.getItem("created_clubs") || "[]") as Array<{
+          id: number; name: string; label: string; ts: string; seen?: boolean;
+        }>;
+        const seenCreatedStr = localStorage.getItem("seen_created_clubs") || "[]";
+        let seenCreated: number[] = [];
+        try { seenCreated = JSON.parse(seenCreatedStr); } catch { seenCreated = []; }
+        raw.filter(e => !seenCreated.includes(e.id)).forEach(e => {
+          createdNotifs.push({
+            id: `created_${e.id}`,
+            type: "created",
+            clubId: e.id,
+            clubName: e.name,
+            count: 1,
+            previewText: `You created ${e.name}. Share it with your friends and start inviting members!`,
+            timestamp: e.ts,
+          });
+        });
+      } catch { /**/ }
+
       // Sort newest first
-      const all = [...approvalNotifs, ...newsNotifs].sort(
+      const all = [...createdNotifs, ...approvalNotifs, ...newsNotifs].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
       setNotifs(all);
@@ -169,8 +191,15 @@ export default function NotificationsPage() {
       } catch { /* ignore */ }
     } else if (notif.type === "approval" && notif.clubId !== undefined) {
       markApprovalSeen(notif.clubId);
+    } else if (notif.type === "created" && notif.clubId !== undefined) {
+      // Mark as seen so it doesn't reappear
+      const seenStr = localStorage.getItem("seen_created_clubs") || "[]";
+      let seen: number[] = [];
+      try { seen = JSON.parse(seenStr); } catch { seen = []; }
+      if (!seen.includes(notif.clubId)) {
+        localStorage.setItem("seen_created_clubs", JSON.stringify([...seen, notif.clubId]));
+      }
     }
-    // For chat: actual read marking happens when the user opens the chat.
     setNotifs((prev) => prev.filter((n) => n.id !== notif.id));
   };
 
@@ -193,6 +222,14 @@ export default function NotificationsPage() {
     notifs
       .filter((n) => n.type === "approval" && n.clubId !== undefined)
       .forEach((n) => markApprovalSeen(n.clubId!));
+    // Mark all "created" as seen too
+    const createdIds = notifs.filter(n => n.type === "created" && n.clubId !== undefined).map(n => n.clubId!);
+    if (createdIds.length) {
+      const seenStr = localStorage.getItem("seen_created_clubs") || "[]";
+      let seen: number[] = [];
+      try { seen = JSON.parse(seenStr); } catch { seen = []; }
+      localStorage.setItem("seen_created_clubs", JSON.stringify([...new Set([...seen, ...createdIds])]));
+    }
     setNotifs([]);
   };
 
@@ -261,9 +298,9 @@ export default function NotificationsPage() {
         {!loading && user && notifs.length === 0 && (
           <div className="p-12 rounded-2xl border border-white/8 bg-white/3 text-center">
             <Bell size={32} className="text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground font-medium">No new notifications.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed">
-              New club chat messages and news posts will appear here.
+            <p className="text-sm text-muted-foreground font-medium">You&apos;re all caught up!</p>
+            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed max-w-xs mx-auto">
+              You&apos;ll be notified when your join request is approved, someone posts news, or you create a club.
             </p>
           </div>
         )}
@@ -279,32 +316,34 @@ export default function NotificationsPage() {
                 {/* Type icon */}
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                    notif.type === "news"
-                      ? "bg-violet-500/15"
-                      : "bg-emerald-500/15"
+                    notif.type === "news"     ? "bg-violet-500/15"
+                    : notif.type === "created" ? "bg-amber-500/15"
+                    : "bg-emerald-500/15"
                   }`}
                 >
-                  {notif.type === "news" ? (
-                    <Newspaper size={16} className="text-violet-400" />
-                  ) : (
-                    <UserCheck size={16} className="text-emerald-400" />
-                  )}
+                  {notif.type === "news"     ? <Newspaper    size={16} className="text-violet-400" />
+                  : notif.type === "created" ? <PartyPopper  size={16} className="text-amber-400" />
+                  :                            <UserCheck    size={16} className="text-emerald-400" />}
                 </div>
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <p className="text-sm font-semibold text-foreground">
-                      {notif.type === "approval" ? "Join request accepted" : "News Feed"}
+                      {notif.type === "approval" ? "Join request accepted 🎉"
+                      : notif.type === "created" ? "Club created! 🎊"
+                      : "News Feed"}
                     </p>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-tight ${
-                        notif.type === "news"
-                          ? "bg-violet-500/15 text-violet-400"
-                          : "bg-emerald-500/15 text-emerald-400"
+                        notif.type === "news"     ? "bg-violet-500/15 text-violet-400"
+                        : notif.type === "created" ? "bg-amber-500/15 text-amber-400"
+                        : "bg-emerald-500/15 text-emerald-400"
                       }`}
                     >
-                      {notif.type === "approval" ? "accepted ✓" : `${notif.count} new`}
+                      {notif.type === "approval" ? "accepted ✓"
+                      : notif.type === "created" ? "you're the owner"
+                      : `${notif.count} new`}
                     </span>
                     {notif.type === "approval" && notif.clubType && (
                       <span className="text-[10px] text-muted-foreground/50 capitalize">
@@ -316,14 +355,16 @@ export default function NotificationsPage() {
                     {notif.previewText}
                   </p>
                   <p className="text-[10px] text-muted-foreground/40 mt-1.5">
-                    {notif.type === "approval" ? "just now" : timeAgo(notif.timestamp)}
+                    {timeAgo(notif.timestamp)}
                   </p>
                 </div>
 
                 {/* Actions */}
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <Link
-                    href={notif.type === "news" ? "/community?tab=news" : "/community"}
+                    href={notif.type === "news"     ? "/community?tab=news"
+                        : notif.clubId             ? `/community/${notif.clubId}`
+                        : "/community"}
                     onClick={() => dismiss(notif)}
                     className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20"
                   >

@@ -66,6 +66,15 @@ export function useNotifCount(userId: number | undefined): number {
           }
         } catch { /* ignore */ }
 
+        // Unseen "club created" celebrations
+        try {
+          const raw = JSON.parse(localStorage.getItem("created_clubs") || "[]") as Array<{ id: number }>;
+          const seenCreatedStr = localStorage.getItem("seen_created_clubs") || "[]";
+          let seenCreated: number[] = [];
+          try { seenCreated = JSON.parse(seenCreatedStr); } catch { seenCreated = []; }
+          total += raw.filter(e => !seenCreated.includes(e.id)).length;
+        } catch { /**/ }
+
         if (!cancelled) setCount(total);
       } catch { /* ignore */ }
     };

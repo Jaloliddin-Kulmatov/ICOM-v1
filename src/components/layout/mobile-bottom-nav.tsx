@@ -7,7 +7,7 @@ import {
   Users,
   Briefcase,
   MessageSquare,
-  User,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -17,11 +17,11 @@ import { useNotifCount } from "@/hooks/use-notif-count";
 // every page. We swapped that bottom-nav slot for the Chat Q&A feed, which
 // is one of the highest-engagement pages.
 const tabs = [
-  { href: "/dashboard",    icon: LayoutDashboard, label: "Home"      },
-  { href: "/community",    icon: Users,           label: "Community" },
-  { href: "/chat",         icon: MessageSquare,   label: "Chat"      },
-  { href: "/jobs",         icon: Briefcase,       label: "Internships"},
-  { href: "/dashboard/settings", icon: User,      label: "Profile"   },
+  { href: "/dashboard",               icon: LayoutDashboard, label: "Home"         },
+  { href: "/community",               icon: Users,           label: "Community"    },
+  { href: "/chat",                    icon: MessageSquare,   label: "Chat"         },
+  { href: "/jobs",                    icon: Briefcase,       label: "Internships"  },
+  { href: "/dashboard/notifications", icon: Bell,            label: "Alerts"       },
 ];
 
 export default function MobileBottomNav() {
@@ -56,11 +56,11 @@ export default function MobileBottomNav() {
               >
                 <div className="relative">
                   <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                  {/* Indigo dot for profile when there are unread notifs —
-                      red was too alarmist and clashed with the rest of the
-                      bottom nav's indigo theme. */}
-                  {href === "/dashboard/settings" && notifCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-background" />
+                  {/* Red badge on Alerts tab when there are unread notifications */}
+                  {href === "/dashboard/notifications" && notifCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5 ring-1 ring-background leading-none">
+                      {notifCount > 9 ? "9+" : notifCount}
+                    </span>
                   )}
                 </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, MessageSquare, Send,
-  AlertCircle, Trash2, ShieldCheck,
+  AlertCircle, Trash2, ShieldCheck, CornerDownRight, X,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -51,6 +51,8 @@ export default function ChatDetailPage() {
   const [reply, setReply] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [replyError, setReplyError] = useState("");
+  const [replyingTo, setReplyingTo] = useState<{ id: number; name: string } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,11 +97,28 @@ export default function ChatDetailPage() {
         p ? { ...p, answers: [...p.answers, data.answer], answer_count: p.answer_count + 1 } : p
       );
       setReply("");
+      setReplyingTo(null);
     } catch {
       setReplyError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startReply = (answer: Answer) => {
+    setReplyingTo({ id: answer.id, name: answer.author_name });
+    // Prepend @mention only if not already there
+    const mention = `@${answer.author_name}: `;
+    setReply((prev) => (prev.startsWith(`@${answer.author_name}`) ? prev : mention));
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setReply("");
   };
 
   const deleteAnswer = async (answerId: number) => {
@@ -225,6 +244,17 @@ export default function ChatDetailPage() {
                       <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                         {a.content}
                       </p>
+
+                      {/* Reply button — show for all signed-in users except the answer author */}
+                      {user && (
+                        <button
+                          onClick={() => startReply(a)}
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-indigo-400 transition-colors"
+                        >
+                          <CornerDownRight size={11} />
+                          Reply
+                        </button>
+                      )}
                     </div>
                     {user?.id === a.user_id && (
                       <button
@@ -244,11 +274,37 @@ export default function ChatDetailPage() {
           {/* Reply form */}
           {user ? (
             <div className="mt-8 p-4 sm:p-5 rounded-2xl border border-border bg-card">
-              <h3 className="text-sm font-bold text-foreground mb-3">Share your answer</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-foreground">
+                  {replyingTo ? `Replying to @${replyingTo.name}` : "Share your answer"}
+                </h3>
+                {replyingTo && (
+                  <button
+                    onClick={cancelReply}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X size={12} /> Cancel reply
+                  </button>
+                )}
+              </div>
+
+              {/* "Replying to" pill */}
+              {replyingTo && (
+                <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 rounded-xl bg-indigo-500/8 border border-indigo-500/20 w-fit">
+                  <CornerDownRight size={11} className="text-indigo-400" />
+                  <span className="text-[11px] text-indigo-400 font-medium">@{replyingTo.name}</span>
+                </div>
+              )}
+
               <textarea
+                ref={textareaRef}
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
-                placeholder="Help out by sharing what worked for you, links to official resources, or things to watch out for…"
+                placeholder={
+                  replyingTo
+                    ? `Reply to @${replyingTo.name}…`
+                    : "Help out by sharing what worked for you, links to official resources, or things to watch out for…"
+                }
                 rows={4}
                 maxLength={3000}
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all resize-none"
@@ -273,6 +329,8 @@ export default function ChatDetailPage() {
               >
                 {submitting ? (
                   <><Loader2 size={14} className="animate-spin" /> Posting…</>
+                ) : replyingTo ? (
+                  <><CornerDownRight size={14} /> Post reply</>
                 ) : (
                   <><Send size={14} /> Post answer</>
                 )}
