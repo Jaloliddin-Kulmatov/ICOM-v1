@@ -516,6 +516,16 @@ export default function PostFeed() {
               Post
             </button>
           </div>
+          {/* Ambassador link — always accessible */}
+          <div className="pt-2 border-t border-border flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Want to post as a university ambassador?</span>
+            <button
+              onClick={() => setShowAmbassador(true)}
+              className="flex items-center gap-1 text-[11px] text-violet-500 hover:text-violet-600 font-semibold transition-colors"
+            >
+              <Star size={10} /> Apply as Ambassador
+            </button>
+          </div>
         </div>
       )}
 
