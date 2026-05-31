@@ -228,7 +228,7 @@ export default function NotificationsPage() {
       const seenStr = localStorage.getItem("seen_created_clubs") || "[]";
       let seen: number[] = [];
       try { seen = JSON.parse(seenStr); } catch { seen = []; }
-      localStorage.setItem("seen_created_clubs", JSON.stringify([...new Set([...seen, ...createdIds])]));
+      localStorage.setItem("seen_created_clubs", JSON.stringify(Array.from(new Set([...seen, ...createdIds]))));
     }
     setNotifs([]);
   };
