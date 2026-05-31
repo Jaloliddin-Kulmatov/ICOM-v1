@@ -862,31 +862,35 @@ def seed_icom_clubs():
         {
             "name": "ICOM Travel",
             "description": (
-                "The official ICOM travel community for international students in Korea! "
-                "Share travel tips, find travel buddies, discover hidden gems across Korea, "
-                "and plan group trips together. Whether it's a weekend trip to Gyeongju or "
-                "a spring cherry blossom tour, we're here to explore Korea together."
+                "Your travel crew in Korea. We plan group trips around Korea and Asia — "
+                "Busan beaches, Jeju island, Seoul weekends, Gyeongju history tours, and more. "
+                "Share travel deals, visa-friendly destinations, budget tips, and find trip buddies "
+                "going your direction. Whether you're exploring Korea for the first time or planning "
+                "your next big trip, this is your group."
             ),
             "category": "social",
             "club_type": "community",
             "country": "South Korea",
-            "meeting_time": "Weekends",
-            "location": "All Korea",
+            "meeting_time": "First Sunday of every month, 4:00 PM (trip planning meetup)",
+            "location": "Jeonju Hanok Village Entrance / Online KakaoTalk",
+            "contact": "@icom_travel (KakaoTalk open chat)",
             "cover_image": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80",
         },
         {
             "name": "ICOM Hiking",
             "description": (
-                "Explore Korea's stunning mountains and trails with fellow international students! "
-                "From the gentle paths of Moaksan in Jeonju to the peaks of Seoraksan and Hallasan, "
-                "we organize regular group hikes for all fitness levels. Fresh air, great views, "
-                "and even better company. New members always welcome!"
+                "Explore Korea's stunning mountains with fellow international students. "
+                "From beginner-friendly trails around Jeonju to iconic peaks like Naejangsan, "
+                "Deogyusan, and Jirisan — we hike together, every weekend. "
+                "No experience needed, just good shoes and good energy. "
+                "We share trail tips, pack lists, and always end with a post-hike meal together."
             ),
             "category": "sports",
             "club_type": "community",
             "country": "South Korea",
-            "meeting_time": "Weekends",
-            "location": "Jeonju & All Korea",
+            "meeting_time": "Every Saturday, 7:00 AM (trail departure)",
+            "location": "Jeonju City Hall Exit 2 (meetup point — changes by destination)",
+            "contact": "@icom_hiking (KakaoTalk open chat)",
             "cover_image": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80",
         },
     ]
@@ -906,6 +910,7 @@ def seed_icom_clubs():
             country=d["country"],
             meeting_time=d.get("meeting_time", ""),
             location=d.get("location", ""),
+            contact=d.get("contact", ""),
             cover_image=d.get("cover_image", ""),
             university="",
             is_active=True,
@@ -923,4 +928,46 @@ def seed_icom_clubs():
         "message": f"Created: {inserted}. Skipped (already exist): {skipped}.",
         "inserted": inserted,
         "skipped": skipped,
+    }), 200
+
+
+# ── Analytics — daily visitor counts ─────────────────────────────────────────
+
+@admin_bp.route("/analytics", methods=["GET"])
+@jwt_required()
+def get_analytics():
+    """Return daily page-visit counts for the last 30 days."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    from models import PageVisit
+    from datetime import date, timedelta
+
+    today = date.today()
+    start = today - timedelta(days=29)
+
+    rows = (
+        PageVisit.query
+        .filter(PageVisit.date >= start, PageVisit.date <= today)
+        .order_by(PageVisit.date.asc())
+        .all()
+    )
+    visit_map = {row.date: row.count for row in rows}
+
+    # Fill zeros for days with no data
+    result = []
+    for i in range(30):
+        d = start + timedelta(days=i)
+        result.append({"date": d.isoformat(), "count": visit_map.get(d, 0)})
+
+    total_today  = visit_map.get(today, 0)
+    total_week   = sum(visit_map.get(today - timedelta(days=i), 0) for i in range(7))
+    total_month  = sum(v for v in visit_map.values())
+
+    return jsonify({
+        "visits":      result,
+        "today":       total_today,
+        "this_week":   total_week,
+        "this_month":  total_month,
     }), 200

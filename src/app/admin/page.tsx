@@ -8,7 +8,8 @@ import {
   ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2,
   AlertCircle, Star, CheckCircle2, XCircle, GraduationCap,
   Globe, Calendar, Search, Pencil, X, MessageSquarePlus, Mail,
-  Download, RefreshCw, CalendarOff, MapPin,
+  Download, RefreshCw, CalendarOff, MapPin, BarChart2, TrendingUp,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -84,12 +85,17 @@ function initials(name: string) {
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"clubs" | "communities" | "jobs" | "ambassadors" | "users" | "feedback">("clubs");
+  const [tab, setTab] = useState<"clubs" | "communities" | "jobs" | "ambassadors" | "users" | "feedback" | "analytics">("clubs");
   const [clubs, setClubs] = useState<Club[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [ambassadors, setAmbassadors] = useState<AmbassadorApp[]>([]);
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+  const [analytics, setAnalytics] = useState<{
+    visits: { date: string; count: number }[];
+    today: number; this_week: number; this_month: number;
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [scraping, setScraping] = useState(false);
@@ -147,6 +153,18 @@ export default function AdminPage() {
     if (firstErr) flash(firstErr.reason?.message || "Some data failed to load", true);
   }, []);
 
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await apiCall("GET", "/admin/analytics");
+      setAnalytics(data);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not load analytics", true);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
   const deleteFeedback = async (id: number) => {
     if (!confirm("Delete this feedback?")) return;
     try {
@@ -165,6 +183,13 @@ export default function AdminPage() {
       else loadData();
     }
   }, [user, authLoading, router, loadData]);
+
+  // Lazy-load analytics only when that tab is opened
+  useEffect(() => {
+    if (tab === "analytics" && !analytics && !analyticsLoading) {
+      loadAnalytics();
+    }
+  }, [tab, analytics, analyticsLoading, loadAnalytics]);
 
   const flash = (msg: string, isError = false) => {
     if (isError) setError(msg); else setSuccess(msg);
@@ -418,12 +443,13 @@ export default function AdminPage() {
   const communitiesOnly = clubs.filter(c => c.club_type === "community");
 
   const tabs = [
-    { id: "clubs"       as const, Icon: GraduationCap,   label: `Clubs (${clubsOnly.length})` },
-    { id: "communities" as const, Icon: Globe,           label: `Communities (${communitiesOnly.length})` },
-    { id: "jobs"        as const, Icon: Briefcase,       label: `Internships (${jobs.length})` },
-    { id: "ambassadors" as const, Icon: Star,            label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
-    { id: "users"       as const, Icon: Users,           label: `Users (${appUsers.length})` },
+    { id: "clubs"       as const, Icon: GraduationCap,    label: `Clubs (${clubsOnly.length})` },
+    { id: "communities" as const, Icon: Globe,            label: `Communities (${communitiesOnly.length})` },
+    { id: "jobs"        as const, Icon: Briefcase,        label: `Internships (${jobs.length})` },
+    { id: "ambassadors" as const, Icon: Star,             label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
+    { id: "users"       as const, Icon: Users,            label: `Users (${appUsers.length})` },
     { id: "feedback"    as const, Icon: MessageSquarePlus, label: `Feedback (${feedback.length})` },
+    { id: "analytics"   as const, Icon: BarChart2,        label: "Analytics" },
   ];
 
   const filteredUsers = appUsers.filter(u =>
@@ -954,6 +980,123 @@ export default function AdminPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ══════════════════ ANALYTICS TAB ══════════════════ */}
+        {tab === "analytics" && (
+          <div className="space-y-6">
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 size={24} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : analytics ? (
+              <>
+                {/* ── Stat cards ── */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Today", value: analytics.today, icon: Eye, color: "indigo" },
+                    { label: "This week", value: analytics.this_week, icon: TrendingUp, color: "violet" },
+                    { label: "This month", value: analytics.this_month, icon: BarChart2, color: "emerald" },
+                  ].map(({ label, value, icon: Icon, color }) => (
+                    <div key={label} className={`p-4 rounded-xl border border-${color}-500/20 bg-${color}-500/5 text-center`}>
+                      <Icon size={16} className={`text-${color}-400 mx-auto mb-1.5`} />
+                      <p className="text-2xl font-bold text-foreground">{value.toLocaleString()}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Bar chart — last 30 days ── */}
+                <div className="p-4 sm:p-5 rounded-2xl border border-white/8 bg-white/3">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-semibold text-foreground">Daily visitors — last 30 days</p>
+                    <button
+                      onClick={loadAnalytics}
+                      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <RefreshCw size={11} /> Refresh
+                    </button>
+                  </div>
+                  {(() => {
+                    const data = analytics.visits;
+                    const maxCount = Math.max(...data.map(v => v.count), 1);
+                    return (
+                      <div className="flex items-end gap-[3px] h-36">
+                        {data.map((v, i) => {
+                          const pct = (v.count / maxCount) * 100;
+                          const d = new Date(v.date);
+                          const isToday = i === data.length - 1;
+                          const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                          return (
+                            <div key={v.date} className="flex-1 flex flex-col items-center gap-1 group relative">
+                              {/* Tooltip */}
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:flex whitespace-nowrap bg-foreground text-background text-[10px] px-2 py-1 rounded-lg pointer-events-none z-10 shadow-lg">
+                                {label}: {v.count}
+                              </div>
+                              <div
+                                className={`w-full rounded-t-sm transition-all ${
+                                  isToday
+                                    ? "bg-indigo-500 hover:bg-indigo-400"
+                                    : v.count > 0
+                                    ? "bg-indigo-500/40 hover:bg-indigo-500/60"
+                                    : "bg-white/5"
+                                }`}
+                                style={{ height: `${Math.max(pct, v.count > 0 ? 4 : 2)}%` }}
+                              />
+                              {/* Show date label every 5 bars to avoid crowding */}
+                              {(i % 5 === 0 || isToday) && (
+                                <span className={`text-[8px] leading-none ${isToday ? "text-indigo-400 font-bold" : "text-muted-foreground/50"}`}>
+                                  {isToday ? "Today" : d.getDate()}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* ── Daily table — last 7 days ── */}
+                <div className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/8">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Last 7 days</p>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {analytics.visits.slice(-7).reverse().map((v, i) => {
+                      const d = new Date(v.date);
+                      const isToday = i === 0;
+                      return (
+                        <div key={v.date} className="flex items-center justify-between px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {isToday && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-bold uppercase">Today</span>}
+                            <span className="text-xs text-muted-foreground">
+                              {d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 rounded-full bg-white/8 overflow-hidden">
+                              <div
+                                className="h-full bg-indigo-500/60 rounded-full"
+                                style={{ width: `${Math.min((v.count / Math.max(...analytics.visits.map(x => x.count), 1)) * 100, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-foreground w-8 text-right">{v.count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                <BarChart2 size={32} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No analytics data yet.</p>
+                <button onClick={loadAnalytics} className="mt-3 text-xs text-indigo-400 hover:underline">Try again</button>
+              </div>
+            )}
           </div>
         )}
 

@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, date as date_type
 
 
 class User(db.Model):
@@ -414,3 +414,15 @@ class ChatAnswer(db.Model):
             "content": self.content,
             "created_at": self.created_at.isoformat() + "Z",
         }
+
+
+class PageVisit(db.Model):
+    """One row per calendar day — stores how many sessions visited that day."""
+    __tablename__ = "page_visits"
+
+    id    = db.Column(db.Integer, primary_key=True)
+    date  = db.Column(db.Date, nullable=False, unique=True, index=True)
+    count = db.Column(db.Integer, default=0, nullable=False)
+
+    def to_dict(self):
+        return {"date": self.date.isoformat(), "count": self.count}

@@ -62,6 +62,7 @@ def create_app():
     from routes.search import search_bp
     from routes.feedback import feedback_bp
     from routes.chat import chat_bp
+    from routes.track import track_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -72,6 +73,7 @@ def create_app():
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(chat_bp, url_prefix="/api/chat")
+    app.register_blueprint(track_bp, url_prefix="/api/track")
 
     @app.route("/")
     def index():
@@ -215,6 +217,13 @@ def _run_lightweight_migrations():
                 print("[migration] Added clubs.cover_image")
     except Exception as e:
         print(f"[migration] clubs.cover_image failed (probably already done): {e}")
+
+    # page_visits table — daily visit counter (created by db.create_all if absent)
+    # Just ensure it exists; SQLAlchemy creates it via the PageVisit model above.
+    try:
+        from models import PageVisit  # noqa: F401 — import ensures table is registered
+    except Exception:
+        pass
 
     # ── Search indexes for fast LIKE/ILIKE queries ───────────────────────────
     # PostgreSQL only — silently skipped on SQLite
