@@ -87,6 +87,7 @@ def create_app():
         _seed_communities()
         _seed_university_clubs()
         _seed_chat_threads()
+        _seed_jeonju_jobs()
 
     # NOTE: the background scheduler is started once at module load via
     # _start_scheduler(app) at the bottom of this file (the canonical
@@ -604,6 +605,68 @@ def _seed_chat_threads():
     except Exception as e:
         db.session.rollback()
         print(f"[seed] Chat threads seed skipped: {e}")
+
+
+def _seed_jeonju_jobs():
+    """Insert 15 real Jeonju/Jeonbuk internship listings on first deploy.
+    Owned by the first admin user found; safe to run repeatedly (skips dupes)."""
+    from models import Job, User
+    import sys, os
+    try:
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from jeonju_jobs import JEONJU_JOBS
+
+        # Use first admin as owner, fallback to first user
+        owner = User.query.filter_by(role="admin").order_by(User.id).first()
+        if not owner:
+            owner = User.query.order_by(User.id).first()
+        if not owner:
+            print("[seed] Jeonju jobs: no users yet, skipping.")
+            return
+
+        existing_keys = {
+            f"{row[0]}::{row[1]}"
+            for row in db.session.query(Job.apply_link, Job.title).filter(Job.apply_link.isnot(None)).all()
+        }
+
+        inserted = 0
+        for d in JEONJU_JOBS:
+            link = (d.get("apply_link") or "").strip()
+            title = (d.get("title") or "").strip()
+            company = (d.get("company") or "").strip()
+            if not link or not title or not company:
+                continue
+            key = f"{link}::{title}"
+            if key in existing_keys:
+                continue
+            job = Job(
+                title=title, company=company,
+                location=(d.get("location") or "").strip(),
+                job_type=(d.get("type") or "internship").strip(),
+                salary=(d.get("salary") or "").strip(),
+                description=(d.get("description") or "").strip(),
+                requirements=(d.get("requirements") or "").strip(),
+                visa_compatible=(d.get("visa_compatible") or "D-2, D-4").strip(),
+                deadline=(d.get("deadline") or "").strip(),
+                tags=(d.get("tags") or "").strip(),
+                apply_link=link,
+                is_active=True,
+                created_by=owner.id,
+            )
+            db.session.add(job)
+            existing_keys.add(key)
+            inserted += 1
+
+        db.session.commit()
+        if inserted:
+            print(f"[seed] Inserted {inserted} Jeonju internship listings.")
+        else:
+            print("[seed] Jeonju jobs already seeded, nothing to insert.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[seed] Jeonju jobs seed skipped: {e}")
 
 
 app = create_app()

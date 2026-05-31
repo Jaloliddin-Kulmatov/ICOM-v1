@@ -569,73 +569,28 @@ export default function AdminPage() {
           <div className="space-y-6">
             {/* ── Auto-scrape internships from Wanted.co.kr ── */}
             <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 overflow-hidden">
-              <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="p-4 sm:p-5 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
                   <Download size={18} className="text-emerald-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">Fetch from Wanted.co.kr</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Pulls the latest Korean internships and inserts up to 40 new postings.
-                    Runs automatically twice a day; tap below to trigger it manually.
+                  <p className="text-xs text-muted-foreground">
+                    Pulls the latest Korean internships. Runs automatically twice a day.
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                  <Button
-                    type="button"
-                    onClick={handleScrapeNow}
-                    disabled={scraping || resetting}
-                    className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
-                  >
-                    {scraping ? (
-                      <><Loader2 size={14} className="animate-spin" /> Scraping…</>
-                    ) : (
-                      <><Download size={14} /> Scrape now</>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleResetJobs}
-                    disabled={scraping || resetting}
-                    variant="outline"
-                    className="gap-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
-                    title="Hide all current internships, then re-scrape with English translations"
-                  >
-                    {resetting ? (
-                      <><Loader2 size={14} className="animate-spin" /> Resetting…</>
-                    ) : (
-                      <><RefreshCw size={14} /> Reset & re-scrape</>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleFixDeadlines}
-                    disabled={scraping || resetting || fixingDeadlines}
-                    variant="outline"
-                    className="gap-2 border-sky-500/40 text-sky-500 hover:bg-sky-500/10"
-                    title="Clear fake 'today + 60 days' deadlines so they show as Rolling instead"
-                  >
-                    {fixingDeadlines ? (
-                      <><Loader2 size={14} className="animate-spin" /> Fixing…</>
-                    ) : (
-                      <><CalendarOff size={14} /> Fix deadlines</>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSeedJeonju}
-                    disabled={seedingJeonju}
-                    variant="outline"
-                    className="gap-2 border-violet-500/40 text-violet-500 hover:bg-violet-500/10"
-                    title="Insert 15 real Jeonju/Jeonbuk internship listings (safe to run multiple times)"
-                  >
-                    {seedingJeonju ? (
-                      <><Loader2 size={14} className="animate-spin" /> Seeding…</>
-                    ) : (
-                      <><MapPin size={14} /> Seed Jeonju Jobs</>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  onClick={handleScrapeNow}
+                  disabled={scraping}
+                  className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
+                >
+                  {scraping ? (
+                    <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                  ) : (
+                    <><Download size={14} /> Scrape now</>
+                  )}
+                </Button>
               </div>
 
               {/* ── Live status panel ─────────────────────────────── */}
