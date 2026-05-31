@@ -34,7 +34,7 @@ const sidebarSections = [
     label: "Main",
     links: [
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { href: "/community", icon: Users, label: "Community" },
+      { href: "/community", icon: Users, label: "Clubs" },
       { href: "/jobs", icon: Briefcase, label: "Jobs & Internships" },
       { href: "/universities", icon: GraduationCap, label: "Universities" },
     ],

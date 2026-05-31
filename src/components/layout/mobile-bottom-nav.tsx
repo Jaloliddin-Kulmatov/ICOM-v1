@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 
 const tabs = [
   { href: "/dashboard",              icon: LayoutDashboard, label: "Home"        },
-  { href: "/community",              icon: Users,           label: "Community"   },
+  { href: "/community",              icon: Users,           label: "Clubs"       },
   { href: "/chat",                   icon: MessageSquare,   label: "Chat"        },
   { href: "/jobs",                   icon: Briefcase,       label: "Internships" },
   { href: "/dashboard/profile",      icon: UserCircle2,     label: "Profile"     },

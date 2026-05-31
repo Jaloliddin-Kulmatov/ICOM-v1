@@ -22,7 +22,7 @@ import { useNotifCount } from "@/hooks/use-notif-count";
 // the same link set.
 const desktopNavLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/community", label: "Community", icon: Users },
+  { href: "/community", label: "Clubs", icon: Users },
   { href: "/jobs", label: "Internships", icon: Briefcase },
   { href: "/daily-life", label: "Daily Life", icon: Home },
   { href: "/support", label: "Support", icon: Globe },

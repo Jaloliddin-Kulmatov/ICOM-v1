@@ -4,7 +4,7 @@ import { Github, Linkedin, Mail, Send, Globe } from "lucide-react";
 
 const footerLinks = {
   Platform: [
-    { label: "Community", href: "/community" },
+    { label: "Clubs", href: "/community" },
     { label: "Jobs & Internships", href: "/jobs" },
     { label: "Chat / Q&A", href: "/chat" },
     { label: "Support Guides", href: "/support" },
