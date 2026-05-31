@@ -776,3 +776,72 @@ def list_users():
         "total": len(users),
         "users": [u.to_dict() for u in users],
     }), 200
+
+
+# ── Seed Jeonju/Jeonbuk real internship listings ──────────────────────────────
+
+@admin_bp.route("/seed-jeonju-jobs", methods=["POST"])
+@jwt_required()
+def seed_jeonju_jobs():
+    """Insert real Jeonju/Jeonbuk internship listings. Admin only. Safe to call
+    multiple times — skips any listing whose apply_link already exists."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    import sys, os
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+
+    from jeonju_jobs import JEONJU_JOBS
+
+    existing_links = {
+        row[0]
+        for row in db.session.query(Job.apply_link)
+        .filter(Job.apply_link.isnot(None))
+        .all()
+    }
+
+    inserted = 0
+    skipped = 0
+    for d in JEONJU_JOBS:
+        link = (d.get("apply_link") or "").strip()
+        title = (d.get("title") or "").strip()
+        company = (d.get("company") or "").strip()
+
+        if not link or not title or not company:
+            skipped += 1
+            continue
+
+        # Allow same apply_link for different titles (e.g. LS Mtron has two roles)
+        dupe_key = f"{link}::{title}"
+        if dupe_key in existing_links:
+            skipped += 1
+            continue
+
+        job = Job(
+            title=title,
+            company=company,
+            location=(d.get("location") or "").strip(),
+            job_type=(d.get("type") or "internship").strip(),
+            salary=(d.get("salary") or "").strip(),
+            description=(d.get("description") or "").strip(),
+            requirements=(d.get("requirements") or "").strip(),
+            visa_compatible=(d.get("visa_compatible") or "D-2, D-4").strip(),
+            deadline=(d.get("deadline") or "").strip(),
+            tags=(d.get("tags") or "").strip(),
+            apply_link=link,
+            is_active=True,
+            created_by=user.id,
+        )
+        db.session.add(job)
+        existing_links.add(dupe_key)
+        inserted += 1
+
+    db.session.commit()
+    return jsonify({
+        "message": f"Seeded {inserted} Jeonju internships ({skipped} skipped as duplicates).",
+        "inserted": inserted,
+        "skipped": skipped,
+    }), 200
