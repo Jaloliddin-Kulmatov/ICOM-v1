@@ -608,8 +608,13 @@ def _seed_chat_threads():
 
 
 def _seed_jeonju_jobs():
-    """Insert 15 real Jeonju/Jeonbuk internship listings on first deploy.
-    Owned by the first admin user found; safe to run repeatedly (skips dupes)."""
+    """Insert (or update-to-English) 15 real Jeonju/Jeonbuk internship listings.
+
+    Deduplicates by apply_link. If an existing row still has Korean text
+    (Hangul characters in the title) it is updated in-place with the English
+    version — so re-deploying after the Korean→English rewrite fixes existing
+    rows automatically. Safe to call repeatedly.
+    """
     from models import Job, User
     import sys, os
     try:
@@ -617,6 +622,9 @@ def _seed_jeonju_jobs():
         if backend_dir not in sys.path:
             sys.path.insert(0, backend_dir)
         from jeonju_jobs import JEONJU_JOBS
+
+        def _has_hangul(text: str) -> bool:
+            return any("가" <= ch <= "힣" for ch in (text or ""))
 
         # Use first admin as owner, fallback to first user
         owner = User.query.filter_by(role="admin").order_by(User.id).first()
@@ -626,47 +634,87 @@ def _seed_jeonju_jobs():
             print("[seed] Jeonju jobs: no users yet, skipping.")
             return
 
-        existing_keys = {
-            f"{row[0]}::{row[1]}"
-            for row in db.session.query(Job.apply_link, Job.title).filter(Job.apply_link.isnot(None)).all()
+        # Index existing rows by apply_link for O(1) lookup
+        existing_by_link = {
+            row.apply_link: row
+            for row in Job.query.filter(Job.apply_link.isnot(None)).all()
         }
 
-        inserted = 0
+        inserted = updated = 0
         for d in JEONJU_JOBS:
-            link = (d.get("apply_link") or "").strip()
+            link  = (d.get("apply_link") or "").strip()
             title = (d.get("title") or "").strip()
             company = (d.get("company") or "").strip()
             if not link or not title or not company:
                 continue
-            key = f"{link}::{title}"
-            if key in existing_keys:
+
+            existing = existing_by_link.get(link)
+            if existing:
+                # Only update if the stored title is still Korean
+                if _has_hangul(existing.title or ""):
+                    existing.title              = title[:200]
+                    existing.company            = company[:150]
+                    existing.location           = (d.get("location") or "").strip()[:150]
+                    existing.salary             = (d.get("salary") or "").strip()[:100]
+                    existing.description        = (d.get("description") or "").strip()
+                    existing.requirements       = (d.get("requirements") or "").strip()
+                    existing.tags               = (d.get("tags") or "").strip()[:300]
+                    existing.foreigner_friendly = (d.get("foreigner_friendly") or "").strip()
+                    existing.foreigner_note     = (d.get("foreigner_note") or "").strip()[:300]
+                    existing.is_active          = True
+                    updated += 1
                 continue
+
             job = Job(
-                title=title, company=company,
-                location=(d.get("location") or "").strip(),
+                title=title[:200],
+                company=company[:150],
+                location=(d.get("location") or "").strip()[:150],
                 job_type=(d.get("type") or "internship").strip(),
-                salary=(d.get("salary") or "").strip(),
+                salary=(d.get("salary") or "").strip()[:100],
                 description=(d.get("description") or "").strip(),
                 requirements=(d.get("requirements") or "").strip(),
                 visa_compatible=(d.get("visa_compatible") or "D-2, D-4").strip(),
-                deadline=(d.get("deadline") or "").strip(),
-                tags=(d.get("tags") or "").strip(),
+                deadline=(d.get("deadline") or "").strip()[:50],
+                tags=(d.get("tags") or "").strip()[:300],
                 apply_link=link,
+                foreigner_friendly=(d.get("foreigner_friendly") or "").strip(),
+                foreigner_note=(d.get("foreigner_note") or "").strip()[:300],
                 is_active=True,
                 created_by=owner.id,
             )
             db.session.add(job)
-            existing_keys.add(key)
+            existing_by_link[link] = job
             inserted += 1
 
         db.session.commit()
-        if inserted:
-            print(f"[seed] Inserted {inserted} Jeonju internship listings.")
+        if inserted or updated:
+            print(f"[seed] Jeonju jobs: inserted {inserted}, updated {updated} to English.")
         else:
-            print("[seed] Jeonju jobs already seeded, nothing to insert.")
+            print("[seed] Jeonju jobs already seeded in English — nothing to do.")
     except Exception as e:
         db.session.rollback()
         print(f"[seed] Jeonju jobs seed skipped: {e}")
+
+
+def _translate_pending_jobs(flask_app):
+    """Translate any Wanted-scraped jobs still stored in Korean to English.
+
+    Called once at startup so every deploy progressively cleans up old Korean
+    rows. Uses Groq if GROQ_API_KEY is set, falls back to free Google Translate.
+    Capped at 60 rows per boot to avoid delaying server startup too long.
+    """
+    try:
+        from scrapers.wanted import translate_pending
+        summary = translate_pending(flask_app, limit=60)
+        if summary.get("translated", 0):
+            print(
+                f"[startup] Translated {summary['translated']} job(s) from Korean to English "
+                f"(errors={summary.get('errors', 0)})"
+            )
+        else:
+            print("[startup] No Korean job rows found to translate.")
+    except Exception as e:
+        print(f"[startup] translate_pending skipped: {e}")
 
 
 app = create_app()
@@ -716,6 +764,11 @@ def _cleanup_expired_jobs(flask_app):
 
 # Run once at boot so legacy expired jobs disappear immediately on next deploy.
 _cleanup_expired_jobs(app)
+
+# Translate any remaining Korean-language job rows to English on every boot.
+# The seeder already writes English for Jeonju jobs; this catches Wanted-scraped
+# rows that were inserted before the translation pipeline existed.
+_translate_pending_jobs(app)
 
 
 # ── Background scheduler ─────────────────────────────────────────────────────
