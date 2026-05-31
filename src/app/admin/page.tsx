@@ -301,6 +301,7 @@ export default function AdminPage() {
   // detail page reads "Apply anytime" instead of a misleading date.
   const [fixingDeadlines, setFixingDeadlines] = useState(false);
   const [seedingJeonju, setSeedingJeonju] = useState(false);
+  const [seedingIcomClubs, setSeedingIcomClubs] = useState(false);
   const handleFixDeadlines = async () => {
     if (fixingDeadlines) return;
     setFixingDeadlines(true);
@@ -312,6 +313,20 @@ export default function AdminPage() {
       flash(err instanceof Error ? err.message : "Could not fix deadlines.", true);
     } finally {
       setFixingDeadlines(false);
+    }
+  };
+
+  const handleSeedIcomClubs = async () => {
+    if (seedingIcomClubs) return;
+    setSeedingIcomClubs(true);
+    try {
+      const data = await apiCall("POST", "/admin/seed-icom-clubs");
+      flash(data.message || "Done.");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not create clubs.", true);
+    } finally {
+      setSeedingIcomClubs(false);
     }
   };
 
@@ -461,6 +476,23 @@ export default function AdminPage() {
 
         {/* ══════════════════ CLUBS TAB ══════════════════ */}
         {tab === "clubs" && (
+          <div className="space-y-4">
+            {/* Seed ICOM Travel & Hiking */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">ICOM Travel &amp; ICOM Hiking</p>
+                <p className="text-xs text-muted-foreground">Create these two communities owned by you (safe to run once).</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSeedIcomClubs}
+                disabled={seedingIcomClubs}
+                className="gap-1.5 bg-violet-500 hover:bg-violet-600 text-white shrink-0"
+              >
+                {seedingIcomClubs ? <><Loader2 size={13} className="animate-spin" /> Creating…</> : <><Plus size={13} /> Create Clubs</>}
+              </Button>
+            </div>
+
           <div className="space-y-2">
             {clubsOnly.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
@@ -491,6 +523,7 @@ export default function AdminPage() {
                 ))}
               </>
             )}
+          </div>
           </div>
         )}
 

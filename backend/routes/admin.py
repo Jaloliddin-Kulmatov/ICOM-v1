@@ -845,3 +845,82 @@ def seed_jeonju_jobs():
         "inserted": inserted,
         "skipped": skipped,
     }), 200
+
+
+# ── Seed ICOM Travel & ICOM Hiking communities ────────────────────────────────
+
+@admin_bp.route("/seed-icom-clubs", methods=["POST"])
+@jwt_required()
+def seed_icom_clubs():
+    """Create ICOM Travel and ICOM Hiking communities owned by the requesting
+    admin. Safe to call multiple times — skips if name already exists."""
+    user, err = _require_admin()
+    if err:
+        return err
+
+    ICOM_CLUBS = [
+        {
+            "name": "ICOM Travel",
+            "description": (
+                "The official ICOM travel community for international students in Korea! "
+                "Share travel tips, find travel buddies, discover hidden gems across Korea, "
+                "and plan group trips together. Whether it's a weekend trip to Gyeongju or "
+                "a spring cherry blossom tour, we're here to explore Korea together."
+            ),
+            "category": "social",
+            "club_type": "community",
+            "country": "South Korea",
+            "meeting_time": "Weekends",
+            "location": "All Korea",
+            "cover_image": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80",
+        },
+        {
+            "name": "ICOM Hiking",
+            "description": (
+                "Explore Korea's stunning mountains and trails with fellow international students! "
+                "From the gentle paths of Moaksan in Jeonju to the peaks of Seoraksan and Hallasan, "
+                "we organize regular group hikes for all fitness levels. Fresh air, great views, "
+                "and even better company. New members always welcome!"
+            ),
+            "category": "sports",
+            "club_type": "community",
+            "country": "South Korea",
+            "meeting_time": "Weekends",
+            "location": "Jeonju & All Korea",
+            "cover_image": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80",
+        },
+    ]
+
+    inserted = []
+    skipped = []
+    for d in ICOM_CLUBS:
+        existing = Club.query.filter_by(name=d["name"], is_active=True).first()
+        if existing:
+            skipped.append(d["name"])
+            continue
+        club = Club(
+            name=d["name"],
+            description=d["description"],
+            category=d["category"],
+            club_type=d["club_type"],
+            country=d["country"],
+            meeting_time=d.get("meeting_time", ""),
+            location=d.get("location", ""),
+            cover_image=d.get("cover_image", ""),
+            university="",
+            is_active=True,
+            created_by=user.id,
+        )
+        db.session.add(club)
+        db.session.flush()  # get club.id before commit
+        # Auto-approve creator as a member
+        membership = ClubMembership(club_id=club.id, user_id=user.id, status="approved")
+        db.session.add(membership)
+        inserted.append(d["name"])
+
+    db.session.commit()
+    return jsonify({
+        "message": f"Created: {inserted}. Skipped (already exist): {skipped}.",
+        "inserted": inserted,
+        "skipped": skipped,
+    }), 200
