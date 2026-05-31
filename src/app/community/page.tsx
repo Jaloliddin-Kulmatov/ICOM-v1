@@ -760,7 +760,7 @@ export default function CommunityPage() {
 
           {/* News tab */}
           {activeTabMain === "news" && (
-            <div className="max-w-2xl">
+            <div className="max-w-2xl mx-auto">
               <PostFeed />
             </div>
           )}

@@ -8,7 +8,7 @@ import {
   ShieldCheck, Plus, Trash2, Briefcase, Users, Loader2,
   AlertCircle, Star, CheckCircle2, XCircle, GraduationCap,
   Globe, Calendar, Search, Pencil, X, MessageSquarePlus, Mail,
-  Download, RefreshCw, CalendarOff,
+  Download, RefreshCw, CalendarOff, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -300,6 +300,7 @@ export default function AdminPage() {
   // Wanted didn't return a real date. Affected rows become rolling so the
   // detail page reads "Apply anytime" instead of a misleading date.
   const [fixingDeadlines, setFixingDeadlines] = useState(false);
+  const [seedingJeonju, setSeedingJeonju] = useState(false);
   const handleFixDeadlines = async () => {
     if (fixingDeadlines) return;
     setFixingDeadlines(true);
@@ -311,6 +312,20 @@ export default function AdminPage() {
       flash(err instanceof Error ? err.message : "Could not fix deadlines.", true);
     } finally {
       setFixingDeadlines(false);
+    }
+  };
+
+  const handleSeedJeonju = async () => {
+    if (seedingJeonju) return;
+    setSeedingJeonju(true);
+    try {
+      const data = await apiCall("POST", "/admin/seed-jeonju-jobs");
+      flash(data.message || `Inserted ${data.inserted || 0} Jeonju jobs.`);
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not seed Jeonju jobs.", true);
+    } finally {
+      setSeedingJeonju(false);
     }
   };
 
@@ -571,6 +586,20 @@ export default function AdminPage() {
                       <><Loader2 size={14} className="animate-spin" /> Fixing…</>
                     ) : (
                       <><CalendarOff size={14} /> Fix deadlines</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSeedJeonju}
+                    disabled={seedingJeonju}
+                    variant="outline"
+                    className="gap-2 border-violet-500/40 text-violet-500 hover:bg-violet-500/10"
+                    title="Insert 15 real Jeonju/Jeonbuk internship listings (safe to run multiple times)"
+                  >
+                    {seedingJeonju ? (
+                      <><Loader2 size={14} className="animate-spin" /> Seeding…</>
+                    ) : (
+                      <><MapPin size={14} /> Seed Jeonju Jobs</>
                     )}
                   </Button>
                 </div>

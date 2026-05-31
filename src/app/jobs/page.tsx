@@ -7,10 +7,13 @@ import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2 } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2, X } from "lucide-react";
 import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
+
+const ALERT_FIELDS = ["IT / Tech", "Marketing", "Engineering", "Business / Admin", "Design", "Finance", "Research / R&D", "Media / Content", "Sales", "All Fields"];
+const ALERT_LOCATIONS = ["Jeonju / Jeonbuk", "Seoul", "Busan", "Daejeon", "Gwangju", "All Korea"];
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -45,6 +48,9 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [alertsBusy, setAlertsBusy] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertField, setAlertField] = useState("All Fields");
+  const [alertLocation, setAlertLocation] = useState("All Korea");
 
   // Resolve the user's university to a region (city + province + Korean
   // translations). Match by id, short name, or full name so any of the
@@ -137,25 +143,46 @@ export default function JobsPage() {
   const toggleAlerts = async () => {
     if (alertsBusy) return;
     if (!user) {
-      // Send unauthenticated users to the login page so they can sign in
-      // before subscribing. The button is also the only visible CTA on this
-      // sidebar block.
       window.location.href = "/login?force=1";
       return;
     }
+    // If turning OFF — disable immediately, no modal needed
+    if (alertsEnabled) {
+      setAlertsBusy(true);
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+        const res = await fetch(`${API}/admin/jobs/alerts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+          body: JSON.stringify({ enabled: false }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) setAlertsEnabled(!!data.enabled);
+      } catch { /* keep last known state */ }
+      finally { setAlertsBusy(false); }
+      return;
+    }
+    // If turning ON — show preferences modal first
+    setShowAlertModal(true);
+  };
+
+  const confirmAlerts = async () => {
+    setShowAlertModal(false);
     setAlertsBusy(true);
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
       const res = await fetch(`${API}/admin/jobs/alerts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify({ enabled: !alertsEnabled }),
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ enabled: true }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) setAlertsEnabled(!!data.enabled);
+      if (res.ok) {
+        setAlertsEnabled(!!data.enabled);
+        // Save preferences to localStorage so we can display them
+        localStorage.setItem("job_alert_field", alertField);
+        localStorage.setItem("job_alert_location", alertLocation);
+      }
     } catch { /* keep last known state */ }
     finally { setAlertsBusy(false); }
   };
@@ -178,6 +205,15 @@ export default function JobsPage() {
 
     return matchSearch && matchCategory && matchVisa && matchRegion;
   });
+
+  // Load saved alert preferences from localStorage on mount
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const f = localStorage.getItem("job_alert_field");
+    const l = localStorage.getItem("job_alert_location");
+    if (f) setAlertField(f);
+    if (l) setAlertLocation(l);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -309,7 +345,7 @@ export default function JobsPage() {
                         {alertsEnabled ? "Job alerts active" : "Job Alerts"}
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
-                        {alertsEnabled ? "You'll be emailed on new matches" : "Get emailed when new internships match your profile"}
+                        {alertsEnabled ? `${alertField} · ${alertLocation}` : "Get emailed when new internships match your profile"}
                       </p>
                     </div>
                   </div>
@@ -381,8 +417,8 @@ export default function JobsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
                   {alertsEnabled
-                    ? "We'll email you when a new internship matches your university or region."
-                    : "Get notified of new listings matching your profile."}
+                    ? `${alertField} · ${alertLocation}`
+                    : "Get notified of new listings matching your field and location."}
                 </p>
                 <Button
                   size="sm"
@@ -450,6 +486,78 @@ export default function JobsPage() {
         </div>
       </main>
       <Footer />
+
+      {/* Job Alerts Preferences Modal */}
+      {showAlertModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAlertModal(false)}>
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                  <BellRing size={15} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-foreground">Set Alert Preferences</h2>
+                  <p className="text-[11px] text-muted-foreground">We&apos;ll email you matching new internships</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAlertModal(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Field of interest */}
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-2 block">Interested Field</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALERT_FIELDS.map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setAlertField(f)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left ${
+                        alertField === f
+                          ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-500"
+                          : "bg-muted/50 border-border text-muted-foreground hover:border-indigo-500/30 hover:text-foreground"
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-2 block">Preferred Location</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALERT_LOCATIONS.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => setAlertLocation(l)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left ${
+                        alertLocation === l
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                          : "bg-muted/50 border-border text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={confirmAlerts}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                <BellRing size={14} /> Enable Alerts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
