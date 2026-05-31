@@ -297,6 +297,40 @@ export default function JobsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Main listings */}
             <div className="lg:col-span-3">
+              {/* Job alerts — mobile only (desktop shows this in the sidebar) */}
+              {user && (
+                <div className={`lg:hidden p-4 rounded-2xl border mb-4 flex items-center justify-between gap-3 ${alertsEnabled ? "border-emerald-500/30 bg-emerald-500/5" : "border-indigo-500/20 bg-indigo-500/5"}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {alertsEnabled
+                      ? <BellRing size={15} className="text-emerald-400 shrink-0" />
+                      : <BellRing size={15} className="text-indigo-400 shrink-0" />}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">
+                        {alertsEnabled ? "Job alerts active" : "Job Alerts"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {alertsEnabled ? "You'll be emailed on new matches" : "Get emailed when new internships match your profile"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={alertsEnabled ? "outline" : "default"}
+                    className="shrink-0 text-xs gap-1.5"
+                    onClick={toggleAlerts}
+                    disabled={alertsBusy}
+                  >
+                    {alertsBusy ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : alertsEnabled ? (
+                      <><BellOff size={12} /> Off</>
+                    ) : (
+                      <><BellRing size={12} /> Enable</>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               {/* Info banner */}
               <div className="flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-5">
                 <Sparkles size={18} className="text-violet-400 shrink-0" />

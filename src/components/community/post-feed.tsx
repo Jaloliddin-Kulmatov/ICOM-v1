@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Send, Trash2, Globe, Building2, Users, ChevronDown,
-  Loader2, MessageSquare, Lock, LogIn, CornerDownRight, Bookmark,
+  Loader2, MessageSquare, Lock, LogIn, CornerDownRight, Bookmark, Star,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import Link from "next/link";
+import AmbassadorModal from "@/components/ui/ambassador-modal";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -343,6 +344,7 @@ export default function PostFeed() {
   const [content, setContent] = useState("");
   const [posting, setPosting] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [showAmbassador, setShowAmbassador] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     const t = token();
@@ -440,15 +442,25 @@ export default function PostFeed() {
 
   return (
     <div className="space-y-4">
-      {/* Composer — only for ambassadors and club/community owners */}
+      {/* Ambassador CTA — visible to logged-in users who can't post yet */}
       {user && options.length === 0 && (
-        <div className="p-4 rounded-2xl border border-border bg-card text-center">
-          <p className="text-xs text-muted-foreground">
-            Only ambassadors and club/community owners can post News.{" "}
-            <Link href="/ambassador" className="text-indigo-400 hover:underline">Apply to become an ambassador →</Link>
-          </p>
+        <div className="p-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 flex flex-col sm:flex-row items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
+            <Star size={16} className="text-white" />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-xs font-semibold text-foreground mb-0.5">Want to post in the News feed?</p>
+            <p className="text-[11px] text-muted-foreground">Only ambassadors &amp; club owners can post. Apply to become an ICOM Ambassador and share updates with your university.</p>
+          </div>
+          <button
+            onClick={() => setShowAmbassador(true)}
+            className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Star size={12} /> Become Ambassador
+          </button>
         </div>
       )}
+      {showAmbassador && <AmbassadorModal onClose={() => setShowAmbassador(false)} />}
       {user && selectedOption && options.length > 0 && (
         <div className="p-4 rounded-2xl border border-border bg-card space-y-3">
           {/* Post-as picker */}
