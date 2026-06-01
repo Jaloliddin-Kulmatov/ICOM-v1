@@ -30,7 +30,7 @@ services:
     name: icom-frontend
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: node_modules/.bin/next start -H 0.0.0.0 -p $PORT
     plan: free
     envVars:
       - key: NODE_VERSION
