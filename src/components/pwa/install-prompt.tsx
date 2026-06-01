@@ -21,16 +21,12 @@ export default function InstallPrompt() {
     const last = localStorage.getItem("icom_install_dismissed_v2");
     if (last && Date.now() - parseInt(last) < 60 * 60 * 1000) return;
 
-    // iOS detection — Safari doesn't fire beforeinstallprompt
+    // iOS detection — none of the iOS browsers fire beforeinstallprompt,
+    // but all of them (Safari, Chrome, Firefox) support Share → Add to Home Screen.
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
     if (ios) {
-      // Only show on Safari (not Chrome/Firefox on iOS)
-      const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
-      if (isSafari) {
-        setIsIOS(true);
-        // Delay so it doesn't show immediately on first load
-        setTimeout(() => setShow(true), 3000);
-      }
+      setIsIOS(true);
+      setTimeout(() => setShow(true), 3000);
       return;
     }
 
@@ -89,10 +85,9 @@ export default function InstallPrompt() {
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Tap the <span className="font-semibold text-foreground">Share</span> button{" "}
-            <span className="inline-block">⬆</span> at the bottom of Safari, then choose{" "}
+            <span className="inline-block">⬆</span> (bottom of Safari / top-right in Chrome), then choose{" "}
             <span className="font-semibold text-foreground">Add to Home Screen</span>.
           </p>
-          {/* iOS share arrow indicator */}
           <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-400 font-medium">
             <Download size={12} /> Tap Share → Add to Home Screen
           </div>
