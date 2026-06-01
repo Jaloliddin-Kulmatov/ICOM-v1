@@ -3,12 +3,19 @@
   "short_name": "ICOM",
   "description": "The Operating System for International Students in Korea. Community, jobs, visa guidance, and AI support.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#050508",
   "theme_color": "#6366f1",
   "categories": ["education", "social", "lifestyle"],
   "icons": [
-    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo.svg",     "sizes": "any",     "type": "image/svg+xml" }
+  ],
+  "screenshots": [
+    { "src": "/icom-qr.png", "sizes": "1080x1080", "type": "image/png", "form_factor": "narrow" }
   ]
 }

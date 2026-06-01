@@ -7,6 +7,7 @@ import FeedbackWidget from "@/components/feedback/feedback-widget";
 import ChatWidget from "@/components/ai/chat-widget";
 import SplashScreen from "@/components/ui/splash-screen";
 import VisitTracker from "@/components/analytics/visit-tracker";
+import InstallPrompt from "@/components/pwa/install-prompt";
 import { AuthProvider } from "@/lib/auth";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
@@ -35,8 +36,11 @@ export const metadata: Metadata = {
     title: "ICOM",
   },
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   openGraph: {
     title: "ICOM — The OS for International Students in Korea",
@@ -62,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VisitTracker />
         {children}
         <MobileBottomNav />
+        <InstallPrompt />
         <FeedbackWidget />
         {/* AI floating button — desktop only (hidden on mobile) */}
         <div className="hidden md:block">
