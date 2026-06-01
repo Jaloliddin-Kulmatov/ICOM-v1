@@ -145,12 +145,7 @@ export default function ChatPage() {
     };
   }, [user?.university]);
 
-  // Posts that mention your university/city/province bubble to the top.
-  //   +3 university (incl. shortName + Korean name)
-  //   +2 city  (e.g. "Jeonju" / "전주")
-  //   +1 province (e.g. "Jeollabuk-do" / "전라북도")
-  // Ties break on created_at (newest first), which is what the backend
-  // already returns — so when myRegion is null the order is unchanged.
+  // "Near you" badge: posts that mention your university / city / province.
   const rankPost = useCallback((p: ChatPost): number => {
     if (!myRegion) return 0;
     const hay = `${p.title} ${p.content} ${p.author_university} ${p.author_country}`.toLowerCase();
@@ -161,17 +156,7 @@ export default function ChatPage() {
     return score;
   }, [myRegion]);
 
-  const sortedPosts = useMemo(() => {
-    if (!myRegion) return posts;
-    // Stable sort by score desc, falling back to original (newest-first) order
-    return [...posts]
-      .map((p, idx) => ({ p, idx, score: rankPost(p) }))
-      .sort((a, b) => (b.score - a.score) || (a.idx - b.idx))
-      .map((x) => x.p);
-  }, [posts, myRegion, rankPost]);
-
-  // True when a post's scope targets *my* university (so it belongs in my
-  // "{UNI} Chat" tab). Tolerant match against id / shortName / full name.
+  // True when a post's scope targets *my* university.
   const scopeMatchesMyUni = useCallback((scope: string): boolean => {
     if (!myRegion) return false;
     const s = (scope || "").toLowerCase().trim();
@@ -179,35 +164,48 @@ export default function ChatPage() {
     return myRegion.uniTokens.some((t) => s === t || s.includes(t) || t.includes(s));
   }, [myRegion]);
 
-  // The global feed ("All Korea") shows ONLY posts with no scope. Posts written
-  // inside a university chat (non-empty scope) are deliberately excluded here —
-  // they're private to that university and never leak into the global feed,
-  // even for students of other universities or signed-out visitors.
+  // Global feed: posts with no scope (backend returns newest-first).
   const allKoreaPosts = useMemo(
-    () => sortedPosts.filter((p) => !(p.scope || "").trim()),
-    [sortedPosts]
+    () => posts.filter((p) => !(p.scope || "").trim()),
+    [posts]
   );
 
   // My university chat: posts scoped to my university.
   const uniPosts = useMemo(
-    () => (myRegion ? sortedPosts.filter((p) => scopeMatchesMyUni(p.scope)) : []),
-    [sortedPosts, myRegion, scopeMatchesMyUni]
+    () => (myRegion ? posts.filter((p) => scopeMatchesMyUni(p.scope)) : []),
+    [posts, myRegion, scopeMatchesMyUni]
   );
 
-  const localPostCount = useMemo(
-    () => (myRegion ? allKoreaPosts.filter((p) => rankPost(p) > 0).length : 0),
-    [allKoreaPosts, myRegion, rankPost]
-  );
-
-  // Pick the feed for the active tab, then apply the search filter.
+  // Pick the feed for the active tab, then sort:
+  //   • top 3 newest first (backend already returns newest-first, so just slice)
+  //   • remaining posts sorted by most answers desc, ties break by newest
+  // When a search is active just filter without reordering.
   const tabFilteredPosts = tab === "uni" && myRegion ? uniPosts : allKoreaPosts;
 
-  const visiblePosts = !search
-    ? tabFilteredPosts
-    : tabFilteredPosts.filter(p =>
-        p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.content.toLowerCase().includes(search.toLowerCase())
+  const visiblePosts = useMemo(() => {
+    const base = !search
+      ? tabFilteredPosts
+      : tabFilteredPosts.filter(p =>
+          p.title.toLowerCase().includes(search.toLowerCase()) ||
+          p.content.toLowerCase().includes(search.toLowerCase())
+        );
+
+    if (search) return base;
+
+    // Top 3 newest (backend order)
+    const latest = base.slice(0, 3);
+    const latestIds = new Set(latest.map(p => p.id));
+
+    // Rest: most answered first, then newest
+    const rest = base
+      .filter(p => !latestIds.has(p.id))
+      .sort((a, b) =>
+        b.answer_count - a.answer_count ||
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
+
+    return [...latest, ...rest];
+  }, [tabFilteredPosts, search]);
 
   return (
     <div className="min-h-screen bg-background">
