@@ -17,9 +17,9 @@ export default function InstallPrompt() {
   useEffect(() => {
     // Don't show if already installed (running as standalone)
     if (window.matchMedia("(display-mode: standalone)").matches) return;
-    // Don't show if user dismissed recently (7 days)
+    // Don't show if user dismissed within the last hour
     const last = localStorage.getItem("icom_install_dismissed");
-    if (last && Date.now() - parseInt(last) < 7 * 24 * 60 * 60 * 1000) return;
+    if (last && Date.now() - parseInt(last) < 60 * 60 * 1000) return;
 
     // iOS detection — Safari doesn't fire beforeinstallprompt
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
