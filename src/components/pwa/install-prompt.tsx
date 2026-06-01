@@ -18,7 +18,7 @@ export default function InstallPrompt() {
     // Don't show if already installed (running as standalone)
     if (window.matchMedia("(display-mode: standalone)").matches) return;
     // Don't show if user dismissed within the last hour
-    const last = localStorage.getItem("icom_install_dismissed");
+    const last = localStorage.getItem("icom_install_dismissed_v2");
     if (last && Date.now() - parseInt(last) < 60 * 60 * 1000) return;
 
     // iOS detection — Safari doesn't fire beforeinstallprompt
@@ -54,7 +54,7 @@ export default function InstallPrompt() {
   const dismiss = () => {
     setShow(false);
     setDismissed(true);
-    localStorage.setItem("icom_install_dismissed", String(Date.now()));
+    localStorage.setItem("icom_install_dismissed_v2", String(Date.now()));
   };
 
   const install = async () => {
