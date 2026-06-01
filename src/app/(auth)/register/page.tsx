@@ -75,8 +75,8 @@ export default function RegisterPage() {
         (err.message || "").toLowerCase().includes("already exists") ||
         (err.message || "").toLowerCase().includes("sign in instead");
       if (alreadyExists) {
-        setError("An account already exists for this email. Redirecting to sign in…");
-        setTimeout(() => router.push("/login?force=1"), 1500);
+        setError("You already have an account — taking you to sign in…");
+        setTimeout(() => router.push("/login?force=1&exists=1"), 1500);
         return;
       }
       setError(err.message || "Google sign-up failed.");
@@ -145,7 +145,20 @@ export default function RegisterPage() {
     setLoading(true);
     const err = await register(form);
     setLoading(false);
-    if (err) { setError(err); return; }
+    if (err) {
+      // If the account already exists, send them to sign-in with a friendly
+      // notice + their email prefilled instead of showing a dead-end error.
+      if (err.toLowerCase().includes("already exists")) {
+        setError("You already have an account — taking you to sign in…");
+        setTimeout(
+          () => router.push(`/login?force=1&exists=1&email=${encodeURIComponent(form.email)}`),
+          1200
+        );
+        return;
+      }
+      setError(err);
+      return;
+    }
     router.push("/dashboard");
   };
 
@@ -243,7 +256,7 @@ export default function RegisterPage() {
                   <p className="text-[11px] text-red-400 pl-1">
                     {emailMessage}
                     {emailMessage?.toLowerCase().includes("already exists") && (
-                      <> <button type="button" className="underline" onClick={() => router.push("/login?force=1")}>Sign in instead</button></>
+                      <> <button type="button" className="underline font-semibold" onClick={() => router.push(`/login?force=1&exists=1&email=${encodeURIComponent(form.email)}`)}>Sign in instead</button></>
                     )}
                   </p>
                 )}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [redirectChecked, setRedirectChecked] = useState(false);
@@ -24,9 +25,18 @@ export default function LoginPage() {
   // explicitly via /login?force=1 (e.g. from the "Sign in" link on /register).
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
     const hasAccount = localStorage.getItem("icom_has_account") === "1";
-    const force = new URLSearchParams(window.location.search).get("force") === "1";
-    if (!hasAccount && !force) {
+    const force = params.get("force") === "1";
+
+    // Prefill email + show a friendly notice when redirected from sign-up
+    const prefillEmail = params.get("email");
+    if (prefillEmail) setEmail(prefillEmail);
+    if (params.get("exists") === "1") {
+      setNotice("You already have an account — just sign in below.");
+    }
+
+    if (!hasAccount && !force && !prefillEmail) {
       router.replace("/register");
       return;
     }
@@ -87,6 +97,14 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Sign in to your ICOM account</p>
         </div>
+
+        {/* Notice (e.g. redirected from sign-up because account exists) */}
+        {notice && (
+          <div className="mb-4 px-3.5 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-400 flex items-start gap-2 animate-fade-in">
+            <Info size={14} className="shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{notice}</span>
+          </div>
+        )}
 
         {/* Card */}
         <div className="glass-card p-7">
