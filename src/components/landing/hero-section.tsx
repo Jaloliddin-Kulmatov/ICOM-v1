@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, Users, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
+import MemberCount from "@/components/landing/member-count";
 
 export default function HeroSection() {
   const { user } = useAuth();
@@ -82,6 +83,9 @@ export default function HeroSection() {
             </Link>
           </p>
         )}
+
+        {/* Live JBNU member count */}
+        <MemberCount />
 
         {/* JBNU badge */}
         <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.4s" }}>
