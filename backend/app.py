@@ -705,13 +705,68 @@ def _seed_jeonju_jobs():
         print(f"[seed] Jeonju jobs seed skipped: {e}")
 
 
+def _apply_baked_translations(flask_app):
+    """Apply pre-computed English translations shipped in
+    backend/data/job_translations.json.
+
+    These were generated offline with Groq (see /tmp tooling) and committed to
+    the repo, so they apply with ZERO dependence on a live translation service
+    — which is important because the server's Google-Translate fallback is
+    blocked from datacenter IPs and GROQ_API_KEY may be unset in production.
+
+    Rows are matched by apply_link. Idempotent: re-running just re-writes the
+    same English, so it is safe to call on every boot.
+    """
+    import os, json
+    path = os.path.join(os.path.dirname(__file__), "data", "job_translations.json")
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            translations = json.load(f)
+    except Exception as e:
+        print(f"[startup] could not read baked translations: {e}")
+        return
+
+    from models import Job
+    updated = 0
+    with flask_app.app_context():
+        for link, t in translations.items():
+            try:
+                job = Job.query.filter_by(apply_link=link).first()
+                if not job:
+                    continue
+                if t.get("title"):        job.title = t["title"][:200]
+                if t.get("company"):      job.company = t["company"][:150]
+                if t.get("location"):     job.location = t["location"][:150]
+                if t.get("description"):  job.description = t["description"]
+                if t.get("requirements"): job.requirements = t["requirements"]
+                if t.get("foreigner_friendly"):
+                    job.foreigner_friendly = t["foreigner_friendly"]
+                if t.get("foreigner_note"):
+                    job.foreigner_note = t["foreigner_note"][:300]
+                updated += 1
+            except Exception as e:
+                print(f"[startup] baked translation failed for {link[:60]}: {e}")
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[startup] baked translation commit failed: {e}")
+    if updated:
+        print(f"[startup] Applied {updated} baked English translation(s) to job rows.")
+
+
 def _translate_pending_jobs(flask_app):
     """Translate any Wanted-scraped jobs still stored in Korean to English.
 
-    Called once at startup so every deploy progressively cleans up old Korean
-    rows. Uses Groq if GROQ_API_KEY is set, falls back to free Google Translate.
-    Capped at 60 rows per boot to avoid delaying server startup too long.
+    First applies the committed offline translations (no network needed), then
+    tries the live translator for anything still Korean (new scrapes etc.).
     """
+    # 1) Apply the committed, pre-translated English first (always works).
+    _apply_baked_translations(flask_app)
+
+    # 2) Best-effort live pass for anything still Korean (e.g. freshly scraped).
     try:
         from scrapers.wanted import translate_pending
         summary = translate_pending(flask_app, limit=60)
@@ -721,7 +776,7 @@ def _translate_pending_jobs(flask_app):
                 f"(errors={summary.get('errors', 0)})"
             )
         else:
-            print("[startup] No Korean job rows found to translate.")
+            print("[startup] No Korean job rows found to translate live.")
     except Exception as e:
         print(f"[startup] translate_pending skipped: {e}")
 

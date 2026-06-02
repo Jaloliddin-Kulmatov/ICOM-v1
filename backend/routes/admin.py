@@ -354,6 +354,15 @@ def translate_pending_jobs():
         from flask import current_app
         from scrapers.wanted import translate_pending
         flask_app = current_app._get_current_object()
+
+        # First apply the committed offline translations (no network needed —
+        # works even when Groq/Google are unavailable on the server).
+        try:
+            from app import _apply_baked_translations
+            _apply_baked_translations(flask_app)
+        except Exception as e:
+            print(f"[admin] baked translation apply failed: {e}")
+
         # Allow caller to override the batch size; default high enough to sweep
         # the whole active board (we currently have ~140 listings).
         try:
