@@ -650,7 +650,16 @@ def translate_pending(app, limit: int = 80) -> dict:
         )
         for job in rows:
             summary["scanned"] += 1
-            needs = _looks_korean(job.title or "") or not (job.foreigner_friendly or "")
+            # A job needs (re)translation if ANY visible field still contains
+            # Hangul — title, description, OR requirements. Earlier we only
+            # checked the title, which missed jobs that had an English title
+            # but a Korean body. Also re-do anything missing the foreigner flag.
+            needs = (
+                _looks_korean(job.title or "")
+                or _looks_korean(job.description or "")
+                or _looks_korean(job.requirements or "")
+                or not (job.foreigner_friendly or "")
+            )
             if not needs:
                 summary["skipped"] += 1
                 continue

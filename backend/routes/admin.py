@@ -341,7 +341,13 @@ def translate_pending_jobs():
         from flask import current_app
         from scrapers.wanted import translate_pending
         flask_app = current_app._get_current_object()
-        summary = translate_pending(flask_app, limit=80)
+        # Allow caller to override the batch size; default high enough to sweep
+        # the whole active board (we currently have ~140 listings).
+        try:
+            limit = int(request.args.get("limit", 200))
+        except (TypeError, ValueError):
+            limit = 200
+        summary = translate_pending(flask_app, limit=limit)
         return jsonify({
             "message": (
                 f"Translated {summary['translated']} of {summary['scanned']} job(s)."

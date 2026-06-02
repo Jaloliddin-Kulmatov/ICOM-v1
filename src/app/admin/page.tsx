@@ -341,6 +341,24 @@ export default function AdminPage() {
     }
   };
 
+  // Re-translate any active job rows whose title/description/requirements
+  // still contain Korean (or are missing the foreigner-friendly flag).
+  const [translating, setTranslating] = useState(false);
+  const handleTranslateJobs = async () => {
+    if (translating) return;
+    setTranslating(true);
+    flash("Translating Korean listings… this can take up to a minute.");
+    try {
+      const data = await apiCall("POST", "/admin/jobs/translate-pending?limit=300");
+      flash(data.message || "Translation finished.");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not translate jobs.", true);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSeedIcomClubs = async () => {
     if (seedingIcomClubs) return;
     setSeedingIcomClubs(true);
@@ -590,18 +608,34 @@ export default function AdminPage() {
                     Pulls the latest Korean internships. Runs automatically twice a day.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleScrapeNow}
-                  disabled={scraping}
-                  className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
-                >
-                  {scraping ? (
-                    <><Loader2 size={14} className="animate-spin" /> Scraping…</>
-                  ) : (
-                    <><Download size={14} /> Scrape now</>
-                  )}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    onClick={handleTranslateJobs}
+                    disabled={translating}
+                    variant="outline"
+                    className="gap-2"
+                    title="Re-translate any listings still showing Korean"
+                  >
+                    {translating ? (
+                      <><Loader2 size={14} className="animate-spin" /> Translating…</>
+                    ) : (
+                      <>🌐 Translate Korean</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleScrapeNow}
+                    disabled={scraping}
+                    className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    {scraping ? (
+                      <><Loader2 size={14} className="animate-spin" /> Scraping…</>
+                    ) : (
+                      <><Download size={14} /> Scrape now</>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {/* ── Live status panel ─────────────────────────────── */}
