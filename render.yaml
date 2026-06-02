@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: GROQ_API_KEY
         sync: false          # you fill this in the Render dashboard
+      - key: SARAMIN_API_KEY
+        sync: false          # optional — free key from https://oapi.saramin.co.kr enables the Saramin scraper
       - key: FRONTEND_URL
         sync: false          # set to your frontend Render URL after deploying
       - key: DATABASE_URL

@@ -818,6 +818,22 @@ def _start_scheduler(flask_app):
         misfire_grace_time=3600,
     )
 
+    # Twice-daily Saramin scrape (safe no-op unless SARAMIN_API_KEY is set).
+    # Offset by 15 min so the two sources don't translate at the exact same time.
+    try:
+        from scrapers.saramin import run_scraper as run_saramin
+        scheduler.add_job(
+            lambda: run_saramin(flask_app),
+            trigger="cron",
+            hour="6,18",
+            minute=15,
+            id="saramin_scraper",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+    except Exception as e:
+        print(f"[scheduler] Saramin job not scheduled: {e}")
+
     # Daily expired-job sweep — runs at 00:30 UTC so it lands between days
     # and doesn't overlap with the scraper.
     scheduler.add_job(

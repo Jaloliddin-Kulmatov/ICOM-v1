@@ -181,11 +181,24 @@ def _set_scrape(**fields):
 
 
 def _run_scraper_tracked(flask_app, kind="scrape", deactivated=0):
-    """Run the scraper, recording start/finish status + summary for polling."""
-    from scrapers.wanted import run_scraper
+    """Run all enabled scrapers (Wanted + Saramin), recording combined status."""
+    from scrapers.wanted import run_scraper as run_wanted
     _set_scrape(state="running", kind=kind, started_at=_dt.utcnow().isoformat() + "Z")
     try:
-        summary = run_scraper(flask_app) or {}
+        # Wanted (always on — public API)
+        summary = run_wanted(flask_app) or {}
+
+        # Saramin (only runs if SARAMIN_API_KEY is configured; safe no-op otherwise)
+        try:
+            from scrapers.saramin import run_scraper as run_saramin
+            s_summary = run_saramin(flask_app) or {}
+            # Merge the two summaries so the admin sees the combined totals.
+            for k, v in s_summary.items():
+                if isinstance(v, int):
+                    summary[k] = int(summary.get(k, 0)) + v
+        except Exception as e:
+            print(f"[saramin] scraper errored (continuing): {e}")
+
         added = int(summary.get("inserted", 0)) + int(summary.get("reactivated", 0))
         _set_scrape(
             state="done", kind=kind,
@@ -195,7 +208,7 @@ def _run_scraper_tracked(flask_app, kind="scrape", deactivated=0):
             summary=summary,
         )
     except Exception as e:
-        print(f"[wanted] {kind} worker crashed: {e}")
+        print(f"[scrape] {kind} worker crashed: {e}")
         _set_scrape(state="error", kind=kind,
                     finished_at=_dt.utcnow().isoformat() + "Z", error=str(e))
 
