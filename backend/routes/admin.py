@@ -530,12 +530,20 @@ def top_hiring_companies():
 # for now — flipping this on is what the "Enable Alerts" button does, and we
 # render a subscribed/unsubscribed state from it.
 
+def _alerts_payload(user):
+    return {
+        "enabled": bool(user.job_alerts_enabled),
+        "field": user.alert_field or "",
+        "region": bool(user.alert_region),
+    }
+
+
 @admin_bp.route("/jobs/alerts", methods=["GET"])
 @jwt_required()
 def get_job_alerts():
     user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
-    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
+    return jsonify(_alerts_payload(user)), 200
 
 
 @admin_bp.route("/jobs/alerts", methods=["POST"])
@@ -549,8 +557,14 @@ def toggle_job_alerts():
         user.job_alerts_enabled = bool(data["enabled"])
     else:
         user.job_alerts_enabled = not bool(user.job_alerts_enabled)
+    # Optional scope: the field of interest + "near my region" toggle the user
+    # had selected on the Internships page when they subscribed.
+    if "field" in data:
+        user.alert_field = (data.get("field") or "").strip()[:60]
+    if "region" in data:
+        user.alert_region = bool(data["region"])
     db.session.commit()
-    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
+    return jsonify(_alerts_payload(user)), 200
 
 
 # ── Make user admin (dev helper) ─────────────────────────────────────────────

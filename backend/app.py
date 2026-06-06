@@ -198,6 +198,22 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] users.job_alerts_enabled failed (probably already done): {e}")
 
+    # alert_field / alert_region on users — scope of the internship alerts the
+    # user subscribed to (field of interest + "near my region" toggle).
+    for col_name, col_def in [
+        ("alert_field",  "VARCHAR(60) DEFAULT ''"),
+        ("alert_region", "BOOLEAN DEFAULT FALSE"),
+    ]:
+        try:
+            if "users" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("users")]
+                if col_name not in cols:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}"))
+                    print(f"[migration] Added users.{col_name}")
+        except Exception as e:
+            print(f"[migration] users.{col_name} failed (probably already done): {e}")
+
     # scope on chat_posts — audience targeting. Empty = global ("All Korea"),
     # a university token (e.g. "jbnu") = that university's chat only.
     try:

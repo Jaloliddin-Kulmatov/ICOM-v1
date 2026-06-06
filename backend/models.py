@@ -18,6 +18,11 @@ class User(db.Model):
     # matching their university / region. Toggled from the Internships page
     # "Enable Alerts" button.
     job_alerts_enabled = db.Column(db.Boolean, default=False)
+    # What the alerts are scoped to, set from the Internships page when the
+    # user enables alerts. alert_field = "" means "any field"; alert_region
+    # True means "only near my university's region".
+    alert_field = db.Column(db.String(60), default="")
+    alert_region = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -32,6 +37,8 @@ class User(db.Model):
             "role": self.role,
             "is_verified": self.is_verified,
             "job_alerts_enabled": bool(self.job_alerts_enabled),
+            "alert_field": self.alert_field or "",
+            "alert_region": bool(self.alert_region),
             "created_at": self.created_at.isoformat() + "Z",
         }
 
