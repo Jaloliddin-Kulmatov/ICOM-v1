@@ -16,7 +16,7 @@ banned content never lands in the DB.
 
 import re
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 
 from app import db
 from models import ChatPost, ChatAnswer, User
@@ -99,13 +99,38 @@ def _validate_image(url: str) -> tuple[bool, str]:
 
 @chat_bp.route("/posts", methods=["GET"])
 def list_posts():
+    # A post with a non-empty scope is private to that university's chat. We
+    # must NOT hand those rows to anyone outside that university — the client
+    # used to receive every scoped post and merely hide them, which leaked
+    # other campuses' content to any caller. Filter server-side instead.
+    viewer_uni = ""
+    try:
+        verify_jwt_in_request(optional=True)
+        ident = get_jwt_identity()
+        if ident:
+            u = User.query.get(int(ident))
+            if u:
+                viewer_uni = (u.university or "").strip()
+    except Exception:
+        viewer_uni = ""
+
     posts = (
         ChatPost.query.filter_by(is_active=True)
         .order_by(ChatPost.created_at.desc())
         .limit(100)
         .all()
     )
-    return jsonify({"posts": [p.to_dict() for p in posts]}), 200
+
+    from routes.clubs import _uni_matches  # shared university alias matcher
+    visible = []
+    for p in posts:
+        scope = (p.scope or "").strip()
+        if not scope:
+            visible.append(p)  # global ("All Korea") — everyone sees it
+        elif viewer_uni and _uni_matches(viewer_uni, scope):
+            visible.append(p)  # scoped to the viewer's own university
+
+    return jsonify({"posts": [p.to_dict() for p in visible]}), 200
 
 
 @chat_bp.route("/posts/<int:post_id>", methods=["GET"])

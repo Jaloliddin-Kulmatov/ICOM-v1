@@ -196,8 +196,12 @@ class Post(db.Model):
     author = db.relationship("User", foreign_keys=[user_id], backref="posts")
     club = db.relationship("Club", foreign_keys=[club_id], backref="posts")
 
-    def to_dict(self):
-        comment_count = PostComment.query.filter_by(post_id=self.id).count()
+    def to_dict(self, comment_count=None):
+        # Callers serializing many posts at once should pass a pre-computed
+        # comment_count (batched in one grouped query) to avoid an N+1 of
+        # COUNT(*) queries. When omitted we fall back to a single lookup.
+        if comment_count is None:
+            comment_count = PostComment.query.filter_by(post_id=self.id).count()
         return {
             "id": self.id,
             "user_id": self.user_id,

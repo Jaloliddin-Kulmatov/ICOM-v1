@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
 
 load_dotenv()
@@ -29,7 +30,10 @@ def create_app():
         app.config["SQLALCHEMY_MAX_OVERFLOW"] = 10
         app.config["SQLALCHEMY_POOL_RECYCLE"] = 300
         app.config["SQLALCHEMY_POOL_TIMEOUT"] = 20
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False  # no expiry for dev; set timedelta in prod
+    # Tokens expire after 30 days for every auth path (email/password AND Google),
+    # so a leaked token can't grant access forever. Override per-token with
+    # expires_delta if a specific flow needs a different lifetime.
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=30)
 
     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 

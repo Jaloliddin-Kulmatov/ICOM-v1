@@ -109,7 +109,12 @@ export default function ChatPage() {
   const loadPosts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/chat/posts`);
+      // Send the token so the server can include posts scoped to the user's
+      // own university (scoped posts are no longer returned to anonymous calls).
+      const token = getToken();
+      const res = await fetch(`${API}/chat/posts`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setPosts(data.posts || []);
     } finally {

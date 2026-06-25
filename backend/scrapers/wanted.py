@@ -667,6 +667,7 @@ def translate_pending(app, limit: int = 80) -> dict:
             parsed = {
                 "title":        job.title or "",
                 "company":      job.company or "",
+                "location":     job.location or "",
                 "description":  job.description or "",
                 "requirements": job.requirements or "",
             }
@@ -682,6 +683,10 @@ def translate_pending(app, limit: int = 80) -> dict:
 
             try:
                 job.title              = translated.get("title", job.title)[:200]
+                # company + location are translated by _translate_with_groq too;
+                # write them back so Korean names don't persist after a retranslate.
+                job.company            = (translated.get("company") or job.company)[:150]
+                job.location           = (translated.get("location") or job.location or "")[:150]
                 job.description        = translated.get("description", job.description)
                 job.requirements       = translated.get("requirements", job.requirements)
                 job.foreigner_friendly = translated.get("foreigner_friendly", "")

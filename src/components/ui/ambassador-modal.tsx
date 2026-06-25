@@ -34,9 +34,14 @@ export default function AmbassadorModal({ onClose }: Props) {
     e.preventDefault();
     setBusy(true); setError("");
     try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
+      if (!token) throw new Error("Please sign in to apply as an ambassador.");
       const res = await fetch(`${API}/ambassador/apply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(form),
       });
       const data = await res.json();

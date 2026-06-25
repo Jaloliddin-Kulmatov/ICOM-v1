@@ -165,11 +165,20 @@ def _send_application_emails_async(applicant_name: str, applicant_email: str,
 # ── Apply ──────────────────────────────────────────────────────────────────────
 
 @ambassador_bp.route("/apply", methods=["POST"])
+@jwt_required()
 def apply():
+    # Auth required: an ambassador represents a university and gets posting
+    # powers, so applicants must be signed-in users. We also BIND the email to
+    # the authenticated account — never trust a client-supplied address — which
+    # stops anyone from submitting (or overwriting a pending) application under
+    # someone else's email.
+    user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+
     data = request.get_json(silent=True) or {}
 
-    name       = (data.get("name") or "").strip()
-    email      = (data.get("email") or "").strip()
+    name       = (data.get("name") or user.name or "").strip()
+    email      = (user.email or "").strip()
     university = (data.get("university") or "").strip()
 
     if not name or not email or not university:

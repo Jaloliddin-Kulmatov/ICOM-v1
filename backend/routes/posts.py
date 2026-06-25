@@ -103,7 +103,23 @@ def list_posts():
 
     posts = Post.query.filter(or_(*conditions)).order_by(Post.created_at.desc()).limit(50).all()
 
-    return jsonify({"posts": [p.to_dict() for p in posts], "locked": False}), 200
+    # Batch the comment counts in one grouped query instead of one COUNT per
+    # post (was an N+1 — 50 posts → 51 queries).
+    post_ids = [p.id for p in posts]
+    counts = {}
+    if post_ids:
+        rows = (
+            db.session.query(PostComment.post_id, db.func.count(PostComment.id))
+            .filter(PostComment.post_id.in_(post_ids))
+            .group_by(PostComment.post_id)
+            .all()
+        )
+        counts = {pid: n for pid, n in rows}
+
+    return jsonify({
+        "posts": [p.to_dict(comment_count=counts.get(p.id, 0)) for p in posts],
+        "locked": False,
+    }), 200
 
 
 # ── Get post-as options for current user ──────────────────────────

@@ -1,6 +1,7 @@
 import sys, os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from sqlalchemy import or_
 
 from app import db, bcrypt
 from models import User, Club, Job, ClubMembership
@@ -515,15 +516,44 @@ def delete_job(job_id):
 
 
 # ── Apply-click counter (anonymous) ──────────────────────────────────────────
-# Fire-and-forget POST from both the listings + detail Apply buttons. Cheap
-# counter — no idempotency guards. If a curious user clicks 100× we just
-# count 100; that's fine signal for sorting "Most Applied".
+# Fire-and-forget POST from both the listings + detail Apply buttons. Anonymous
+# by design, so we throttle per (IP, job) to stop a single client from looping
+# the endpoint and inflating "Most Applied" social proof. The window is kept
+# in-process (resets on restart) — good enough for a soft signal counter.
+
+_APPLY_CLICK_WINDOW = 600  # seconds a repeat click from the same IP is ignored
+_APPLY_CLICK_SEEN: dict = {}  # (ip, job_id) -> last counted unix ts
+_APPLY_CLICK_LOCK = _threading.Lock()
+
+
+def _apply_click_allowed(ip: str, job_id: int) -> bool:
+    """True if this (ip, job) hasn't been counted within the throttle window.
+    Also evicts stale entries so the dict can't grow without bound."""
+    now = _dt.utcnow().timestamp()
+    with _APPLY_CLICK_LOCK:
+        # Evict expired entries opportunistically.
+        if len(_APPLY_CLICK_SEEN) > 5000:
+            for k, ts in list(_APPLY_CLICK_SEEN.items()):
+                if now - ts > _APPLY_CLICK_WINDOW:
+                    _APPLY_CLICK_SEEN.pop(k, None)
+        key = (ip, job_id)
+        last = _APPLY_CLICK_SEEN.get(key)
+        if last is not None and (now - last) < _APPLY_CLICK_WINDOW:
+            return False
+        _APPLY_CLICK_SEEN[key] = now
+        return True
+
 
 @admin_bp.route("/jobs/<int:job_id>/apply-click", methods=["POST"])
 def track_apply_click(job_id):
     job = Job.query.filter_by(id=job_id, is_active=True).first()
     if not job:
         return jsonify({"error": "Job not found."}), 404
+    # X-Forwarded-For first hop (Render/most proxies prepend the real client IP).
+    ip = (request.headers.get("X-Forwarded-For", "") or request.remote_addr or "").split(",")[0].strip()
+    if not _apply_click_allowed(ip, job_id):
+        # Silently acknowledge without counting — the client doesn't need to know.
+        return jsonify({"apply_count": job.apply_count or 0}), 200
     job.apply_count = (job.apply_count or 0) + 1
     db.session.commit()
     return jsonify({"apply_count": job.apply_count}), 200
@@ -772,7 +802,14 @@ def transfer_clubs_to_me():
             c.created_by = user.id
 
     # ── Internships / jobs ────────────────────────────────────────────────────
-    jobs = Job.query.filter(Job.is_active == True, Job.created_by != user.id).all()  # noqa: E712
+    # NOTE: `created_by != user.id` alone drops rows where created_by IS NULL
+    # (SQL three-valued logic: NULL != x → NULL, not TRUE). Orphaned jobs — e.g.
+    # ones whose poster deleted their account — have a NULL owner, so we must
+    # explicitly include them or they'd never transfer.
+    jobs = Job.query.filter(
+        Job.is_active == True,  # noqa: E712
+        or_(Job.created_by != user.id, Job.created_by.is_(None)),
+    ).all()
     job_count = len(jobs)
     for j in jobs:
         j.created_by = user.id
@@ -824,9 +861,13 @@ def seed_jeonju_jobs():
 
     from jeonju_jobs import JEONJU_JOBS
 
+    # Dedup on the composite (link, title) key so a single apply_link can host
+    # more than one role (e.g. LS Mtron lists two). The existing-row set must be
+    # built with the SAME composite shape, otherwise the lookup below never
+    # matches and every call re-inserts the whole list as duplicates.
     existing_links = {
-        row[0]
-        for row in db.session.query(Job.apply_link)
+        f"{(link or '').strip()}::{(title or '').strip()}"
+        for link, title in db.session.query(Job.apply_link, Job.title)
         .filter(Job.apply_link.isnot(None))
         .all()
     }
