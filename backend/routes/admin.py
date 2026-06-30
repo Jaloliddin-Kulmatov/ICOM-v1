@@ -1,7 +1,9 @@
 import sys, os
+from collections import defaultdict
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 
 from app import db, bcrypt
 from models import User, Club, Job, ClubMembership
@@ -51,8 +53,27 @@ def list_clubs():
             user_id = int(identity)
     except Exception:
         pass
-    clubs = Club.query.filter_by(is_active=True).order_by(Club.created_at.desc()).all()
-    return jsonify({"clubs": [c.to_dict(user_id=user_id) for c in clubs]}), 200
+    # Eager-load creators and batch-fetch all memberships so to_dict() doesn't
+    # fire ~4 queries per club (membership counts + creator lazy-load). With
+    # ~190 clubs that N+1 was ~770 queries and blew past gunicorn's worker
+    # timeout → 502, leaving the admin panel empty. One JOIN + one IN query now.
+    clubs = (
+        Club.query.options(joinedload(Club.creator))
+        .filter_by(is_active=True)
+        .order_by(Club.created_at.desc())
+        .all()
+    )
+    ids = [c.id for c in clubs]
+    memberships_by_club = defaultdict(list)
+    if ids:
+        for m in ClubMembership.query.filter(ClubMembership.club_id.in_(ids)).all():
+            memberships_by_club[m.club_id].append(m)
+    return jsonify({
+        "clubs": [
+            c.to_dict(user_id=user_id, _memberships=memberships_by_club[c.id])
+            for c in clubs
+        ]
+    }), 200
 
 
 @admin_bp.route("/clubs/<int:club_id>/join", methods=["POST"])
