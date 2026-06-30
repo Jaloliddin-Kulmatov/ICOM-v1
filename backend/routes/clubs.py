@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from sqlalchemy.orm import joinedload
 
 from app import db
 from models import Club, ClubMembership, User, ClubMessage
@@ -96,8 +97,12 @@ def list_clubs():
         if u:
             user_uni = (u.university or "").strip()
 
+    # Eager-load the creator relationship so to_dict()'s `self.creator.name`
+    # doesn't fire one lazy SELECT per club (was an N+1 — ~90 round-trips to
+    # Neon, ~30s on the free tier; collapses to a single JOIN here).
     all_clubs = (
-        Club.query.filter_by(is_active=True)
+        Club.query.options(joinedload(Club.creator))
+        .filter_by(is_active=True)
         .order_by(Club.created_at.desc())
         .all()
     )
