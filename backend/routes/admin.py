@@ -455,7 +455,8 @@ def bulk_ingest_jobs():
 @admin_bp.route("/jobs", methods=["GET"])
 def list_jobs():
     jobs = Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
-    return jsonify({"jobs": [j.to_dict() for j in jobs]}), 200
+    # list_view=True trims description text → smaller, faster payload.
+    return jsonify({"jobs": [j.to_dict(list_view=True) for j in jobs]}), 200
 
 
 @admin_bp.route("/jobs", methods=["POST"])
@@ -617,19 +618,67 @@ def get_job_alerts():
     return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
 
 
+def _send_alert_welcome_async(flask_app, to_email, name, field, location):
+    """Send a quick 'you're subscribed' email in the background so the request
+    returns immediately."""
+    def _worker():
+        with flask_app.app_context():
+            try:
+                from routes.ambassador import _send_email
+                safe_name = name or "there"
+                subject = "✅ You're subscribed to ICOM Internship Alerts"
+                html = f"""
+                <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+                  <h2 style="color:#4f46e5">Internship alerts are on! 🔔</h2>
+                  <p>Hi {safe_name},</p>
+                  <p>You will now get an email when new internships match your choice:</p>
+                  <ul>
+                    <li><b>Field:</b> {field}</li>
+                    <li><b>Location:</b> {location}</li>
+                  </ul>
+                  <p>Browse all current openings any time at
+                     <a href="https://icom.ai.kr/jobs">icom.ai.kr/jobs</a>.</p>
+                  <p style="color:#888;font-size:13px">You can turn alerts off any time from the Internships page.</p>
+                  <p>— ICOM Team</p>
+                </div>"""
+                text = (
+                    f"Hi {safe_name},\n\n"
+                    f"Internship alerts are ON.\nField: {field}\nLocation: {location}\n\n"
+                    "See openings at https://icom.ai.kr/jobs\n\n— ICOM Team"
+                )
+                _send_email(to_email, subject, html, text)
+            except Exception as e:
+                print(f"[alerts] welcome email failed: {e}")
+
+    import threading
+    threading.Thread(target=_worker, daemon=True, name="alert-welcome-email").start()
+
+
 @admin_bp.route("/jobs/alerts", methods=["POST"])
 @jwt_required()
 def toggle_job_alerts():
+    from flask import current_app
     user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
     data = request.get_json(silent=True) or {}
+    was_enabled = bool(user.job_alerts_enabled)
     # Accept explicit {"enabled": true/false}; default = toggle current value.
     if "enabled" in data:
         user.job_alerts_enabled = bool(data["enabled"])
     else:
         user.job_alerts_enabled = not bool(user.job_alerts_enabled)
     db.session.commit()
-    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
+    now_enabled = bool(user.job_alerts_enabled)
+
+    # On the FIRST enable (off → on), send a quick confirmation email.
+    if now_enabled and not was_enabled and (user.email or "").strip():
+        field = (data.get("field") or "All Fields").strip()
+        location = (data.get("location") or "All Korea").strip()
+        _send_alert_welcome_async(
+            current_app._get_current_object(), user.email, user.name, field, location
+        )
+
+    return jsonify({"enabled": now_enabled}), 200
 
 
 # ── Make user admin (dev helper) ─────────────────────────────────────────────

@@ -38,10 +38,42 @@ const PROVINCE_KO: Record<string, string> = {
   "Gyeongnam":    "경상남도",
 };
 
+// Scraped jobs almost always have job_type "internship", so we can't rely on
+// it for the category tabs. Instead we DERIVE a category from the title/tags
+// so the Part-time / Research / Teaching / Remote / Full-time filters actually
+// sort real listings.
+function jobCategory(job: Job): string {
+  const hay = `${job.title} ${(job.tags || []).join(" ")}`.toLowerCase();
+  const loc = (job.location || "").toLowerCase();
+  if (loc.includes("remote") || hay.includes("remote") || loc.includes("재택")) return "Remote";
+  if (/research|r&d|\br & d\b|연구|\blab\b|laboratory/.test(hay)) return "Research";
+  if (/teach|teacher|instructor|tutor|lecturer|강사|교사|\bta\b/.test(hay)) return "Teaching";
+  if (/part[-\s]?time|아르바이트|알바/.test(hay)) return "Part-time";
+  if (/full[-\s]?time|정규직/.test(hay)) return "Full-time";
+  return "Internship";
+}
+
+// Known Korean cities (English names as translated by the scraper). Used to
+// group each job under one city for the Location filter.
+const KNOWN_CITIES = [
+  "Seoul", "Jeonju", "Busan", "Incheon", "Daejeon", "Daegu", "Gwangju",
+  "Ulsan", "Sejong", "Suwon", "Iksan", "Gunsan", "Pohang", "Changwon",
+  "Yongin", "Gyeonggi", "Jeollabuk", "Cheonan", "Anyang", "Bucheon",
+];
+function jobCity(job: Job): string {
+  const loc = job.location || "";
+  for (const c of KNOWN_CITIES) {
+    if (loc.includes(c)) return c;
+  }
+  const first = loc.split(/[,·/]/)[0].trim();
+  return first || "Other";
+}
+
 export default function JobsPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All Locations");
   const [visaFilter, setVisaFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState(false);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
@@ -174,7 +206,9 @@ export default function JobsPage() {
       const res = await fetch(`${API}/admin/jobs/alerts`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({ enabled: true }),
+        // Send field + location so the backend can send a confirmation email
+        // with the user's chosen preferences.
+        body: JSON.stringify({ enabled: true, field: alertField, location: alertLocation }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -190,9 +224,22 @@ export default function JobsPage() {
   const toggleVisa = (v: string) =>
     setVisaFilter((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
 
+  // Unique cities present in the current jobs, for the Location dropdown.
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    allJobs.forEach((j) => set.add(jobCity(j)));
+    const hasOther = set.has("Other");
+    set.delete("Other");
+    const sorted = Array.from(set).filter(Boolean).sort();
+    return ["All Locations", ...sorted, ...(hasOther ? ["Other"] : [])];
+  }, [allJobs]);
+
   const filteredJobs = allJobs.filter((job) => {
     const matchSearch = !search || job.title.toLowerCase().includes(search.toLowerCase()) || job.company.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = activeCategory === "All" || job.type.toLowerCase().replace("-", " ") === activeCategory.toLowerCase() || (activeCategory === "Remote" && job.location.includes("Remote"));
+    // Category is derived from the job title/tags (see jobCategory).
+    const matchCategory = activeCategory === "All" || jobCategory(job) === activeCategory;
+    // Location filter: exact city match from the dropdown.
+    const matchLocation = locationFilter === "All Locations" || jobCity(job) === locationFilter;
     const matchVisa = visaFilter.length === 0 || visaFilter.some((v) => job.visaCompatible.includes(v));
 
     // Region filter: when on, keep only jobs whose location string contains
@@ -203,7 +250,7 @@ export default function JobsPage() {
       matchRegion = myRegion.keywords.some((k) => loc.includes(k));
     }
 
-    return matchSearch && matchCategory && matchVisa && matchRegion;
+    return matchSearch && matchCategory && matchLocation && matchVisa && matchRegion;
   });
 
   // Load saved alert preferences from localStorage on mount
@@ -266,21 +313,36 @@ export default function JobsPage() {
                 </Button>
               </div>
 
-              {/* Category tabs */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                {JOB_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      activeCategory === cat
-                        ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40"
-                        : "text-muted-foreground hover:text-foreground bg-white/5 border border-white/8 hover:border-white/15"
-                    }`}
+              {/* Category tabs + location filter */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 flex-1">
+                  {JOB_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        activeCategory === cat
+                          ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40"
+                          : "text-muted-foreground hover:text-foreground bg-white/5 border border-white/8 hover:border-white/15"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                {/* Location dropdown — cities present in the current listings */}
+                <div className="relative shrink-0">
+                  <MapPin size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className="appearance-none h-9 pl-8 pr-7 rounded-full text-xs font-medium bg-white/5 border border-white/8 text-foreground hover:border-white/15 focus:outline-none focus:border-indigo-500/40 cursor-pointer"
                   >
-                    {cat}
-                  </button>
-                ))}
+                    {locations.map((loc) => (
+                      <option key={loc} value={loc} className="bg-[#1a1a2e] text-white">{loc}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Visa + region filter pills */}

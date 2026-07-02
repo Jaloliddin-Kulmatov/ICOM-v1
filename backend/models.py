@@ -299,7 +299,16 @@ class Job(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
+    def to_dict(self, list_view=False):
+        # list_view trims the heavy description/requirements text so the list
+        # endpoint payload stays small (cards only show a preview). The detail
+        # endpoint returns the full text.
+        description = self.description or ""
+        requirements = [r.strip() for r in (self.requirements or "").split("\n") if r.strip()]
+        if list_view:
+            if len(description) > 280:
+                description = description[:280].rstrip() + "…"
+            requirements = requirements[:4]
         return {
             "id": self.id,
             "title": self.title,
@@ -307,8 +316,8 @@ class Job(db.Model):
             "location": self.location,
             "type": self.job_type,
             "salary": self.salary,
-            "description": self.description,
-            "requirements": [r.strip() for r in (self.requirements or "").split("\n") if r.strip()],
+            "description": description,
+            "requirements": requirements,
             "visa_compatible": [v.strip() for v in (self.visa_compatible or "").split(",") if v.strip()],
             "deadline": self.deadline,
             "tags": [t.strip() for t in (self.tags or "").split(",") if t.strip()],
