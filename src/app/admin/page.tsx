@@ -102,6 +102,7 @@ export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<"clubs" | "communities" | "jobs" | "ambassadors" | "users" | "feedback" | "analytics">("clubs");
+  const [loading, setLoading] = useState(true);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [ambassadors, setAmbassadors] = useState<AmbassadorApp[]>([]);
@@ -151,6 +152,7 @@ export default function AdminPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     // Each section loads and updates on its own (with retry), so one slow or
     // cold call never blocks the others and the panel fills in as data arrives.
     const jobs: Promise<unknown>[] = [
@@ -161,6 +163,7 @@ export default function AdminPage() {
       apiCallRetry("GET", "/feedback").then(d => setFeedback((d.feedback as FeedbackItem[]) || [])),
     ];
     const results = await Promise.allSettled(jobs);
+    setLoading(false);
     const firstErr = results.find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
     if (firstErr) flash(firstErr.reason?.message || "Some data failed to load", true);
   }, []);
@@ -472,13 +475,15 @@ export default function AdminPage() {
   const clubsOnly = clubs.filter(c => c.club_type === "club");
   const communitiesOnly = clubs.filter(c => c.club_type === "community");
 
+  // While loading show "…" instead of "(0)" so the panel never looks empty.
+  const cnt = (n: number) => (loading ? "…" : String(n));
   const tabs = [
-    { id: "clubs"       as const, Icon: GraduationCap,    label: `Clubs (${clubsOnly.length})` },
-    { id: "communities" as const, Icon: Globe,            label: `Communities (${communitiesOnly.length})` },
-    { id: "jobs"        as const, Icon: Briefcase,        label: `Internships (${jobs.length})` },
+    { id: "clubs"       as const, Icon: GraduationCap,    label: `Clubs (${cnt(clubsOnly.length)})` },
+    { id: "communities" as const, Icon: Globe,            label: `Communities (${cnt(communitiesOnly.length)})` },
+    { id: "jobs"        as const, Icon: Briefcase,        label: `Internships (${cnt(jobs.length)})` },
     { id: "ambassadors" as const, Icon: Star,             label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
-    { id: "users"       as const, Icon: Users,            label: `Users (${appUsers.length})` },
-    { id: "feedback"    as const, Icon: MessageSquarePlus, label: `Feedback (${feedback.length})` },
+    { id: "users"       as const, Icon: Users,            label: `Users (${cnt(appUsers.length)})` },
+    { id: "feedback"    as const, Icon: MessageSquarePlus, label: `Feedback (${cnt(feedback.length)})` },
     { id: "analytics"   as const, Icon: BarChart2,        label: "Analytics" },
   ];
 
@@ -530,8 +535,17 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {/* ── Loading state: show a spinner instead of empty "0" content ── */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <Loader2 size={28} className="animate-spin mb-3 text-indigo-400" />
+            <p className="text-sm">Loading admin data…</p>
+            <p className="text-xs mt-1 opacity-60">Waking the server if it was asleep — this can take a few seconds.</p>
+          </div>
+        )}
+
         {/* ══════════════════ CLUBS TAB ══════════════════ */}
-        {tab === "clubs" && (
+        {!loading && tab === "clubs" && (
           <div className="space-y-4">
 
           <div className="space-y-2">
@@ -569,7 +583,7 @@ export default function AdminPage() {
         )}
 
         {/* ══════════════════ COMMUNITIES TAB ══════════════════ */}
-        {tab === "communities" && (
+        {!loading && tab === "communities" && (
           <div className="space-y-2">
             {communitiesOnly.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
@@ -606,7 +620,7 @@ export default function AdminPage() {
         )}
 
         {/* ══════════════════ JOBS TAB ══════════════════ */}
-        {tab === "jobs" && (
+        {!loading && tab === "jobs" && (
           <div className="space-y-6">
             {/* ── Auto-scrape internships from Wanted.co.kr ── */}
             <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 overflow-hidden">
@@ -817,7 +831,7 @@ export default function AdminPage() {
         )}
 
         {/* ══════════════════ USERS TAB ══════════════════ */}
-        {tab === "users" && (
+        {!loading && tab === "users" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
               <div className="flex items-center gap-2">
@@ -875,7 +889,7 @@ export default function AdminPage() {
         )}
 
         {/* ══════════════════ AMBASSADORS TAB ══════════════════ */}
-        {tab === "ambassadors" && (
+        {!loading && tab === "ambassadors" && (
           <div className="space-y-3">
             {ambassadors.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">No applications yet.</p>
@@ -942,7 +956,7 @@ export default function AdminPage() {
         )}
 
         {/* ══════════════════ FEEDBACK TAB ══════════════════ */}
-        {tab === "feedback" && (
+        {!loading && tab === "feedback" && (
           <div className="space-y-3">
             {feedback.length === 0 && (
               <div className="text-center py-12">
