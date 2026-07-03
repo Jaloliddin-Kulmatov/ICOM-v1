@@ -33,6 +33,22 @@ async function apiCall(method: string, path: string, body?: object) {
   return data;
 }
 
+// The free-tier backend sleeps and takes ~40s to wake. During that wake-up it
+// returns 502s, which made the admin dashboard show 0 for everything and never
+// recover. Retry a few times so the panel self-heals once the server is up.
+async function apiCallRetry(method: string, path: string, tries = 4) {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await apiCall(method, path);
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  throw lastErr;
+}
+
 interface Club {
   id: number; name: string; category: string; university: string;
   description: string; contact: string; kakao_link: string;
@@ -135,21 +151,17 @@ export default function AdminPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [cd, jd, ad, ud, fd] = await Promise.allSettled([
-      apiCall("GET", "/admin/clubs"),
-      apiCall("GET", "/admin/jobs"),
-      apiCall("GET", "/ambassador/applications"),
-      apiCall("GET", "/admin/users"),
-      apiCall("GET", "/feedback"),
-    ]);
-    if (cd.status === "fulfilled") setClubs(cd.value.clubs || []);
-    if (jd.status === "fulfilled") setJobs(jd.value.jobs || []);
-    if (ad.status === "fulfilled") setAmbassadors(ad.value.applications || []);
-    if (ud.status === "fulfilled") setAppUsers(ud.value.users || []);
-    if (fd.status === "fulfilled") setFeedback(fd.value.feedback || []);
-
-    // Surface the first error so we can see why data isn't loading
-    const firstErr = [cd, jd, ad, ud, fd].find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
+    // Each section loads and updates on its own (with retry), so one slow or
+    // cold call never blocks the others and the panel fills in as data arrives.
+    const jobs: Promise<unknown>[] = [
+      apiCallRetry("GET", "/admin/clubs").then(d => setClubs((d.clubs as Club[]) || [])),
+      apiCallRetry("GET", "/admin/jobs").then(d => setJobs((d.jobs as Job[]) || [])),
+      apiCallRetry("GET", "/ambassador/applications").then(d => setAmbassadors((d.applications as AmbassadorApp[]) || [])),
+      apiCallRetry("GET", "/admin/users").then(d => setAppUsers((d.users as AppUser[]) || [])),
+      apiCallRetry("GET", "/feedback").then(d => setFeedback((d.feedback as FeedbackItem[]) || [])),
+    ];
+    const results = await Promise.allSettled(jobs);
+    const firstErr = results.find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
     if (firstErr) flash(firstErr.reason?.message || "Some data failed to load", true);
   }, []);
 
