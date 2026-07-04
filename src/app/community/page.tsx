@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import PostFeed from "@/components/community/post-feed";
+import JbnuNotices from "@/components/news/jbnu-notices";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -771,6 +772,7 @@ export default function CommunityPage() {
           {/* News tab */}
           {activeTabMain === "news" && (
             <div className="max-w-2xl mx-auto">
+              <JbnuNotices />
               <PostFeed />
             </div>
           )}

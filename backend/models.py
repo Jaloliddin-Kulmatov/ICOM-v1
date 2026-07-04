@@ -439,3 +439,37 @@ class PageVisit(db.Model):
 
     def to_dict(self):
         return {"date": self.date.isoformat(), "count": self.count}
+
+
+class Notice(db.Model):
+    """University notices scraped from JBNU's board (international / tuition /
+    education categories), auto-translated to English for the News feed."""
+    __tablename__ = "notices"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    source      = db.Column(db.String(40), default="jbnu", index=True)
+    # JBNU's internal article number — used to dedupe on re-scrape.
+    article_id  = db.Column(db.String(40), index=True)
+    category    = db.Column(db.String(40), index=True)  # international | tuition | education
+    title_ko    = db.Column(db.Text)
+    title_en    = db.Column(db.Text)
+    url         = db.Column(db.String(500))
+    posted_date = db.Column(db.String(20))  # "YYYY-MM-DD" from the board
+    is_active   = db.Column(db.Boolean, default=True)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("source", "article_id", name="uq_notice_source_article"),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "source": self.source,
+            "category": self.category,
+            "title": self.title_en or self.title_ko or "",
+            "title_ko": self.title_ko or "",
+            "url": self.url or "",
+            "posted_date": self.posted_date or "",
+            "created_at": self.created_at.isoformat() + "Z",
+        }

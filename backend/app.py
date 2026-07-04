@@ -96,6 +96,7 @@ def create_app():
     from routes.feedback import feedback_bp
     from routes.chat import chat_bp
     from routes.track import track_bp
+    from routes.news import news_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -107,6 +108,7 @@ def create_app():
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(chat_bp, url_prefix="/api/chat")
     app.register_blueprint(track_bp, url_prefix="/api/track")
+    app.register_blueprint(news_bp, url_prefix="/api/news")
 
     @app.route("/")
     def index():
@@ -868,6 +870,28 @@ _cleanup_expired_jobs(app)
 _translate_pending_jobs(app)
 
 
+def _seed_notices_if_empty(flask_app):
+    """On the first boot (empty Notice table) populate the News feed in a
+    background thread so it never blocks/slows startup. Later refreshes run on
+    the daily scheduler."""
+    def _worker():
+        try:
+            with flask_app.app_context():
+                from models import Notice
+                if Notice.query.first() is not None:
+                    return
+            from scrapers.jbnu_notices import run_notice_scraper
+            run_notice_scraper(flask_app)
+        except Exception as e:
+            print(f"[jbnu] initial notice seed skipped: {e}")
+
+    import threading
+    threading.Thread(target=_worker, daemon=True, name="jbnu-initial-seed").start()
+
+
+_seed_notices_if_empty(app)
+
+
 # ── Background scheduler ─────────────────────────────────────────────────────
 def _start_scheduler(flask_app):
     """Start APScheduler exactly once: not when DISABLE_SCHEDULER=1, and not
@@ -934,10 +958,25 @@ def _start_scheduler(flask_app):
         misfire_grace_time=3600,
     )
 
+    # Daily JBNU notice scrape (07:00 UTC) — international / tuition / education.
+    try:
+        from scrapers.jbnu_notices import run_notice_scraper
+        scheduler.add_job(
+            lambda: run_notice_scraper(flask_app),
+            trigger="cron",
+            hour=7,
+            minute=0,
+            id="jbnu_notices",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+    except Exception as e:
+        print(f"[scheduler] JBNU notice job not scheduled: {e}")
+
     scheduler.start()
     print(
         "[scheduler] started — Wanted scraper: 06:00/18:00 UTC · "
-        "Expired-job cleanup: 00:30 UTC daily"
+        "JBNU notices: 07:00 UTC · Expired-job cleanup: 00:30 UTC daily"
     )
 
 
