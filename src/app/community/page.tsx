@@ -772,7 +772,15 @@ export default function CommunityPage() {
           {/* News tab */}
           {activeTabMain === "news" && (
             <div className="max-w-2xl mx-auto">
+              {/* Section 1: official JBNU notices (scraped + translated) */}
               <JbnuNotices />
+
+              {/* Section 2: community & club posts (from clubs and ambassadors) */}
+              <div className="flex items-center gap-2 mb-3 mt-2 pt-2 border-t border-border">
+                <Users size={16} className="text-indigo-500" />
+                <h2 className="text-sm font-bold text-foreground">Community &amp; Club Updates</h2>
+                <span className="text-[11px] text-muted-foreground">· posts from clubs &amp; ambassadors</span>
+              </div>
               <PostFeed />
             </div>
           )}
