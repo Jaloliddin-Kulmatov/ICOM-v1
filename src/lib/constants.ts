@@ -100,14 +100,18 @@ export const COUNTRIES = [
   { code: "FR", name: "France", flag: "🇫🇷" },
 ];
 
+// Internship FIELDS (the data is almost all internships, so we filter by field
+// — Marketing, IT, Design, etc. — which is how the listings actually differ).
 export const JOB_CATEGORIES = [
   "All",
-  "Part-time",
-  "Internship",
+  "IT / Software",
+  "Marketing",
+  "Design",
+  "Sales",
+  "Business",
+  "HR",
   "Research",
-  "Teaching",
-  "Remote",
-  "Full-time",
+  "Other",
 ];
 
 export const VISA_TYPES = [

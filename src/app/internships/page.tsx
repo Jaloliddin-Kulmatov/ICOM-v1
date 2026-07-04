@@ -38,19 +38,20 @@ const PROVINCE_KO: Record<string, string> = {
   "Gyeongnam":    "경상남도",
 };
 
-// Scraped jobs almost always have job_type "internship", so we can't rely on
-// it for the category tabs. Instead we DERIVE a category from the title/tags
-// so the Part-time / Research / Teaching / Remote / Full-time filters actually
-// sort real listings.
+// The listings are almost all internships, so employment-type tabs are useless.
+// We DERIVE the FIELD (IT, Marketing, Design, …) from the title/description/tags
+// so the filter segments internships by what they actually are.
+// Order matters — most specific first (a "data engineer" is IT, not Business).
 function jobCategory(job: Job): string {
-  const hay = `${job.title} ${(job.tags || []).join(" ")}`.toLowerCase();
-  const loc = (job.location || "").toLowerCase();
-  if (loc.includes("remote") || hay.includes("remote") || loc.includes("재택")) return "Remote";
-  if (/research|r&d|\br & d\b|연구|\blab\b|laboratory/.test(hay)) return "Research";
-  if (/teach|teacher|instructor|tutor|lecturer|강사|교사|\bta\b/.test(hay)) return "Teaching";
-  if (/part[-\s]?time|아르바이트|알바/.test(hay)) return "Part-time";
-  if (/full[-\s]?time|정규직/.test(hay)) return "Full-time";
-  return "Internship";
+  const h = `${job.title} ${(job.description || "").slice(0, 140)} ${(job.tags || []).join(" ")}`.toLowerCase();
+  if (/\b(software|developer|engineer|frontend|back-?end|full[-\s]?stack|data|ai|ml|devops|programmer|web\s?dev|app dev|ios|android|python|java|backend)\b/.test(h)) return "IT / Software";
+  if (/design|designer|\bux\b|\bui\b|graphic|package design|illustrat/.test(h)) return "Design";
+  if (/market|brand|campaign|influencer|growth|\bpr\b|content|\bsns\b|social media|advertis/.test(h)) return "Marketing";
+  if (/\bsales\b|b2b|b2c|account manager|business development|\bbd\b/.test(h)) return "Sales";
+  if (/research|\br&d\b|\blab\b|연구/.test(h)) return "Research";
+  if (/\bhr\b|human resource|recruit|people team/.test(h)) return "HR";
+  if (/plan|strateg|operation|management|scm|logistic|business|admin|financ|account|invest/.test(h)) return "Business";
+  return "Other";
 }
 
 // Map every location string to ONE canonical English city, matching English
