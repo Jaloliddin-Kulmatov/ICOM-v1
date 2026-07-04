@@ -10,14 +10,14 @@ export default function MemberCount() {
   const [display, setDisplay] = useState(0);
   const rafRef = useRef<number | null>(null);
 
-  // Fetch the JBNU member count once on mount.
+  // Fetch the total member count once on mount.
   useEffect(() => {
     let cancelled = false;
     fetch(`${API}/track/stats`)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
-        const n = Number(d?.jbnu_members) || 0;
+        const n = Number(d?.total_members) || 0;
         setTarget(n);
       })
       .catch(() => setTarget(0));
@@ -55,7 +55,7 @@ export default function MemberCount() {
           <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
             {display.toLocaleString()}
           </span>{" "}
-          JBNU international student{target === 1 ? "" : "s"} already joined
+          international student{target === 1 ? "" : "s"} already joined
         </span>
       </div>
     </div>
