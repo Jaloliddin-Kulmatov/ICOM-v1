@@ -35,3 +35,6 @@ Thumbs.db
 
 # ── TypeScript build ──────────────────────────────────────────
 tsconfig.tsbuildinfo
+research-assistant/
+voice-mimic/
+.claude/launch.json
