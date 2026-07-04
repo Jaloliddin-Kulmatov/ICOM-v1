@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "ICOM",
+    "slug": "icom",
+    "version": "1.0.0",
+    "scheme": "icom",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050508",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "kr.ai.icom.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "kr.ai.icom.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#050508",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#050508"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6366f1"
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://icom-backend.onrender.com/api"
+    }
+  }
+}
