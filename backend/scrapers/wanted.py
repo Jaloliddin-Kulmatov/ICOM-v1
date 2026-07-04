@@ -658,6 +658,8 @@ def translate_pending(app, limit: int = 80) -> dict:
                 _looks_korean(job.title or "")
                 or _looks_korean(job.description or "")
                 or _looks_korean(job.requirements or "")
+                or _looks_korean(job.location or "")
+                or _looks_korean(job.company or "")
                 or not (job.foreigner_friendly or "")
             )
             if not needs:

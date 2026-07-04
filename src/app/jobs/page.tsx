@@ -53,20 +53,51 @@ function jobCategory(job: Job): string {
   return "Internship";
 }
 
-// Known Korean cities (English names as translated by the scraper). Used to
-// group each job under one city for the Location filter.
-const KNOWN_CITIES = [
-  "Seoul", "Jeonju", "Busan", "Incheon", "Daejeon", "Daegu", "Gwangju",
-  "Ulsan", "Sejong", "Suwon", "Iksan", "Gunsan", "Pohang", "Changwon",
-  "Yongin", "Gyeonggi", "Jeollabuk", "Cheonan", "Anyang", "Bucheon",
+// Map every location string to ONE canonical English city, matching English
+// (any case) OR Korean aliases. This dedupes "Seoul"/"seoul"/"서울" and drops
+// junk values into "Other", so the Location dropdown is clean English.
+const CITY_ALIASES: [string, string][] = [
+  ["seoul", "Seoul"], ["서울", "Seoul"],
+  ["jeonju", "Jeonju"], ["전주", "Jeonju"],
+  ["busan", "Busan"], ["부산", "Busan"],
+  ["incheon", "Incheon"], ["인천", "Incheon"],
+  ["daejeon", "Daejeon"], ["대전", "Daejeon"],
+  ["daegu", "Daegu"], ["대구", "Daegu"],
+  ["gwangju", "Gwangju"], ["광주", "Gwangju"],
+  ["ulsan", "Ulsan"], ["울산", "Ulsan"],
+  ["sejong", "Sejong"], ["세종", "Sejong"],
+  ["suwon", "Suwon"], ["수원", "Suwon"],
+  ["seongnam", "Seongnam"], ["성남", "Seongnam"],
+  ["yongin", "Yongin"], ["용인", "Yongin"],
+  ["bucheon", "Bucheon"], ["부천", "Bucheon"],
+  ["anyang", "Anyang"], ["안양", "Anyang"],
+  ["hwaseong", "Hwaseong"], ["화성", "Hwaseong"],
+  ["cheonan", "Cheonan"], ["천안", "Cheonan"],
+  ["iksan", "Iksan"], ["익산", "Iksan"],
+  ["gunsan", "Gunsan"], ["군산", "Gunsan"],
+  ["pohang", "Pohang"], ["포항", "Pohang"],
+  ["changwon", "Changwon"], ["창원", "Changwon"],
+  ["gimhae", "Gimhae"], ["김해", "Gimhae"],
+  ["jeju", "Jeju"], ["제주", "Jeju"],
+];
+// Provinces — checked only if no city matched (a city is more specific).
+const REGION_ALIASES: [string, string][] = [
+  ["gyeonggi", "Gyeonggi"], ["경기", "Gyeonggi"],
+  ["jeollabuk", "Jeollabuk-do"], ["전북", "Jeollabuk-do"], ["전라북도", "Jeollabuk-do"],
+  ["jeollanam", "Jeollanam-do"], ["전남", "Jeollanam-do"], ["전라남도", "Jeollanam-do"],
+  ["gangwon", "Gangwon"], ["강원", "Gangwon"],
+  ["chungbuk", "Chungcheongbuk-do"], ["충북", "Chungcheongbuk-do"], ["충청북도", "Chungcheongbuk-do"],
+  ["chungnam", "Chungcheongnam-do"], ["충남", "Chungcheongnam-do"], ["충청남도", "Chungcheongnam-do"],
+  ["gyeongbuk", "Gyeongsangbuk-do"], ["경북", "Gyeongsangbuk-do"], ["경상북도", "Gyeongsangbuk-do"],
+  ["gyeongnam", "Gyeongsangnam-do"], ["경남", "Gyeongsangnam-do"], ["경상남도", "Gyeongsangnam-do"],
 ];
 function jobCity(job: Job): string {
-  const loc = job.location || "";
-  for (const c of KNOWN_CITIES) {
-    if (loc.includes(c)) return c;
-  }
-  const first = loc.split(/[,·/]/)[0].trim();
-  return first || "Other";
+  const loc = (job.location || "").toLowerCase();
+  if (!loc.trim()) return "Other";
+  if (loc.includes("remote") || loc.includes("재택")) return "Remote";
+  for (const [alias, canon] of CITY_ALIASES) if (loc.includes(alias)) return canon;
+  for (const [alias, canon] of REGION_ALIASES) if (loc.includes(alias)) return canon;
+  return "Other";
 }
 
 export default function JobsPage() {

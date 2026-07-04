@@ -11,7 +11,7 @@ import { UNIVERSITIES } from "@/lib/constants";
 import {
   MessageSquare, Plus, ImageIcon, X, Loader2, Sparkles,
   AlertCircle, ShieldCheck, ArrowRight, Search, MapPin,
-  Globe2, GraduationCap,
+  Globe2, GraduationCap, Trash2,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -119,6 +119,27 @@ export default function ChatPage() {
       setPosts(data.posts || []);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // Delete a post. The backend allows the author OR an admin; we optimistically
+  // remove it from the list on success.
+  const handleDeletePost = useCallback(async (id: number) => {
+    if (!confirm("Delete this post? This cannot be undone.")) return;
+    const token = getToken();
+    try {
+      const res = await fetch(`${API}/chat/posts/${id}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || "Could not delete the post.");
+      }
+    } catch {
+      alert("Could not delete the post. Please try again.");
     }
   }, []);
 
@@ -322,12 +343,22 @@ export default function ChatPage() {
               <Link
                 key={p.id}
                 href={`/chat/${p.id}`}
-                className={`block p-4 sm:p-5 rounded-2xl border bg-card hover:shadow-sm transition-all ${
+                className={`relative block p-4 sm:p-5 rounded-2xl border bg-card hover:shadow-sm transition-all ${
                   isLocal
                     ? "border-indigo-500/30 ring-1 ring-indigo-500/10"
                     : "border-border hover:border-indigo-500/30"
                 }`}
               >
+                {user && (user.id === p.user_id || user.role === "admin") && (
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePost(p.id); }}
+                    className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    title="Delete post"
+                    aria-label="Delete post"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {p.author_name[0]?.toUpperCase() || "?"}
