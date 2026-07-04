@@ -11,6 +11,34 @@ from models import User, Club, Job, ClubMembership
 admin_bp = Blueprint("admin", __name__)
 
 
+# ── Tiny in-process response cache ────────────────────────────────────────────
+# The heavy list endpoints (jobs, clubs) are ~1.5–2s each on the free tier.
+# Cache their serialized payload briefly so repeat loads (page revisits, the
+# admin panel, many users) are instant. Writes bust the relevant key so your
+# own changes show immediately.
+import time as _time
+
+_RESP_CACHE: dict = {}
+_RESP_TTL = 30  # seconds
+
+
+def _cache_get(key):
+    e = _RESP_CACHE.get(key)
+    if e and (_time.time() - e[0]) < _RESP_TTL:
+        return e[1]
+    return None
+
+
+def _cache_set(key, value):
+    _RESP_CACHE[key] = (_time.time(), value)
+
+
+def _cache_bust(*prefixes):
+    for k in list(_RESP_CACHE.keys()):
+        if any(k.startswith(p) for p in prefixes):
+            _RESP_CACHE.pop(k, None)
+
+
 def _require_admin():
     user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
@@ -57,6 +85,12 @@ def list_clubs():
     # fire ~4 queries per club (membership counts + creator lazy-load). With
     # ~190 clubs that N+1 was ~770 queries and blew past gunicorn's worker
     # timeout → 502, leaving the admin panel empty. One JOIN + one IN query now.
+    # Cache per-user: the club dict carries user-specific fields (my_status,
+    # is_creator, private contact) so we must not share one payload across users.
+    cache_key = f"clubs_list_{user_id or 'anon'}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return jsonify(cached), 200
     clubs = (
         Club.query.options(joinedload(Club.creator))
         .filter_by(is_active=True)
@@ -68,12 +102,14 @@ def list_clubs():
     if ids:
         for m in ClubMembership.query.filter(ClubMembership.club_id.in_(ids)).all():
             memberships_by_club[m.club_id].append(m)
-    return jsonify({
+    payload = {
         "clubs": [
             c.to_dict(user_id=user_id, _memberships=memberships_by_club[c.id])
             for c in clubs
         ]
-    }), 200
+    }
+    _cache_set(cache_key, payload)
+    return jsonify(payload), 200
 
 
 @admin_bp.route("/clubs/<int:club_id>/join", methods=["POST"])
@@ -138,6 +174,7 @@ def create_club():
     )
     db.session.add(club)
     db.session.commit()
+    _cache_bust("clubs_list")
     return jsonify({"club": club.to_dict()}), 201
 
 
@@ -166,6 +203,7 @@ def edit_club(club_id):
     if "cover_image"  in data: club.cover_image  = (data["cover_image"]  or "").strip()
 
     db.session.commit()
+    _cache_bust("clubs_list")
     return jsonify({"club": club.to_dict(user_id=user.id)}), 200
 
 
@@ -179,6 +217,7 @@ def delete_club(club_id):
     club = Club.query.get_or_404(club_id)
     club.is_active = False
     db.session.commit()
+    _cache_bust("clubs_list")
     return jsonify({"message": "Club removed."}), 200
 
 
@@ -454,9 +493,14 @@ def bulk_ingest_jobs():
 
 @admin_bp.route("/jobs", methods=["GET"])
 def list_jobs():
+    cached = _cache_get("jobs_list")
+    if cached is not None:
+        return jsonify(cached), 200
     jobs = Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
     # list_view=True trims description text → smaller, faster payload.
-    return jsonify({"jobs": [j.to_dict(list_view=True) for j in jobs]}), 200
+    payload = {"jobs": [j.to_dict(list_view=True) for j in jobs]}
+    _cache_set("jobs_list", payload)
+    return jsonify(payload), 200
 
 
 @admin_bp.route("/jobs", methods=["POST"])
@@ -488,6 +532,7 @@ def create_job():
     )
     db.session.add(job)
     db.session.commit()
+    _cache_bust("jobs_list")
     return jsonify({"job": job.to_dict()}), 201
 
 
@@ -521,6 +566,7 @@ def edit_job(job_id):
     if "apply_link"     in data: job.apply_link     = (data["apply_link"]     or "").strip()
 
     db.session.commit()
+    _cache_bust("jobs_list")
     return jsonify({"job": job.to_dict()}), 200
 
 
@@ -534,6 +580,7 @@ def delete_job(job_id):
     job = Job.query.get_or_404(job_id)
     job.is_active = False
     db.session.commit()
+    _cache_bust("jobs_list")
     return jsonify({"message": "Job removed."}), 200
 
 

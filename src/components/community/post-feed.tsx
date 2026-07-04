@@ -474,7 +474,7 @@ export default function PostFeed() {
               <ChevronDown size={11} className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
             </button>
             {showPicker && options.length > 1 && (
-              <div className="absolute top-9 left-0 z-20 w-56 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+              <div className="absolute top-9 left-0 z-20 w-56 max-h-64 overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
                 {options.map((o, i) => (
                   <button
                     key={i}
