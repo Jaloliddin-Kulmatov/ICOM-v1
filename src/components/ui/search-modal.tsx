@@ -34,7 +34,7 @@ const STATIC_PAGES: Result[] = [
     type: "page",
     label: "Jobs & Internships",
     sub: "Find visa-compatible opportunities",
-    href: "/jobs",
+    href: "/internships",
     icon: <Briefcase size={14} className="text-violet-500 dark:text-violet-400" />,
   },
   {

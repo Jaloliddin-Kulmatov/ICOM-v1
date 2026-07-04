@@ -81,7 +81,7 @@ export default function BookmarksPage() {
               icon={<Briefcase size={28} className="text-muted-foreground/30" />}
               title="No saved jobs"
               sub="Hit the bookmark icon on any internship to save it here."
-              href="/jobs"
+              href="/internships"
               cta="Browse internships"
             />
           ) : (

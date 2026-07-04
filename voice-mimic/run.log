@@ -1,0 +1,16 @@
+[app] loading voice engine...
+[voice_engine] loading XTTS-v2 on device=cpu
+[app] backend = xtts (cloning=True)
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.10:5001
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [03/Jul/2026 16:03:21] "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Jul/2026 16:03:21] "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Jul/2026 16:03:30] "GET / HTTP/1.1" 200 -
+/Users/jaloliddinqulmatov/.venvs/voicemimic/lib/python3.12/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+127.0.0.1 - - [03/Jul/2026 16:03:49] "POST /api/clone HTTP/1.1" 200 -

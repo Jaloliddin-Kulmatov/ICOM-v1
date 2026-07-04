@@ -170,7 +170,7 @@ export default function UniversitiesPage() {
                 <Link href="/community" className="text-xs px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors font-medium">
                   View JBNU Community
                 </Link>
-                <Link href="/jobs" className="text-xs px-4 py-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <Link href="/internships" className="text-xs px-4 py-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   Find Jobs Near JBNU
                 </Link>
               </div>

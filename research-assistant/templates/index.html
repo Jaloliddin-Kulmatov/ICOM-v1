@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lens · a research workbench for students</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-mark">◳</span>
+        <div class="logo-text"><strong>Lens</strong><small>for student researchers</small></div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="discover"><span class="ico">⌕</span> Discover</button>
+        <button class="nav-item" data-view="community"><span class="ico">✦</span> Community</button>
+        <button class="nav-item" data-view="publish"><span class="ico">↑</span> Publish</button>
+        <button class="nav-item" data-view="library"><span class="ico">❏</span> Library<span class="badge-count" id="lib-count">0</span></button>
+      </nav>
+      <div class="side-tips">
+        <div class="tip-title">Built for uni students</div>
+        <ul>
+          <li><b>Reviewer scorecard</b> — see acceptance odds before you submit anywhere</li>
+          <li><b>Beginner mode</b> — every term explained from scratch</li>
+          <li><b>Full-PDF reading</b> — the whole paper, not the abstract</li>
+          <li><b>Publish your work</b> — share it with peers &amp; get AI feedback</li>
+          <li><b>Reading plans</b> — turn a pile of papers into a week</li>
+        </ul>
+      </div>
+      <div class="sidebar-foot">
+        <div id="ai-status" class="ai-status">checking…</div>
+        <p class="credit">Search, maps, scores &amp; publishing are free · AI uses Claude</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- Discover -->
+      <section id="view-discover" class="view">
+        <div class="searchbar">
+          <form id="search-form">
+            <span class="search-ico">⌕</span>
+            <input id="q" type="text" placeholder="Search 2M+ papers — try “diffusion models”, “CRISPR off-target”…" autocomplete="off" />
+            <select id="sort" aria-label="Sort order">
+              <option value="relevance">Relevance</option>
+              <option value="submittedDate">Newest</option>
+              <option value="lastUpdatedDate">Updated</option>
+            </select>
+            <button type="submit">Search</button>
+          </form>
+        </div>
+        <div id="hero" class="hero">
+          <h1>Understand papers <em>faster.</em></h1>
+          <p>A research workbench made for university students. Search the literature,
+             open any paper into a workspace — a credibility score, a citation map, and
+             Claude reading the <em>full PDF</em> to review it, explain it from scratch, or
+             debate it — then <em>publish your own research</em> for peers to read.</p>
+          <div class="chips" id="example-chips">
+            <button>retrieval augmented generation</button>
+            <button>mixture of experts</button>
+            <button>diffusion models</button>
+            <button>graph neural networks</button>
+            <button>protein structure prediction</button>
+          </div>
+        </div>
+        <div id="results" class="results"></div>
+      </section>
+
+      <!-- Community -->
+      <section id="view-community" class="view hidden">
+        <header class="view-head">
+          <h2>Community research</h2>
+          <p>Papers published by students on Lens. Open any into the same workspace — credibility, AI review, and more.</p>
+        </header>
+        <div class="community-bar">
+          <input id="community-q" type="text" placeholder="Search community papers…" />
+          <select id="community-field"><option value="">All fields</option></select>
+          <button id="btn-publish-cta">↑ Publish yours</button>
+        </div>
+        <div id="community" class="results"></div>
+      </section>
+
+      <!-- Publish -->
+      <section id="view-publish" class="view hidden">
+        <header class="view-head">
+          <h2>Publish your research</h2>
+          <p>Share your paper with the student community. Get an optional AI pre-submission review first — improve, then publish.</p>
+        </header>
+        <form id="publish-form" class="pub-form">
+          <div class="field">
+            <label>Title <span class="req">*</span></label>
+            <input name="title" id="pub-title" type="text" placeholder="e.g. A Lightweight Transformer for On-Device Translation" required />
+          </div>
+          <div class="field">
+            <label>Authors <span class="req">*</span> <small>comma-separated</small></label>
+            <input name="authors" id="pub-authors" type="text" placeholder="Ada Lovelace, Alan Turing" required />
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>University / institution <span class="req">*</span></label>
+              <input name="university" id="pub-university" type="text" placeholder="Jeonbuk National University" required />
+            </div>
+            <div class="field">
+              <label>Field <span class="req">*</span></label>
+              <select name="field" id="pub-field"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Abstract <span class="req">*</span> <small><span id="abs-count">0</span> chars, 80+ needed</small></label>
+            <textarea name="abstract" id="pub-abstract" rows="6" placeholder="Summarize your problem, method, and findings…" required></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>Keywords <small>comma-separated</small></label>
+              <input name="keywords" id="pub-keywords" type="text" placeholder="nlp, efficiency, edge devices" />
+            </div>
+            <div class="field">
+              <label>Contact email <small>optional</small></label>
+              <input name="contact" id="pub-contact" type="email" placeholder="you@university.edu" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>PDF <small>optional, max 25 MB</small></label>
+              <input name="pdf" id="pub-pdf" type="file" accept="application/pdf" />
+            </div>
+            <div class="field">
+              <label>…or a link to the paper <small>optional</small></label>
+              <input name="link" id="pub-link" type="url" placeholder="https://…" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>License <small>optional</small></label>
+              <select name="license" id="pub-license">
+                <option>All rights reserved</option>
+                <option>CC BY 4.0</option>
+                <option>CC BY-SA 4.0</option>
+                <option>CC BY-NC 4.0</option>
+                <option>CC0 (public domain)</option>
+              </select>
+            </div>
+          </div>
+          <div class="pub-actions">
+            <button type="button" id="btn-prereview" class="ghost">✦ Get AI pre-review</button>
+            <div class="sep"></div>
+            <button type="submit" id="btn-submit-pub">↑ Publish</button>
+          </div>
+          <p id="pub-msg" class="pub-msg"></p>
+        </form>
+      </section>
+
+      <!-- Library -->
+      <section id="view-library" class="view hidden">
+        <header class="view-head">
+          <h2>Your library</h2>
+          <p>Papers you’ve saved. Select a few to compare, find gaps, or build a reading plan.</p>
+        </header>
+        <div id="library" class="results"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="dock" class="dock hidden">
+    <div class="dock-info"><strong id="dock-count">0</strong> selected</div>
+    <input id="gap-topic" type="text" placeholder="Optional focus for gaps…" />
+    <button id="btn-compare" class="ghost">⇄ Compare</button>
+    <button id="btn-gaps" class="ghost">◇ Gaps</button>
+    <button id="btn-plan" class="ghost">☰ Reading plan</button>
+    <button id="dock-clear" class="icon-btn" title="Clear">✕</button>
+  </div>
+
+  <aside id="drawer" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-head">
+      <div class="drawer-head-main">
+        <button id="drawer-back" class="back-link" hidden>‹ Back to paper</button>
+        <span id="drawer-kicker" class="kicker">Paper</span>
+        <h2 id="drawer-title">Result</h2>
+      </div>
+      <div class="drawer-tools">
+        <button id="drawer-export" class="icon-btn" title="Export as Markdown" hidden>⭳</button>
+        <button id="drawer-refresh" class="icon-btn" title="Regenerate (skip cache)" hidden>↻</button>
+        <button id="drawer-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+  </aside>
+  <div id="overlay" class="overlay hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -618,7 +618,15 @@ def get_job_alerts():
     return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
 
 
-def _send_alert_welcome_async(flask_app, to_email, name, field, location):
+def _alert_unsub_token(user_id):
+    """Signed, no-login token so an alert email can carry a one-click
+    unsubscribe link."""
+    from itsdangerous import URLSafeSerializer
+    s = URLSafeSerializer(os.environ.get("SECRET_KEY", "dev-secret-change-me"), salt="alert-unsub")
+    return s.dumps({"uid": int(user_id)})
+
+
+def _send_alert_welcome_async(flask_app, user_id, to_email, name, field, location):
     """Send a quick 'you're subscribed' email in the background so the request
     returns immediately."""
     def _worker():
@@ -626,6 +634,8 @@ def _send_alert_welcome_async(flask_app, to_email, name, field, location):
             try:
                 from routes.ambassador import _send_email
                 safe_name = name or "there"
+                backend = os.environ.get("BACKEND_URL", "https://icom-v1.onrender.com").rstrip("/")
+                unsub = f"{backend}/api/admin/jobs/alerts/unsubscribe?token={_alert_unsub_token(user_id)}"
                 subject = "✅ You're subscribed to ICOM Internship Alerts"
                 html = f"""
                 <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
@@ -637,14 +647,18 @@ def _send_alert_welcome_async(flask_app, to_email, name, field, location):
                     <li><b>Location:</b> {location}</li>
                   </ul>
                   <p>Browse all current openings any time at
-                     <a href="https://icom.ai.kr/jobs">icom.ai.kr/jobs</a>.</p>
-                  <p style="color:#888;font-size:13px">You can turn alerts off any time from the Internships page.</p>
+                     <a href="https://icom.ai.kr/internships">icom.ai.kr/internships</a>.</p>
+                  <p style="color:#888;font-size:13px">
+                    Don&#39;t want these emails?
+                    <a href="{unsub}" style="color:#888">Turn off alerts</a>.
+                  </p>
                   <p>— ICOM Team</p>
                 </div>"""
                 text = (
                     f"Hi {safe_name},\n\n"
                     f"Internship alerts are ON.\nField: {field}\nLocation: {location}\n\n"
-                    "See openings at https://icom.ai.kr/jobs\n\n— ICOM Team"
+                    "See openings at https://icom.ai.kr/internships\n\n"
+                    f"Turn off alerts: {unsub}\n\n— ICOM Team"
                 )
                 _send_email(to_email, subject, html, text)
             except Exception as e:
@@ -652,6 +666,27 @@ def _send_alert_welcome_async(flask_app, to_email, name, field, location):
 
     import threading
     threading.Thread(target=_worker, daemon=True, name="alert-welcome-email").start()
+
+
+@admin_bp.route("/jobs/alerts/unsubscribe", methods=["GET"])
+def unsubscribe_alerts():
+    """One-click unsubscribe from an alert email — no login needed, verified by
+    the signed token. Returns a small HTML confirmation page."""
+    from itsdangerous import URLSafeSerializer, BadData
+    token = request.args.get("token", "")
+    s = URLSafeSerializer(os.environ.get("SECRET_KEY", "dev-secret-change-me"), salt="alert-unsub")
+    page = ("<html><body style='font-family:Arial;text-align:center;padding:60px'>"
+            "<h2>{msg}</h2><p><a href='https://icom.ai.kr/internships'>Back to ICOM</a></p>"
+            "</body></html>")
+    try:
+        data = s.loads(token)
+        user = User.query.get(int(data["uid"]))
+    except (BadData, Exception):
+        return page.format(msg="This unsubscribe link is invalid or expired."), 400
+    if user:
+        user.job_alerts_enabled = False
+        db.session.commit()
+    return page.format(msg="✅ You&#39;ve been unsubscribed from internship alerts."), 200
 
 
 @admin_bp.route("/jobs/alerts", methods=["POST"])
@@ -675,7 +710,7 @@ def toggle_job_alerts():
         field = (data.get("field") or "All Fields").strip()
         location = (data.get("location") or "All Korea").strip()
         _send_alert_welcome_async(
-            current_app._get_current_object(), user.email, user.name, field, location
+            current_app._get_current_object(), user.id, user.email, user.name, field, location
         )
 
     return jsonify({"enabled": now_enabled}), 200

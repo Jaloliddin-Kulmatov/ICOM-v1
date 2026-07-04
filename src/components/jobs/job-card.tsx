@@ -23,7 +23,7 @@ import type { Job } from "@/types";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 // Strip the "db-" prefix from the list page so we can route to /jobs/<numeric id>
-const detailHref = (id: string) => `/jobs/${id.replace(/^db-/, "")}`;
+const detailHref = (id: string) => `/internships/${id.replace(/^db-/, "")}`;
 const dbId = (id: string) => id.replace(/^db-/, "");
 
 // Fire-and-forget hit to the apply-counter endpoint. We don't await it —

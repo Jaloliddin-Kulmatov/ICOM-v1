@@ -120,7 +120,7 @@ export const VISA_TYPES = [
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/community", label: "Community" },
-  { href: "/jobs", label: "Jobs" },
+  { href: "/internships", label: "Internships" },
   { href: "/universities", label: "Universities" },
   { href: "/support", label: "Support" },
 ];

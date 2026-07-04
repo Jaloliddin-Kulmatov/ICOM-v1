@@ -42,7 +42,7 @@ const features = [
     description:
       "AI-powered job matching for international students. Filter by visa compatibility, salary, location, and student hours.",
     highlights: ["D-2/D-4 visa filtering", "AI job matching", "1,200+ active listings", "Research opportunities"],
-    href: "/jobs",
+    href: "/internships",
   },
   {
     icon: Globe,

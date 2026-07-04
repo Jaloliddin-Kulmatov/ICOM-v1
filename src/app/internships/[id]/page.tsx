@@ -139,7 +139,7 @@ export default function JobDetailPage() {
           ))}
         </div>
 
-        <Link href="/jobs" className="text-sm px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors inline-block">
+        <Link href="/internships" className="text-sm px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors inline-block">
           ← Back to ICOM Jobs
         </Link>
       </div>
@@ -154,7 +154,7 @@ export default function JobDetailPage() {
       <main className="pt-16">
         <div className="border-b border-border bg-gradient-to-b from-indigo-500/5 to-transparent">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-            <Link href="/jobs" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
+            <Link href="/internships" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
               <ArrowLeft size={13} /> Back to Jobs
             </Link>
 
@@ -394,7 +394,7 @@ export default function JobDetailPage() {
               )}
             </div>
 
-            <Link href="/jobs" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
+            <Link href="/internships" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
               <ExternalLink size={11} /> Browse more jobs
             </Link>
           </div>
