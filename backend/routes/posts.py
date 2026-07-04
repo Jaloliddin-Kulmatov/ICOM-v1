@@ -184,7 +184,9 @@ def create_post():
 def delete_post(post_id):
     user_id = int(get_jwt_identity())
     post = Post.query.get_or_404(post_id)
-    if post.user_id != user_id:
+    user = User.query.get(user_id)
+    # The author OR an admin may delete (admins need it to moderate).
+    if post.user_id != user_id and (not user or user.role != "admin"):
         return jsonify({"error": "You can only delete your own posts."}), 403
     # Delete comments first
     PostComment.query.filter_by(post_id=post_id).delete()

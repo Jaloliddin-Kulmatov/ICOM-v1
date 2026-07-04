@@ -15,7 +15,10 @@ def search():
     No auth required — private fields never returned here.
     """
     q = (request.args.get("q") or "").strip()
-    limit = min(int(request.args.get("limit", 10)), 30)
+    try:
+        limit = min(max(int(request.args.get("limit", 10)), 1), 30)
+    except (TypeError, ValueError):
+        limit = 10
 
     if not q or len(q) < 2:
         return jsonify({"results": []}), 200

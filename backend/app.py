@@ -35,11 +35,40 @@ def create_app():
     # expires_delta if a specific flow needs a different lifetime.
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=30)
 
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    # Multi-origin CORS. FRONTEND_URL may be a comma-separated list; we also
+    # auto-allow our own production domain, its www/subdomains, and Vercel /
+    # Render preview deploys, plus localhost for dev. We echo back the caller's
+    # origin when it's allowed (required because Allow-Credentials is true, so
+    # a wildcard "*" is not permitted).
+    raw_frontend = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    allowed_origins = {o.strip() for o in raw_frontend.split(",") if o.strip()}
+    _fallback_origin = next(iter(allowed_origins), "http://localhost:3000")
+
+    def _origin_allowed(origin: str) -> bool:
+        if not origin:
+            return False
+        if origin in allowed_origins:
+            return True
+        try:
+            from urllib.parse import urlparse
+            host = (urlparse(origin).hostname or "").lower()
+        except Exception:
+            return False
+        return (
+            host in ("localhost", "127.0.0.1")
+            or host == "icom.ai.kr"
+            or host.endswith(".icom.ai.kr")
+            or host.endswith(".vercel.app")
+            or host.endswith(".onrender.com")
+        )
 
     @app.after_request
     def add_cors_headers(response):
-        response.headers["Access-Control-Allow-Origin"] = frontend_url
+        origin = request.headers.get("Origin", "")
+        response.headers["Access-Control-Allow-Origin"] = (
+            origin if _origin_allowed(origin) else _fallback_origin
+        )
+        response.headers["Vary"] = "Origin"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -81,7 +110,7 @@ def create_app():
 
     @app.route("/")
     def index():
-        return jsonify({"status": "ok", "service": "ICOM API", "version": "1.0", "frontend": "http://localhost:3000"})
+        return jsonify({"status": "ok", "service": "ICOM API", "version": "1.0", "frontend": _fallback_origin})
 
     @app.route("/api/health")
     def health():
