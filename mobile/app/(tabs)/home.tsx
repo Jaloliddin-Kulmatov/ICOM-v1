@@ -26,7 +26,7 @@ const QUICK_LINKS: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   sub: string;
-  href: "/(tabs)/internships" | "/(tabs)/chat" | "/(tabs)/ai" | "/(tabs)/profile";
+  href: string;
 }[] = [
   {
     icon: "briefcase",
@@ -34,9 +34,13 @@ const QUICK_LINKS: {
     sub: "English-friendly listings",
     href: "/(tabs)/internships",
   },
-  { icon: "chatbubbles", label: "Community Q&A", sub: "Ask other students", href: "/(tabs)/chat" },
-  { icon: "sparkles", label: "AI Assistant", sub: "Visa, housing, banking", href: "/(tabs)/ai" },
-  { icon: "person", label: "My Profile", sub: "Settings & alerts", href: "/(tabs)/profile" },
+  { icon: "people", label: "Community", sub: "Clubs & communities", href: "/(tabs)/community" },
+  { icon: "chatbubbles", label: "Q&A Chat", sub: "Ask other students", href: "/(tabs)/chat" },
+  { icon: "sparkles", label: "AI Assistant", sub: "Visa, housing, banking", href: "/ai" },
+  { icon: "book", label: "Support Guides", sub: "Visa to banking, step by step", href: "/support" },
+  { icon: "restaurant", label: "Daily Life", sub: "Food & transport tips", href: "/daily-life" },
+  { icon: "school", label: "Universities", sub: "Directory & ambassadors", href: "/universities" },
+  { icon: "bookmark", label: "Saved", sub: "Your bookmarked internships", href: "/bookmarks" },
 ];
 
 export default function HomeScreen() {
@@ -88,7 +92,7 @@ export default function HomeScreen() {
         {QUICK_LINKS.map((q) => (
           <Pressable
             key={q.label}
-            onPress={() => router.push(q.href)}
+            onPress={() => router.push(q.href as never)}
             className="w-1/2 px-1.5 mb-3"
           >
             <Card className="active:border-icon-500">

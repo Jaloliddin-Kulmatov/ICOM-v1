@@ -25,6 +25,22 @@ export default function RootLayout() {
           name="chat/new"
           options={{ title: "Ask a Question", presentation: "modal" }}
         />
+        <Stack.Screen name="ai" options={{ title: "AI Assistant" }} />
+        <Stack.Screen name="search" options={{ title: "Search" }} />
+        <Stack.Screen name="community/[id]/index" options={{ title: "Community" }} />
+        <Stack.Screen name="community/[id]/chat" options={{ title: "Members Chat" }} />
+        <Stack.Screen
+          name="community/new"
+          options={{ title: "Create Club or Community", presentation: "modal" }}
+        />
+        <Stack.Screen name="community/post/[id]" options={{ title: "Post" }} />
+        <Stack.Screen name="support/index" options={{ title: "Support Guides" }} />
+        <Stack.Screen name="support/[slug]" options={{ title: "Guide" }} />
+        <Stack.Screen name="universities" options={{ title: "Universities" }} />
+        <Stack.Screen name="ambassador" options={{ title: "Become an Ambassador" }} />
+        <Stack.Screen name="daily-life" options={{ title: "Daily Life" }} />
+        <Stack.Screen name="feedback" options={{ title: "Feedback" }} />
+        <Stack.Screen name="bookmarks" options={{ title: "Saved Internships" }} />
       </Stack>
     </AuthProvider>
   );

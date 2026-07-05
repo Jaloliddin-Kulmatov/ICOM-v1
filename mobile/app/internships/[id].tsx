@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Linking, ScrollView, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api";
+import { Bookmarks } from "@/lib/bookmarks";
 import { timeAgo } from "@/lib/format";
 import type { Job } from "@/lib/types";
 import { Badge, Button, Card, EmptyState, LoadingScreen } from "@/components/ui";
@@ -10,6 +12,7 @@ export default function InternshipDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,10 +21,18 @@ export default function InternshipDetailScreen() {
       if (data?.job) setJob(data.job);
       else setError(err || "Internship not found.");
     });
+    Bookmarks.has(Number(id)).then((v) => {
+      if (!cancelled) setSaved(v);
+    });
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  const toggleSave = async () => {
+    if (!job) return;
+    setSaved(await Bookmarks.toggle(job));
+  };
 
   const apply = () => {
     if (!job?.apply_link) return;
@@ -35,7 +46,20 @@ export default function InternshipDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: job.company }} />
+      <Stack.Screen
+        options={{
+          title: job.company,
+          headerRight: () => (
+            <Pressable onPress={toggleSave} style={{ padding: 6, marginRight: 6 }}>
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={21}
+                color="#a8a8ff"
+              />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 pb-12">
         <Text className="text-white text-2xl font-bold">{job.title}</Text>
         <Text className="text-icon-300 text-base mt-1">{job.company}</Text>

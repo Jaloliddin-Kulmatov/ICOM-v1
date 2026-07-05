@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { registerForPushNotifications } from "@/lib/notifications";
 import { Avatar, Button, Card, ErrorBanner, Input } from "@/components/ui";
@@ -132,6 +133,28 @@ export default function ProfileScreen() {
           />
         </Card>
       )}
+
+      <Card className="mt-4">
+        {(
+          [
+            ["bookmark", "Saved internships", "/bookmarks"],
+            ["megaphone", "Become an ambassador", "/ambassador"],
+            ["book", "Support guides", "/support"],
+            ["restaurant", "Daily life tips", "/daily-life"],
+            ["heart", "Send feedback", "/feedback"],
+          ] as [keyof typeof Ionicons.glyphMap, string, string][]
+        ).map(([icon, label, href], i) => (
+          <Pressable
+            key={label}
+            onPress={() => router.push(href as never)}
+            className={`flex-row items-center py-3 ${i > 0 ? "border-t border-border" : ""}`}
+          >
+            <Ionicons name={icon} size={18} color="#7c7cff" />
+            <Text className="text-white font-medium ml-3 flex-1">{label}</Text>
+            <Ionicons name="chevron-forward" size={16} color="#8b8ba3" />
+          </Pressable>
+        ))}
+      </Card>
 
       <Card className="mt-4">
         <Text className="text-white font-semibold mb-1">Push notifications</Text>

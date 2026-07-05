@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -8,20 +9,44 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ChatPost } from "@/lib/types";
 import { Button, ErrorBanner, Input } from "@/components/ui";
+
+// Backend caps image_url at ~600K chars (≈450KB binary as base64).
+const MAX_DATA_URL_CHARS = 590_000;
 
 export default function NewQuestionScreen() {
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [scope, setScope] = useState<"all" | "university">("all");
+  const [image, setImage] = useState<string | null>(null); // data URL
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const hasUniversity = !!user?.university?.trim();
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.5,
+      base64: true,
+      allowsEditing: true,
+    });
+    if (result.canceled || !result.assets[0]?.base64) return;
+    const asset = result.assets[0];
+    const dataUrl = `data:${asset.mimeType || "image/jpeg"};base64,${asset.base64}`;
+    if (dataUrl.length > MAX_DATA_URL_CHARS) {
+      setError("Image is too large (max ~450 KB). Pick a smaller one.");
+      return;
+    }
+    setError(null);
+    setImage(dataUrl);
+  };
 
   const submit = async () => {
     if (!title.trim() || !content.trim()) {
@@ -34,6 +59,7 @@ export default function NewQuestionScreen() {
       title: title.trim(),
       content: content.trim(),
       scope: scope === "university" ? "university" : "all",
+      image_url: image || "",
     });
     setBusy(false);
     if (err || !data?.post) {
@@ -98,6 +124,32 @@ export default function NewQuestionScreen() {
           <Text className="text-muted text-xs -mt-4 mb-4">
             Set your university in Profile to post to a university-only chat.
           </Text>
+        )}
+
+        <Text className="text-muted text-sm mb-2 font-medium">Photo (optional)</Text>
+        {image ? (
+          <View className="mb-5">
+            <Image
+              source={{ uri: image }}
+              className="w-full rounded-2xl"
+              style={{ height: 200 }}
+              resizeMode="cover"
+            />
+            <Pressable
+              onPress={() => setImage(null)}
+              className="absolute top-2 right-2 bg-black/70 rounded-full p-2"
+            >
+              <Ionicons name="close" size={18} color="#fff" />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={pickImage}
+            className="border border-dashed border-border rounded-2xl py-6 items-center mb-5 active:border-icon-500"
+          >
+            <Ionicons name="image-outline" size={26} color="#8b8ba3" />
+            <Text className="text-muted text-sm mt-1.5">Attach a photo</Text>
+          </Pressable>
         )}
 
         <Button title="Post Question" onPress={submit} loading={busy} />

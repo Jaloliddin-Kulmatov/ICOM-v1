@@ -1,8 +1,24 @@
 import React from "react";
-import { Redirect, Tabs } from "expo-router";
+import { Pressable, View } from "react-native";
+import { Redirect, router, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { LoadingScreen } from "@/components/ui";
+
+// Search + AI assistant are reachable from every tab's header, mirroring the
+// web app's global search bar and floating AI widget.
+function HeaderActions() {
+  return (
+    <View style={{ flexDirection: "row", marginRight: 12 }}>
+      <Pressable onPress={() => router.push("/search")} style={{ padding: 6 }}>
+        <Ionicons name="search" size={21} color="#a8a8ff" />
+      </Pressable>
+      <Pressable onPress={() => router.push("/ai")} style={{ padding: 6, marginLeft: 4 }}>
+        <Ionicons name="sparkles" size={21} color="#a8a8ff" />
+      </Pressable>
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
@@ -16,6 +32,7 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: "#0d0d1a" },
         headerTintColor: "#ffffff",
         headerTitleStyle: { fontWeight: "600" },
+        headerRight: () => <HeaderActions />,
         tabBarStyle: {
           backgroundColor: "#0d0d1a",
           borderTopColor: "#26263a",
@@ -53,11 +70,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="ai"
+        name="community"
         options={{
-          title: "AI",
-          headerTitle: "AI Assistant",
-          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" size={size} color={color} />,
+          title: "Community",
+          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
