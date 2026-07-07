@@ -67,12 +67,8 @@ SKIP = {(5, 7)}
 
 
 def uz_size_cp(k_pt):
-    """Uzbek size in centipoints, sized as a subtitle relative to Korean pt."""
-    if k_pt >= 100:
-        uz = 34.0
-    else:
-        uz = max(18.0, round(k_pt * 0.62))
-    return int(round(uz * 100))
+    """Uzbek subtitle size in centipoints — fixed at 28pt for all lines."""
+    return 2800
 
 
 def set_typeface(rpr, name):
@@ -123,7 +119,7 @@ def build_uz_paragraph(src_p, uz_text, uz_cp):
     if ppr is None:
         ppr = etree.Element(a("pPr"))
         p.insert(0, ppr)
-    insert_spc_before(ppr, int(uz_cp * 0.30))
+    insert_spc_before(ppr, int(uz_cp * 0.18))
     return p
 
 
