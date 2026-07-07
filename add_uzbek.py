@@ -123,6 +123,69 @@ def build_uz_paragraph(src_p, uz_text, uz_cp):
     return p
 
 
+EMU_IN = 914400
+EMU_PT = 12700
+
+# slide index -> (pink-bar shape id, instruction text-box shape id)
+BAR_MAP = {
+    3: (21, 23), 4: (21, 23),
+    8: (16, 17), 9: (15, 16), 10: (15, 16), 11: (15, 16),
+    12: (28, 29), 13: (17, 18), 15: (16, 30),
+}
+
+
+def _line_h_pt(p, default_size=28.0):
+    size = p.runs[0].font.size.pt if (p.runs and p.runs[0].font.size) else default_size
+    ls = 1.0
+    ppr = p._p.find(a("pPr"))
+    if ppr is not None:
+        l = ppr.find(a("lnSpc"))
+        if l is not None:
+            pct = l.find(a("spcPct"))
+            if pct is not None:
+                ls = int(pct.get("val")) / 100000.0
+    return size * 1.2 * ls
+
+
+def _spc_bef_pt(p):
+    ppr = p._p.find(a("pPr"))
+    if ppr is not None:
+        s = ppr.find(a("spcBef"))
+        if s is not None:
+            pts = s.find(a("spcPts"))
+            if pts is not None:
+                return int(pts.get("val")) / 100.0
+    return 0.0
+
+
+def resize_bars(prs):
+    """Grow each pink bar downward so it covers the Korean line + Uzbek subtitle."""
+    pad = int(0.18 * EMU_IN)
+    slides = list(prs.slides)
+    for si, (bar_id, txt_id) in BAR_MAP.items():
+        slide = slides[si - 1]
+        bar = txt = None
+        for sh in slide.shapes:
+            if sh.shape_id == bar_id:
+                bar = sh
+            elif sh.shape_id == txt_id:
+                txt = sh
+        if bar is None or txt is None:
+            print(f"  !! slide {si}: bar/text not found")
+            continue
+        bp = txt._element.find(".//" + a("bodyPr"))
+        tins = int(bp.get("tIns")) if (bp is not None and bp.get("tIns")) else 45720
+        content_h_pt = 0.0
+        for p in txt.text_frame.paragraphs:
+            content_h_pt += _line_h_pt(p) + _spc_bef_pt(p)
+        content_bottom = txt.top + tins + int(content_h_pt * EMU_PT)
+        new_h = content_bottom + pad - bar.top
+        if new_h > bar.height:
+            old = bar.height
+            bar.height = int(new_h)
+            print(f"  slide {si}: bar h {old/EMU_IN:.2f}\" -> {bar.height/EMU_IN:.2f}\"")
+
+
 def main():
     prs = Presentation("presentation.pptx")
     added = 0
@@ -155,6 +218,8 @@ def main():
         for m in sorted(missing):
             print("   ", repr(m))
     print(f"Added {added} Uzbek lines.")
+    print("Resizing pink bars to cover both lines:")
+    resize_bars(prs)
     prs.save("presentation_uz.pptx")
     print("Saved presentation_uz.pptx")
 
