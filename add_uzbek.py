@@ -42,7 +42,7 @@ TR = {
     "딱지치기": "Ddakji o'yini (Ddakjichigi)",
     "가위바위보 하기": "Tosh-qaychi-qog'oz o'ynash",
     "진 사람: 딱지 내려놓기": "Yutqazgan o'yinchi: ddakjisini yerga qo'yadi",
-    "이긴 사람: 내 딱지로 상대의 딱지 내려치기": "Yutgan o'yinchi: o'z ddakjisi bilan raqib ddakjisiga uradi",
+    "이긴 사람: 내 딱지로 상대의 딱지 내려치기": "Yutgan o'yinchi: ddakjisi bilan raqibnikiga uradi",
     "바닥에 놓인 상대방의 딱지를 내 딱지로 쳐서 뒤집거나 선 밖으로 밀어내는 놀이":
         "Yerda turgan raqib ddakjisini o'z ddakjing bilan urib ag'darish yoki chiziqdan tashqariga chiqarish o'yini",
     "상대 딱지가 뒤집어지거나, 바람에 넘어가면 그 딱지를 획득!":
@@ -108,11 +108,13 @@ def build_uz_paragraph(src_p, uz_text, uz_cp):
     for attr in ("err", "spc"):
         if attr in rpr.attrib:
             del rpr.attrib[attr]
+    rpr.set("cap", "none")  # template's own Uzbek (slide 5) is mixed-case, not all-caps
     set_typeface(rpr, UZ_FONT)
     # style endParaRPr to match, if present
     epr = p.find(a("endParaRPr"))
     if epr is not None:
         epr.set("sz", str(uz_cp))
+        epr.set("cap", "none")
         set_typeface(epr, UZ_FONT)
     # a little breathing room above the Uzbek line
     ppr = p.find(a("pPr"))
@@ -126,12 +128,69 @@ def build_uz_paragraph(src_p, uz_text, uz_cp):
 EMU_IN = 914400
 EMU_PT = 12700
 
-# slide index -> (pink-bar shape id, instruction text-box shape id)
-BAR_MAP = {
-    3: (21, 23), 4: (21, 23),
-    8: (16, 17), 9: (15, 16), 10: (15, 16), 11: (15, 16),
-    12: (28, 29), 13: (17, 18), 15: (16, 30),
+# Wide single-line instruction bars: slide -> list of (bar id, text id).
+# These grow downward in place to cover the Korean line + Uzbek subtitle.
+WIDE_BARS = {
+    8: [(16, 17)], 9: [(15, 16)], 10: [(15, 16)], 11: [(15, 16)],
+    12: [(24, 25), (28, 29)], 13: [(17, 18)], 15: [(16, 30)],
 }
+
+# Stacked item bars (menu/quiz rows). Each column is resized + re-stacked so
+# every bar fully covers its text. items = list of (chip id, bar id, text id)
+# top-to-bottom; band = (top_in, bottom_in) vertical range to lay them out in.
+ITEM_COLUMNS = {
+    2: [
+        {"band": (7.10, 13.45), "items": [(15, 14, 23), (17, 16, 24)]},
+        {"band": (7.10, 13.45), "items": [(19, 18, 25), (21, 20, 26)]},
+    ],
+    3: [{"band": (6.75, 13.55), "items": [(16, 15, 19), (18, 17, 20), (22, 21, 23)]}],
+    4: [{"band": (6.75, 13.55), "items": [(16, 15, 19), (18, 17, 20), (22, 21, 23)]}],
+    12: [{"band": (6.20, 11.90), "items": [(16, 15, 21), (18, 17, 22), (20, 19, 23)]}],
+    16: [{"band": (7.05, 13.55), "items": [(15, 14, 19), (17, 16, 20)]}],
+}
+
+
+def _char_frac(ch):
+    if ch == " ":
+        return 0.28
+    if "가" <= ch <= "힣" or ord(ch) > 0x2E00:  # CJK / wide
+        return 1.0
+    if ch.isupper():
+        return 0.62
+    return 0.50
+
+
+def est_lines(text, pt, avail_emu):
+    if avail_emu <= 0:
+        return 1
+    w = sum(_char_frac(c) for c in text) * pt * EMU_PT
+    import math as _m
+    return max(1, _m.ceil(w / avail_emu))
+
+
+def _find(slide, sid):
+    for sh in slide.shapes:
+        if sh.shape_id == sid:
+            return sh
+    return None
+
+
+def _tins(txt):
+    bp = txt._element.find(".//" + a("bodyPr"))
+    return int(bp.get("tIns")) if (bp is not None and bp.get("tIns")) else 45720
+
+
+def _content_h_emu(txt, avail_emu):
+    """Estimated rendered height of all paragraphs, accounting for wrapping."""
+    total = 0.0
+    for p in txt.text_frame.paragraphs:
+        t = "".join(r.text for r in p.runs)
+        if not t.strip():
+            continue
+        pt = p.runs[0].font.size.pt if (p.runs and p.runs[0].font.size) else 28.0
+        nlines = est_lines(t, pt, avail_emu)
+        total += _line_h_pt(p) * nlines + _spc_bef_pt(p)
+    return int(total * EMU_PT)
 
 
 def _line_h_pt(p, default_size=28.0):
@@ -158,32 +217,78 @@ def _spc_bef_pt(p):
     return 0.0
 
 
-def resize_bars(prs):
-    """Grow each pink bar downward so it covers the Korean line + Uzbek subtitle."""
+def grow_wide_bars(prs):
+    """Grow each wide instruction bar downward to cover Korean line + Uzbek."""
     pad = int(0.18 * EMU_IN)
     slides = list(prs.slides)
-    for si, (bar_id, txt_id) in BAR_MAP.items():
+    for si, pairs in WIDE_BARS.items():
         slide = slides[si - 1]
-        bar = txt = None
-        for sh in slide.shapes:
-            if sh.shape_id == bar_id:
-                bar = sh
-            elif sh.shape_id == txt_id:
-                txt = sh
-        if bar is None or txt is None:
-            print(f"  !! slide {si}: bar/text not found")
-            continue
-        bp = txt._element.find(".//" + a("bodyPr"))
-        tins = int(bp.get("tIns")) if (bp is not None and bp.get("tIns")) else 45720
-        content_h_pt = 0.0
-        for p in txt.text_frame.paragraphs:
-            content_h_pt += _line_h_pt(p) + _spc_bef_pt(p)
-        content_bottom = txt.top + tins + int(content_h_pt * EMU_PT)
-        new_h = content_bottom + pad - bar.top
-        if new_h > bar.height:
-            old = bar.height
-            bar.height = int(new_h)
-            print(f"  slide {si}: bar h {old/EMU_IN:.2f}\" -> {bar.height/EMU_IN:.2f}\"")
+        for bar_id, txt_id in pairs:
+            bar, txt = _find(slide, bar_id), _find(slide, txt_id)
+            if bar is None or txt is None:
+                print(f"  !! S{si}: wide bar {bar_id}/{txt_id} not found")
+                continue
+            # widen the text box to the bar width (centered) to minimise wraps
+            margin = int(0.30 * EMU_IN)
+            new_w = bar.width - 2 * margin
+            if new_w > txt.width:
+                txt.left = bar.left + margin
+                txt.width = new_w
+            content_bottom = txt.top + _tins(txt) + _content_h_emu(txt, txt.width)
+            new_h = content_bottom + pad - bar.top
+            if new_h > bar.height:
+                old = bar.height
+                bar.height = int(new_h)
+                print(f"  S{si} wide bar {bar_id}: {old/EMU_IN:.2f}\" -> {bar.height/EMU_IN:.2f}\"")
+
+
+def layout_item_columns(prs):
+    """Resize and re-stack stacked menu/quiz bars so each covers its text.
+
+    All columns on a slide share one bar height and one set of row positions,
+    so multi-column grids (slide 2) stay symmetric and aligned.
+    """
+    pad = int(0.18 * EMU_IN)
+    min_gap = int(0.22 * EMU_IN)
+    slides = list(prs.slides)
+    for si, cols in ITEM_COLUMNS.items():
+        slide = slides[si - 1]
+        band_top = int(cols[0]["band"][0] * EMU_IN)
+        band_bot = int(cols[0]["band"][1] * EMU_IN)
+        band_h = band_bot - band_top
+        n = max(len(c["items"]) for c in cols)
+
+        # Resolve shapes, widen text boxes to bar width, measure content heights.
+        col_data = []
+        all_heights = []
+        for col in cols:
+            triples = []
+            for (c, b, t) in col["items"]:
+                chip, bar, txt = _find(slide, c), _find(slide, b), _find(slide, t)
+                right = bar.left + bar.width
+                new_w = right - txt.left - int(0.28 * EMU_IN)
+                if new_w > txt.width:
+                    txt.width = int(new_w)
+                h = _content_h_emu(txt, txt.width)
+                triples.append((chip, bar, txt, h))
+                all_heights.append(h)
+            col_data.append(triples)
+
+        bar_h = max(all_heights) + 2 * pad
+        gap = (band_h - n * bar_h) // (n + 1)
+        if gap < min_gap:
+            gap = min_gap
+            bar_h = (band_h - (n + 1) * gap) // n
+
+        # Shared row Y positions for every column.
+        row_tops = [band_top + gap + i * (bar_h + gap) for i in range(n)]
+        for triples in col_data:
+            for (chip, bar, txt, ch_h), y in zip(triples, row_tops):
+                bar.top = y
+                bar.height = bar_h
+                txt.top = max(y + pad // 2, y + (bar_h - ch_h) // 2 - _tins(txt))
+                chip.top = y + (bar_h - chip.height) // 2
+                print(f"  S{si} bar {bar.shape_id}: top={y/EMU_IN:.2f}\" h={bar_h/EMU_IN:.2f}\"")
 
 
 def main():
@@ -218,8 +323,10 @@ def main():
         for m in sorted(missing):
             print("   ", repr(m))
     print(f"Added {added} Uzbek lines.")
-    print("Resizing pink bars to cover both lines:")
-    resize_bars(prs)
+    print("Growing wide instruction bars:")
+    grow_wide_bars(prs)
+    print("Laying out stacked item bars:")
+    layout_item_columns(prs)
     prs.save("presentation_uz.pptx")
     print("Saved presentation_uz.pptx")
 
