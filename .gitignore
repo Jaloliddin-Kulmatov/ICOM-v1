@@ -38,3 +38,6 @@ tsconfig.tsbuildinfo
 research-assistant/
 voice-mimic/
 .claude/launch.json
+
+# Uploaded/generated PowerPoint sources
+original.pptx
