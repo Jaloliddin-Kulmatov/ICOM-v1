@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Replace Russian text in the image-based PPT PDF with Uzbek, in place."""
 import fitz
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 SRC = "/root/.claude/uploads/ead49f86-ec02-5b16-9488-d5bdecb1bd09/7172c359-________________PPT.pdf"
@@ -73,6 +74,34 @@ def cover(img, b, color):
     ImageDraw.Draw(img).rectangle([b[0], b[1], b[2], b[3]], fill=color)
 
 
+def cover_pill(img, b, color, tol=22):
+    """Repaint the pill's real (rounded) shape, covering all text but never
+    painting past its edges.
+
+    Detects the contiguous pill-colored region around box b and refills it as a
+    rounded rectangle, so the original text (even 2 lines) is fully covered while
+    the rounded corners and card border stay intact.
+    """
+    arr = np.asarray(img)
+    H, W = arr.shape[:2]
+    x0 = max(0, int(b[0]) - 80); y0 = max(0, int(b[1]) - 60)
+    x1 = min(W, int(b[2]) + 80); y1 = min(H, int(b[3]) + 60)
+    win = arr[y0:y1, x0:x1].astype(int)
+    c = np.array(color)
+    mask = (np.abs(win - c).max(axis=2) <= tol)
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 50:
+        cover(img, b, color)  # fallback
+        return
+    bx0, bx1 = x0 + xs.min() + 2, x0 + xs.max() - 2
+    by0, by1 = y0 + ys.min() + 2, y0 + ys.max() - 2
+    if bx1 <= bx0 or by1 <= by0:
+        cover(img, b, color)
+        return
+    radius = int(min(34, (by1 - by0) / 2 - 1))
+    ImageDraw.Draw(img).rounded_rectangle([bx0, by0, bx1, by1], radius=radius, fill=color)
+
+
 # op = (bg_color, box, text, text_color, fontpath, align, max_disp, wrap)
 PAGES = {
     1: [
@@ -101,7 +130,7 @@ PAGES = {
         (P_BLUE, box(72, 496, 440, 560), "an'anaviy o'yinlar", WHITE, REG, "center", 30, False),
         (P_ORNG, box(1064, 496, 1440, 560), "taekvondo", WHITE, REG, "center", 34, False),
         (P_TEAL, box(1564, 486, 1940, 560), "koreys tili", WHITE, REG, "center", 34, False),
-        (WHITE, box(482, 904, 1620, 978), "Oxirgi kuni siz bilan birga sahnada chiqish qilaman.", FOOT, REG, "center", 40, True),
+        (WHITE, box(482, 904, 1620, 978), "Oxirgi kuni siz bilan birga sahnada chiqamiz.", FOOT, REG, "center", 40, True),
     ],
     6: [
         (WHITE, box(280, 516, 1740, 684), "Uchrashuvdan xursandman", BLUE, BOLD, "center", 105, False),
@@ -117,7 +146,10 @@ def main():
         pix = page.get_pixmap(matrix=fitz.Matrix(SCALE, SCALE))
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
         for (bg, b, text, color, fp, align, mx, wr) in PAGES.get(i + 1, []):
-            cover(img, b, bg)
+            if bg == WHITE:
+                cover(img, b, bg)
+            else:  # colored pill: clip fill to the pill's rounded shape
+                cover_pill(img, b, bg)
             sz = draw_fitted(img, b, text, color, fp, align, mx, wr)
             if sz == 0:
                 print(f"  !! page{i+1}: '{text[:20]}' did not fit")
