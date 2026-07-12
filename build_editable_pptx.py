@@ -12,7 +12,9 @@ from pptx.dml.color import RGBColor
 import translate_pdf as T
 
 EMU_PER_DISP = 9144          # 20in slide / 2000 display units * 914400
-FONT = "Arial"              # widely available + editable; user can restyle
+# Rounded bold for titles/headings/body to match the deck; plain for the rest.
+FONT_BOLD = "Arial Rounded MT Bold"
+FONT_REG = "Arial"
 
 
 def to_disp(b):
@@ -80,9 +82,10 @@ def main():
             run = p.add_run()
             run.text = text
             f = run.font
-            f.size = Pt(round(pt))
-            f.bold = (fp == T.BOLD)
-            f.name = FONT
+            is_bold = (fp == T.BOLD)
+            f.size = Pt(round(pt * (0.92 if is_bold else 1.0)))  # rounded bold is wider
+            f.bold = is_bold
+            f.name = FONT_BOLD if is_bold else FONT_REG
             f.color.rgb = RGBColor(*color)
     prs.save("PPT_uzbek_editable.pptx")
     print("saved PPT_uzbek_editable.pptx with", len(bgs), "slides")
