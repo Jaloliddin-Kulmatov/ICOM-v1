@@ -186,9 +186,9 @@ export default function NearbyPlaces() {
   return (
     <section id="nearby" className="space-y-5">
       {/* ── Header card ─────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-gradient-to-br from-indigo-500/5 to-violet-500/5 p-5 sm:p-6">
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-indigo-500/5 to-indigo-600/5 p-5 sm:p-6">
         <div className="flex items-start gap-4 flex-col sm:flex-row sm:items-center">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
             <MapPin size={20} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">

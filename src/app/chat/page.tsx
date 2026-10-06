@@ -360,7 +360,7 @@ export default function ChatPage() {
                   </button>
                 )}
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {p.author_name[0]?.toUpperCase() || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -499,7 +499,7 @@ function ComposerModal({
         className="w-full max-w-xl bg-card border border-border sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-indigo-500/10 to-indigo-600/10">
           <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Plus size={15} className="text-indigo-500" /> Ask a question
           </h2>

@@ -121,7 +121,7 @@ interface Member {
 }
 
 const AVATAR_GRADIENTS = [
-  "from-indigo-500 to-violet-600",
+  "from-indigo-500 to-indigo-700",
   "from-emerald-500 to-cyan-600",
   "from-rose-500 to-pink-600",
   "from-amber-500 to-orange-500",

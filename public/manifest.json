@@ -1,21 +1,81 @@
 {
   "name": "ICOM — International Community in Korea",
   "short_name": "ICOM",
-  "description": "The Operating System for International Students in Korea. Community, jobs, visa guidance, and AI support.",
+  "description": "Community, internships, visa guides and daily-life help for international students in Korea.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#050508",
-  "theme_color": "#6366f1",
-  "categories": ["education", "social", "lifestyle"],
+  "background_color": "#fbfbf8",
+  "theme_color": "#00994a",
+  "categories": [
+    "education",
+    "social",
+    "lifestyle"
+  ],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "/logo.svg",     "sizes": "any",     "type": "image/svg+xml" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
   ],
   "screenshots": [
-    { "src": "/icom-qr.png", "sizes": "1080x1080", "type": "image/png", "form_factor": "narrow" }
+    {
+      "src": "/icom-qr.png",
+      "sizes": "1080x1080",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ask the community",
+      "url": "/chat",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Guide",
+      "url": "/guide",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Internships",
+      "url": "/internships",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

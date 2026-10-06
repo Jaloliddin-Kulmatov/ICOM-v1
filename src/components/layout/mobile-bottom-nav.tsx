@@ -7,17 +7,19 @@ import {
   Users,
   Briefcase,
   MessageSquare,
-  UserCircle2,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
+// Guide (visa, ARC, housing, daily life) is a first-class tab on phones.
+// Profile lives behind the avatar in the top bar.
 const tabs = [
-  { href: "/dashboard",              icon: LayoutDashboard, label: "Home"        },
-  { href: "/community",              icon: Users,           label: "Clubs"       },
-  { href: "/chat",                   icon: MessageSquare,   label: "Chat"        },
-  { href: "/internships",                   icon: Briefcase,       label: "Internships" },
-  { href: "/dashboard/profile",      icon: UserCircle2,     label: "Profile"     },
+  { href: "/dashboard",   icon: LayoutDashboard, label: "Home"  },
+  { href: "/chat",        icon: MessageSquare,   label: "Chat"  },
+  { href: "/guide",       icon: Compass,         label: "Guide" },
+  { href: "/internships", icon: Briefcase,       label: "Jobs"  },
+  { href: "/community",   icon: Users,           label: "Clubs" },
 ];
 
 export default function MobileBottomNav() {

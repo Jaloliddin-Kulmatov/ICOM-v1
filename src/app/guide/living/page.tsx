@@ -4,6 +4,7 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import NearbyPlaces from "@/components/daily-life/nearby-places";
 import {
+  ArrowLeft,
   Train, ShoppingBag, Wifi,
   Smartphone, DollarSign, Heart,
   Sparkles, Users, ArrowRight, ExternalLink, Sun,
@@ -69,8 +70,12 @@ export default function DailyLifePage() {
       <main className="pt-16 pb-24 md:pb-0">
 
         {/* Hero — compact */}
-        <div className="border-b border-border bg-gradient-to-b from-indigo-950/15 to-transparent">
+        <div className="border-b border-border bg-gradient-to-b from-indigo-500/[0.06] to-transparent">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12 text-center">
+            <Link href="/guide" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors">
+              <ArrowLeft size={13} /> Back to Guide
+            </Link>
+            <br />
             <Badge variant="default" className="mb-3 text-xs px-3 py-1 gap-1.5">
               <Heart size={11} className="text-rose-400" /> Life in Korea
             </Badge>
@@ -166,11 +171,11 @@ export default function DailyLifePage() {
           </Section>
 
           {/* ── CTA ───────────────────────────────────────────── */}
-          <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/8 to-violet-500/5 p-7 text-center">
+          <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/8 to-indigo-600/5 p-7 text-center">
             <p className="text-base font-bold text-foreground mb-1">Have a specific question?</p>
             <p className="text-muted-foreground text-xs mb-5">Our AI and student community are here 24/7.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
-              <Link href="/dashboard/ai" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+              <Link href="/dashboard/ai" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-700 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
                 <Sparkles size={14} /> Ask AI <ArrowRight size={13} />
               </Link>
               <Link href="/community" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors">

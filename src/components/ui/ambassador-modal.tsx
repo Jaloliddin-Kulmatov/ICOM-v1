@@ -160,7 +160,7 @@ export default function AmbassadorModal({ onClose }: Props) {
             </div>
 
             {error && <p className="text-xs text-red-400 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">{error}</p>}
-            <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+            <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-700 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Star size={15} />}
               Submit Application
             </button>

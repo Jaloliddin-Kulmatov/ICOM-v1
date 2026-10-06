@@ -16,6 +16,12 @@ bcrypt = Bcrypt()
 def create_app():
     app = Flask(__name__)
 
+    # In production, refuse to boot with the public fallback secrets: anyone
+    # could forge login tokens with them.
+    if os.environ.get("FLASK_ENV") == "production":
+        missing = [k for k in ("SECRET_KEY", "JWT_SECRET_KEY") if not os.environ.get(k)]
+        if missing:
+            raise RuntimeError(f"Missing required env vars in production: {', '.join(missing)}")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-change-me")
     # Render gives postgres:// but SQLAlchemy needs postgresql://
@@ -121,10 +127,8 @@ def create_app():
     with app.app_context():
         db.create_all()
         _run_lightweight_migrations()
-        _seed_communities()
-        _seed_university_clubs()
-        _seed_chat_threads()
-        _seed_jeonju_jobs()
+        if _startup_tasks_enabled():
+            _seed_all()
 
     # NOTE: the background scheduler is started once at module load via
     # _start_scheduler(app) at the bottom of this file (the canonical
@@ -133,6 +137,22 @@ def create_app():
     # spinning up a second, duplicate scheduler on every boot.
 
     return app
+
+
+def _startup_tasks_enabled() -> bool:
+    """Seeding and translation used to run on every boot, which made cold
+    starts on free hosting slow enough to time out. In production set
+    STARTUP_TASKS=0 and run `python bootstrap.py` once (Render does it in the
+    build step). Local development keeps the old behaviour by default."""
+    return os.environ.get("STARTUP_TASKS", "1") != "0"
+
+
+def _seed_all():
+    """Idempotent seeds: safe to run on every deploy."""
+    _seed_communities()
+    _seed_university_clubs()
+    _seed_chat_threads()
+    _seed_jeonju_jobs()
 
 
 def _run_lightweight_migrations():
@@ -861,13 +881,14 @@ def _cleanup_expired_jobs(flask_app):
             print(f"[cleanup] failed: {e}")
 
 
-# Run once at boot so legacy expired jobs disappear immediately on next deploy.
-_cleanup_expired_jobs(app)
+if _startup_tasks_enabled():
+    # Run once at boot so legacy expired jobs disappear immediately on next deploy.
+    _cleanup_expired_jobs(app)
 
-# Translate any remaining Korean-language job rows to English on every boot.
-# The seeder already writes English for Jeonju jobs; this catches Wanted-scraped
-# rows that were inserted before the translation pipeline existed.
-_translate_pending_jobs(app)
+    # Translate any remaining Korean-language job rows to English on every boot.
+    # The seeder already writes English for Jeonju jobs; this catches Wanted-scraped
+    # rows that were inserted before the translation pipeline existed.
+    _translate_pending_jobs(app)
 
 
 def _seed_notices_if_empty(flask_app):
@@ -889,7 +910,8 @@ def _seed_notices_if_empty(flask_app):
     threading.Thread(target=_worker, daemon=True, name="jbnu-initial-seed").start()
 
 
-_seed_notices_if_empty(app)
+if _startup_tasks_enabled():
+    _seed_notices_if_empty(app)
 
 
 # ── Background scheduler ─────────────────────────────────────────────────────

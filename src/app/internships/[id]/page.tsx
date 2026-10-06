@@ -159,7 +159,7 @@ export default function JobDetailPage() {
             </Link>
 
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-border flex items-center justify-center text-xl font-bold text-foreground shrink-0">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-border flex items-center justify-center text-xl font-bold text-foreground shrink-0">
                 {job.company[0]}
               </div>
               <div className="flex-1 min-w-0">

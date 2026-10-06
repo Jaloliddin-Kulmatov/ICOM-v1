@@ -51,9 +51,10 @@ const sidebarSections = [
   {
     label: "Resources",
     links: [
-      { href: "/support", icon: Globe, label: "Life in Korea" },
-      { href: "/support/visa", icon: FileText, label: "Visa Guides" },
-      { href: "/support/faq", icon: HelpCircle, label: "FAQ" },
+      { href: "/guide", icon: Globe, label: "Guide" },
+      { href: "/guide/living", icon: Globe, label: "Daily Life" },
+      { href: "/guide/visa", icon: FileText, label: "Visa Guides" },
+      { href: "/guide/faq", icon: HelpCircle, label: "FAQ" },
     ],
   },
   {

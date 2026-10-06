@@ -20,7 +20,7 @@ export default function CtaSection() {
   return (
     <section className="py-24 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
-        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/50 to-violet-950/50 p-10 sm:p-16 text-center">
+        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.06] to-transparent p-10 sm:p-16 text-center">
           {/* Background glow */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-indigo-500/10 blur-3xl" />

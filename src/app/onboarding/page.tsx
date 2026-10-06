@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import LogoMark from "@/components/ui/logo-mark";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Globe, FileText, ArrowRight, Loader2, CheckCircle2, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -109,10 +110,8 @@ export default function OnboardingPage() {
         {/* Brand row + sign-out escape hatch */}
         <div className="flex items-center justify-between mb-6">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-              <span className="text-white font-black text-sm">IC</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">ICOM<span className="text-indigo-500">.</span></span>
+            <LogoMark className="w-9 h-9" />
+            <span className="text-xl font-bold text-foreground">ICOM</span>
           </Link>
           <button
             onClick={() => { logout(); router.push("/"); }}

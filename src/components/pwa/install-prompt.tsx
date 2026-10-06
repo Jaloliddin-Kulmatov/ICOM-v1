@@ -118,7 +118,7 @@ export default function InstallPrompt() {
       >
         <div className="relative bg-card/95 backdrop-blur-xl border border-border rounded-3xl shadow-2xl shadow-black/20 overflow-hidden">
           {/* Gradient accent strip */}
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-indigo-600 to-indigo-500" />
 
           {/* Drag handle (mobile affordance) */}
           <div className="md:hidden flex justify-center pt-2.5">

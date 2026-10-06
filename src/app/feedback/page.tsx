@@ -80,7 +80,7 @@ export default function FeedbackPage() {
             {[
               { icon: Heart, label: "What you love", color: "from-pink-500 to-rose-600" },
               { icon: Bug, label: "Bug report", color: "from-orange-500 to-red-600" },
-              { icon: Sparkles, label: "Feature idea", color: "from-indigo-500 to-violet-600" },
+              { icon: Sparkles, label: "Feature idea", color: "from-indigo-500 to-indigo-700" },
             ].map((s) => (
               <button
                 key={s.label}

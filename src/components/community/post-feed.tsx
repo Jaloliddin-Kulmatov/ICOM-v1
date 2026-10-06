@@ -67,7 +67,7 @@ function CommentItem({
       <div className="flex gap-2 items-start">
         <div className={`rounded-lg bg-gradient-to-br ${
           comment.user_id === currentUserId
-            ? "from-indigo-500 to-violet-600"
+            ? "from-indigo-500 to-indigo-700"
             : "from-slate-400 to-slate-600"
         } flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5 ${
           indent ? "w-5 h-5" : "w-6 h-6"
@@ -218,7 +218,7 @@ function PostComments({ postId }: { postId: number }) {
             </div>
           )}
           <div className={`flex items-center gap-2 ${replyTo ? "ml-8" : ""}`}>
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
               {user.name?.[0]?.toUpperCase() || "?"}
             </div>
             <input
@@ -262,7 +262,7 @@ function PostCard({ post, currentUserId, onDelete }: {
 
   const avatarLetter = label[0]?.toUpperCase() ?? "?";
   const gradients: Record<string, string> = {
-    university: "from-indigo-500 to-violet-600",
+    university: "from-indigo-500 to-indigo-700",
     club: "from-emerald-500 to-cyan-600",
     community: "from-violet-500 to-purple-600",
     user: "from-slate-500 to-slate-700",

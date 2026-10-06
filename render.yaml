@@ -1,48 +1,42 @@
+# Backend only. The frontend is deployed on Vercel (see vercel.json) and the
+# database is Neon Postgres (free tier), connected through DATABASE_URL.
 services:
-  # ── Flask Backend ─────────────────────────────────────────────
   - type: web
     name: icom-backend
     runtime: python
+    region: singapore          # closest Render region to Korea
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
     plan: free
+    # bootstrap.py creates tables and seeds data once per deploy, so the web
+    # process itself starts fast (free instances sleep and cold-start often).
+    buildCommand: pip install -r requirements-render.txt && python bootstrap.py
+    # One worker keeps APScheduler from running twice; threads handle concurrency.
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.9
       - key: FLASK_ENV
         value: production
+      - key: STARTUP_TASKS
+        value: "0"
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: GROQ_API_KEY
-        sync: false          # you fill this in the Render dashboard
-      - key: SARAMIN_API_KEY
-        sync: false          # optional — free key from https://oapi.saramin.co.kr enables the Saramin scraper
-      - key: FRONTEND_URL
-        sync: false          # set to your frontend Render URL after deploying
       - key: DATABASE_URL
-        fromDatabase:
-          name: icom-db
-          property: connectionString
-
-  # ── Next.js Frontend ──────────────────────────────────────────
-  - type: web
-    name: icom-frontend
-    runtime: node
-    buildCommand: npm install && npm run build
-    startCommand: node_modules/.bin/next start -H 0.0.0.0 -p $PORT
-    plan: free
-    envVars:
-      - key: NODE_VERSION
-        value: 20.11.0
-      - key: NEXT_PUBLIC_API_URL
-        sync: false          # set to your backend Render URL after deploying
-
-# ── PostgreSQL Database ───────────────────────────────────────
-databases:
-  - name: icom-db
-    plan: free
-    databaseName: icom
-    user: icom
+        sync: false          # Neon connection string (postgresql://...?sslmode=require)
+      - key: FRONTEND_URL
+        sync: false          # https://icom.ai.kr,https://www.icom.ai.kr
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SCRAPER_SECRET
+        sync: false          # same value as the ICOM_API_URL/SCRAPER_SECRET GitHub secrets
+      - key: ADMIN_SECRET
+        sync: false
+      - key: SARAMIN_API_KEY
+        sync: false          # optional
+      - key: RESEND_API_KEY
+        sync: false          # optional: job-alert emails
+      - key: RESEND_FROM
+        sync: false          # optional

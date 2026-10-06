@@ -66,7 +66,7 @@ export default function UniversitiesPage() {
       <main className="pt-16">
 
         {/* Hero */}
-        <div className="border-b border-border bg-gradient-to-b from-indigo-950/30 via-violet-950/10 to-transparent dark:from-indigo-950/30 dark:via-violet-950/10">
+        <div className="border-b border-border bg-gradient-to-b from-indigo-500/[0.06] via-transparent to-transparent dark:from-indigo-500/[0.06] dark:via-transparent">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center">
             <Badge variant="violet" className="mb-4 text-xs px-3 py-1">University Network</Badge>
             <h1 className="text-4xl font-extrabold text-foreground mb-3">Korean Universities Guide</h1>
@@ -95,7 +95,7 @@ export default function UniversitiesPage() {
           {jbnuInFilter && <div className="mb-12 rounded-3xl border border-indigo-500/30 bg-card overflow-hidden shadow-sm">
             <div className="p-8">
               <div className="flex items-start gap-4 mb-6">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-lg shrink-0 shadow-[0_4px_20px_rgba(99,102,241,0.4)]">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-lg shrink-0 shadow-[0_4px_20px_rgba(0,153,74,0.4)]">
                   JB
                 </div>
                 <div className="flex-1">
@@ -258,7 +258,7 @@ export default function UniversitiesPage() {
           )}
 
           {/* Ambassador CTA */}
-          <div className="mt-12 relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-950/30 to-indigo-950/30 dark:from-violet-950/40 dark:to-indigo-950/40 p-8 text-center">
+          <div className="mt-12 relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-indigo-500/[0.06] to-transparent dark:from-indigo-500/[0.06] dark:to-transparent p-8 text-center">
             <Star size={28} className="text-violet-400/50 mx-auto mb-4" />
             <h2 className="text-lg font-bold text-foreground mb-2">Become an Ambassador</h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto mb-5">

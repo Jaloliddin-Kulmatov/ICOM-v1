@@ -18,7 +18,7 @@
 | AI | Groq API (llama-3.3-70b-versatile) |
 | Internship scraper | Wanted.co.kr API + Groq/Google Translate auto-translation, APScheduler (06:00 & 18:00 UTC) |
 | Database | SQLite (dev) → PostgreSQL (production) |
-| Deployment | Render.com |
+| Deployment | Vercel (frontend) · Render (API) · Neon (Postgres) |
 
 ---
 
@@ -76,111 +76,19 @@ npm run dev
 
 ---
 
-## Deploying to Render — Step by Step
+## Deploying (free tier)
 
-### Step 1 — Push to GitHub
+| Part | Service | Config |
+|---|---|---|
+| Frontend | Vercel (Hobby), Seoul region | `vercel.json` |
+| Backend | Render (Free), Singapore region | `render.yaml` |
+| Database | Neon Postgres (Free), AWS Singapore | `DATABASE_URL` |
 
-1. Create a new repo on [github.com](https://github.com/new)
-2. Run these commands in your project folder:
-```bash
-git init
-git add .
-git commit -m "initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/icom.git
-git push -u origin main
-```
-
----
-
-### Step 2 — Create a PostgreSQL Database on Render
-
-1. Go to [render.com](https://render.com) → Sign up / Log in
-2. Click **New +** → **PostgreSQL**
-3. Fill in:
-   - **Name:** `icom-db`
-   - **Database:** `icom`
-   - **User:** `icom`
-   - **Plan:** Free
-4. Click **Create Database**
-5. Wait ~1 minute, then copy the **Internal Database URL** — you'll need it in Step 3
-
----
-
-### Step 3 — Deploy the Flask Backend
-
-1. Click **New +** → **Web Service**
-2. Connect your GitHub repo
-3. Fill in these settings:
-
-| Field | Value |
-|---|---|
-| **Name** | `icom-backend` |
-| **Root Directory** | `backend` |
-| **Runtime** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120` |
-| **Plan** | Free |
-
-4. Scroll to **Environment Variables** and add:
-
-| Key | Value |
-|---|---|
-| `FLASK_ENV` | `production` |
-| `SECRET_KEY` | *(click Generate)* |
-| `JWT_SECRET_KEY` | *(click Generate)* |
-| `GROQ_API_KEY` | `your_groq_key_from_console.groq.com` |
-| `DATABASE_URL` | *(paste Internal Database URL from Step 2)* |
-| `FRONTEND_URL` | `https://icom-frontend.onrender.com` *(fill after Step 4)* |
-
-5. Click **Create Web Service**
-6. Wait for it to build (~3 min). Copy the URL — e.g. `https://icom-backend.onrender.com`
-
----
-
-### Step 4 — Deploy the Next.js Frontend
-
-1. Click **New +** → **Web Service**
-2. Connect same GitHub repo
-3. Fill in:
-
-| Field | Value |
-|---|---|
-| **Name** | `icom-frontend` |
-| **Root Directory** | *(leave empty)* |
-| **Runtime** | Node |
-| **Build Command** | `npm install && npm run build` |
-| **Start Command** | `npm start` |
-| **Plan** | Free |
-
-4. Add **Environment Variable**:
-
-| Key | Value |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://icom-backend.onrender.com/api` |
-
-5. Click **Create Web Service**
-6. Wait for build (~5 min). Your site is live at `https://icom-frontend.onrender.com`
-
----
-
-### Step 5 — Link backend to frontend
-
-1. Go back to your **icom-backend** service on Render
-2. Go to **Environment** tab
-3. Update `FRONTEND_URL` to `https://icom-frontend.onrender.com`
-4. Click **Save Changes** → Render auto-redeploys
-
----
-
-### Step 6 — Verify everything works
-
-Open your frontend URL and check:
-- ✅ Homepage loads
-- ✅ Register / Login works
-- ✅ Community clubs load
-- ✅ AI assistant responds
-- ✅ Jobs / Internships load
+1. **Database:** create a Neon project in AWS Singapore and copy its connection string (`postgresql://…?sslmode=require`).
+2. **Backend:** in Render choose *New → Blueprint* and point it at this repo. It reads `render.yaml`. Fill in `DATABASE_URL`, `FRONTEND_URL` (`https://icom.ai.kr,https://www.icom.ai.kr`), `GROQ_API_KEY`, `SCRAPER_SECRET` and `ADMIN_SECRET`. The build runs `python bootstrap.py`, which creates tables and seeds data, so the web process starts fast.
+3. **Frontend:** import the repo in Vercel and set `NEXT_PUBLIC_API_URL` (your Render URL + `/api`) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Point `icom.ai.kr` at Vercel in your DNS.
+4. **Scraper:** set the `ICOM_API_URL` and `SCRAPER_SECRET` GitHub secrets so `.github/workflows/scrape-jobs.yml` keeps adding internships twice a day.
+5. **Keep the API awake (optional):** free Render instances sleep after 15 minutes. A free uptime monitor hitting `/api/health` every 10 minutes keeps it warm.
 
 ---
 
@@ -193,12 +101,13 @@ SECRET_KEY=random_secret_here
 JWT_SECRET_KEY=random_jwt_secret_here
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
 DATABASE_URL=postgresql://user:pass@host/dbname
-FRONTEND_URL=https://icom-frontend.onrender.com
+FRONTEND_URL=https://icom.ai.kr,https://www.icom.ai.kr
+STARTUP_TASKS=0
 ```
 
 ### Frontend (`.env.local`)
 ```env
-NEXT_PUBLIC_API_URL=https://icom-backend.onrender.com/api
+NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api
 ```
 
 ---
@@ -213,9 +122,9 @@ icom/
 │   │   ├── chat/               # Community Q&A (All Korea + per-university chat)
 │   │   ├── jobs/               # Internships (list + detail)
 │   │   ├── community/          # Clubs & News
-│   │   ├── support/            # Guides (visa, housing, etc.)
+│   │   ├── guide/              # Guide: arrival checklist, visa, housing, banking…
+│   │   │   └── living/         # Daily life: places near you, restaurants, transport
 │   │   ├── universities/       # University directory
-│   │   ├── daily-life/         # Maps, restaurants, transport
 │   │   ├── admin/              # Admin panel (scraper controls, moderation)
 │   │   └── dashboard/          # User dashboard + AI chat
 │   ├── components/             # Shared UI components
@@ -265,11 +174,11 @@ icom/
 
 ## Common Issues
 
-**Backend sleeps on free tier** — Render's free tier spins down after 15 min of inactivity. First request takes ~30 seconds to wake up. Upgrade to Starter ($7/mo) to keep it always-on.
+**Backend sleeps on free tier** — Render's free tier spins down after 15 min of inactivity, so the first request takes a while. Use an uptime monitor on `/api/health`, or upgrade to a paid instance.
 
-**Database resets** — SQLite resets on every deploy. Use PostgreSQL (Step 2) to persist data.
+**Database resets** — SQLite resets on every deploy. Use Neon Postgres via `DATABASE_URL` to persist data.
 
-**CORS errors** — Make sure `FRONTEND_URL` in your backend env exactly matches your frontend Render URL (no trailing slash).
+**CORS errors** — Make sure `FRONTEND_URL` in your backend env matches your frontend URL exactly (no trailing slash).
 
 **Build fails** — Make sure `gunicorn` and `psycopg2-binary` are in `requirements.txt` (they are already included).
 

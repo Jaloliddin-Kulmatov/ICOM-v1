@@ -142,7 +142,7 @@ const CATEGORIES = ["All", "Visa", "Banking", "Insurance", "Housing", "Daily Lif
 function FAQItem({ faq }: { faq: FAQ }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`rounded-2xl border transition-all duration-200 ${open ? "border-indigo-500/30 bg-indigo-500/4" : "border-white/8 bg-white/3 hover:border-white/12"}`}>
+    <div className={`rounded-2xl border transition-all duration-200 ${open ? "border-indigo-500/30 bg-indigo-500/4" : "border-border bg-card hover:border-white/12"}`}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-start justify-between gap-4 px-5 py-4 text-left"
@@ -200,7 +200,7 @@ export default function FAQPage() {
       <Navbar />
       <main className="pt-16">
         {/* Header */}
-        <div className="border-b border-white/8 bg-gradient-to-b from-indigo-950/20 to-transparent">
+        <div className="border-b border-border bg-gradient-to-b from-indigo-500/[0.06] to-transparent">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 text-center">
             <Badge variant="default" className="mb-4 text-xs px-3 py-1">
               <MessageSquare size={10} className="mr-1" /> FAQ
@@ -231,7 +231,7 @@ export default function FAQPage() {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
                   category === cat
                     ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/25"
-                    : "border border-white/8 text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    : "border border-border text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
                 {cat}
@@ -244,7 +244,7 @@ export default function FAQPage() {
             ))}
             <button
               onClick={() => setOpenAll(!openAll)}
-              className="ml-auto px-3.5 py-1.5 rounded-xl text-xs font-medium border border-white/8 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+              className="ml-auto px-3.5 py-1.5 rounded-xl text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
             >
               {openAll ? "Collapse all" : "Expand all"}
             </button>
@@ -286,7 +286,7 @@ export default function FAQPage() {
           ))}
 
           {/* AI CTA */}
-          <div className="mt-8 p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 to-violet-950/40 text-center">
+          <div className="mt-8 p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/[0.06] to-transparent text-center">
             <Sparkles size={24} className="text-indigo-400 mx-auto mb-3" />
             <h3 className="text-sm font-semibold text-foreground mb-1">Still have a question?</h3>
             <p className="text-xs text-muted-foreground mb-4">
@@ -310,7 +310,7 @@ function OpenableFAQItem({ faq, forceOpen }: { faq: FAQ; forceOpen: boolean }) {
   const open = forceOpen || localOpen;
 
   return (
-    <div className={`rounded-2xl border transition-all duration-200 ${open ? "border-indigo-500/30 bg-indigo-500/4" : "border-white/8 bg-white/3 hover:border-white/12"}`}>
+    <div className={`rounded-2xl border transition-all duration-200 ${open ? "border-indigo-500/30 bg-indigo-500/4" : "border-border bg-card hover:border-white/12"}`}>
       <button
         onClick={() => setLocalOpen(!localOpen)}
         className="w-full flex items-start justify-between gap-4 px-5 py-4 text-left"

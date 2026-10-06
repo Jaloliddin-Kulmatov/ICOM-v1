@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import {
-  FileText, Home, CreditCard, Shield, Train, BookOpen,
+  FileText, Home, CreditCard, Shield, Train, BookOpen, MapPin,
   ArrowRight, Sparkles, Search, Clock, ThumbsUp, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import ArrivalChecklist from "@/components/guide/arrival-checklist";
 
 const categories = [
   {
@@ -79,37 +80,48 @@ const categories = [
     guides: 9,
     popular: false,
   },
+  {
+    id: "living",
+    icon: MapPin,
+    title: "Daily Life",
+    description: "Places near you, restaurants, phone plans, apps, budget and etiquette",
+    color: "from-teal-500 to-emerald-500",
+    bg: "bg-teal-500/10",
+    text: "text-teal-500",
+    guides: 6,
+    popular: true,
+  },
 ];
 
 const popularGuides = [
   {
     title: "How to Open a Kakao Bank Account as a Foreigner",
-    category: "Banking", readTime: 4, helpful: 1240, href: "/support/banking",
+    category: "Banking", readTime: 4, helpful: 1240, href: "/guide/banking",
     answer: "Download the Kakao Bank app → Select '외국인' (Foreigner) → Enter your ARC number and scan it → Verify with your Korean phone number (SMS) → Set your PIN. Your debit card arrives by post in 3–5 days. Requirements: ARC card + Korean phone number. No branch visit needed. Free domestic transfers, ₩5,000 international transfers.",
   },
   {
     title: "D-2 Visa Extension: Complete Step-by-Step Guide 2025",
-    category: "Visa", readTime: 8, helpful: 2890, href: "/support/visa",
+    category: "Visa", readTime: 8, helpful: 2890, href: "/guide/visa",
     answer: "Apply at Jeonju Immigration Office (전주출입국·외국인사무소) at least 4 weeks before expiry. Bring: ① Passport ② ARC card ③ Certificate of enrollment (재학증명서) from JBNU ④ Tuition payment receipt ⑤ Application fee ₩60,000 (revenue stamp). Fill in the 체류기간연장허가신청서 form at the office. Processing: 2–4 weeks. Apply online at hikorea.go.kr to avoid the queue.",
   },
   {
     title: "How to Register for NHIS Health Insurance",
-    category: "Insurance", readTime: 5, helpful: 1560, href: "/support/insurance",
+    category: "Insurance", readTime: 5, helpful: 1560, href: "/guide/insurance",
     answer: "As a full-time international student, you are automatically enrolled in NHIS. You'll receive a health insurance card by mail. Check your enrollment at nhis.or.kr/nhis/english. If not enrolled, visit the nearest NHIS branch with your ARC + enrollment certificate. Monthly premium: ₩80,000–130,000. Set up auto-debit from your bank to avoid missed payments.",
   },
   {
     title: "Finding Housing Near JBNU: Complete Guide",
-    category: "Housing", readTime: 10, helpful: 980, href: "/support/housing",
+    category: "Housing", readTime: 10, helpful: 980, href: "/guide/housing",
     answer: "Options near JBNU: ① Dorm (cheapest, apply at dorm.jbnu.ac.kr each semester) ② Gosiwon: ₩250,000–450,000/month, tiny furnished rooms, use Naver Maps search '고시원 전주' ③ Monthly rent studio: ₩300,000–600,000 + deposit, use Zigbang (zigbang.com) or Dabang apps. Always sign a written lease and get 확정일자 stamp at the district office within 30 days.",
   },
   {
     title: "Getting Your ARC (Alien Registration Card)",
-    category: "Visa", readTime: 6, helpful: 2100, href: "/support/visa",
+    category: "Visa", readTime: 6, helpful: 2100, href: "/guide/visa",
     answer: "Register within 90 days of arrival at Jeonju Immigration Office. Bring: ① Passport ② D-2/D-4 visa ③ Enrollment certificate from JBNU ④ 1 passport-size photo ⑤ Application fee ₩30,000 ⑥ Proof of address (dorm contract). Processing: 3–7 days — they mail the card to your address. The ARC is your Korean ID: essential for opening a bank account, getting a SIM card, and health insurance.",
   },
   {
     title: "Setting Up T-money Card and Using Jeonju Buses",
-    category: "Transport", readTime: 3, helpful: 740, href: "/support/transport",
+    category: "Transport", readTime: 3, helpful: 740, href: "/guide/transport",
     answer: "Buy a T-money card at any convenience store (CU, GS25) for ₩2,500–4,000. Charge it at the counter: say '만원 충전해주세요' (charge ₩10,000). Board the bus at the front, tap T-money on the yellow reader. Press the stop button before your stop. Exit rear door and tap again (activates free transfer within 30 min). Use Naver Maps for real-time bus routes and arrival times in Jeonju.",
   },
 ];
@@ -122,7 +134,7 @@ const categoryLabels: Record<string, "default" | "success" | "cyan" | "warning" 
   Transport: "warning",
 };
 
-export default function SupportPage() {
+export default function GuidePage() {
   const router = useRouter();
   const [openGuide, setOpenGuide] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -138,10 +150,10 @@ export default function SupportPage() {
       <Navbar />
       <main className="pt-16">
         {/* Hero — AI-first ask box */}
-        <div className="relative bg-gradient-to-b from-indigo-950/30 via-violet-950/20 to-transparent border-b border-border">
+        <div className="relative bg-gradient-to-b from-indigo-500/[0.06] via-transparent to-transparent border-b border-border">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-14 text-center">
             <Badge variant="default" className="mb-4 text-xs px-3 py-1 gap-1.5">
-              <Sparkles size={11} className="text-violet-400" /> AI-powered Student Support
+              <Sparkles size={11} className="text-violet-400" /> ICOM Guide
             </Badge>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
               Ask anything about
@@ -201,6 +213,8 @@ export default function SupportPage() {
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+          <ArrivalChecklist />
+
           {/* Categories */}
           <h2 className="text-lg font-bold text-foreground mb-5">Browse by Category</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
@@ -209,8 +223,8 @@ export default function SupportPage() {
               return (
                 <Link
                   key={cat.id}
-                  href={`/support/${cat.id}`}
-                  className="group p-5 rounded-2xl border border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5 transition-all duration-300 hover:-translate-y-0.5"
+                  href={`/guide/${cat.id}`}
+                  className="group p-5 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:bg-accent transition-all duration-300 hover:-translate-y-0.5"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className={`h-10 w-10 rounded-xl ${cat.bg} flex items-center justify-center`}>
@@ -220,7 +234,7 @@ export default function SupportPage() {
                       <Badge variant="new" className="text-[10px] px-1.5">Popular</Badge>
                     )}
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1 group-hover:text-indigo-300 transition-colors">
+                  <h3 className="text-sm font-semibold text-foreground mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                     {cat.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{cat.description}</p>
@@ -245,14 +259,14 @@ export default function SupportPage() {
               {popularGuides.map((guide) => (
                 <div
                   key={guide.title}
-                  className="rounded-xl border border-white/8 bg-white/3 overflow-hidden transition-all"
+                  className="rounded-xl border border-border bg-card overflow-hidden transition-all"
                 >
                   <button
                     onClick={() => setOpenGuide(openGuide === guide.title ? null : guide.title)}
-                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/5 transition-colors group"
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-accent transition-colors group"
                   >
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-foreground group-hover:text-indigo-300 transition-colors">
+                      <h3 className="text-sm font-medium text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                         {guide.title}
                       </h3>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -276,11 +290,11 @@ export default function SupportPage() {
                   </button>
 
                   {openGuide === guide.title && (
-                    <div className="px-4 pb-4 border-t border-white/8 bg-muted/20">
+                    <div className="px-4 pb-4 border-t border-border bg-muted/20">
                       <p className="text-sm text-muted-foreground leading-relaxed pt-3">{guide.answer}</p>
                       <Link
                         href={guide.href}
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors font-medium"
                       >
                         See full {guide.category} guide <ChevronRight size={12} />
                       </Link>
@@ -306,7 +320,7 @@ export default function SupportPage() {
                 <a
                   key={label}
                   href={`tel:${number}`}
-                  className="flex flex-col items-center p-4 rounded-xl bg-white/3 border border-white/8 hover:border-red-500/30 hover:bg-red-500/5 transition-all text-center"
+                  className="flex flex-col items-center p-4 rounded-xl bg-card border border-border hover:border-red-500/30 hover:bg-red-500/5 transition-all text-center"
                 >
                   <span className="text-2xl mb-1">{icon}</span>
                   <span className="text-lg font-bold text-red-400">{number}</span>

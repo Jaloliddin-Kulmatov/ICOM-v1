@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import LogoMark from "@/components/ui/logo-mark";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -170,10 +171,8 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-7">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-glow">
-              <span className="text-white font-black text-sm">IC</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">ICOM<span className="text-indigo-500">.</span></span>
+            <LogoMark className="w-9 h-9" />
+            <span className="text-xl font-bold text-foreground">ICOM</span>
           </Link>
           <h1 className="text-2xl font-bold text-foreground mt-5 mb-0.5">Create account</h1>
           <p className="text-sm text-muted-foreground">{steps[step].hint}</p>
