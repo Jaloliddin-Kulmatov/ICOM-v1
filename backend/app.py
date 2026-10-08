@@ -24,14 +24,18 @@ def create_app():
             raise RuntimeError(f"Missing required env vars in production: {', '.join(missing)}")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-change-me")
-    # Render gives postgres:// but SQLAlchemy needs postgresql://
     db_url = os.environ.get("DATABASE_URL", "sqlite:///icon.db")
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    # Always use psycopg2 (what requirements.txt installs). Render/Heroku give
+    # postgres://, Neon's SQLAlchemy snippet gives postgresql+psycopg://, and
+    # SQLAlchemy 2.1+ maps a bare postgresql:// to psycopg 3 by default.
+    for prefix in ("postgres://", "postgresql://", "postgresql+psycopg://"):
+        if db_url.startswith(prefix):
+            db_url = "postgresql+psycopg2://" + db_url[len(prefix):]
+            break
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
-    if db_url.startswith("postgresql://"):
+    if db_url.startswith("postgresql"):
         app.config["SQLALCHEMY_POOL_SIZE"] = 5
         app.config["SQLALCHEMY_MAX_OVERFLOW"] = 10
         app.config["SQLALCHEMY_POOL_RECYCLE"] = 300
