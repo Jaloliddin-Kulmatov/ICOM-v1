@@ -229,7 +229,7 @@ SCRAPER_SECRET = os.environ.get("SCRAPER_SECRET", "")
 # accurate "added N new internships" count instead of guessing from job totals.
 # Lives in-process (resets on restart) — that's fine, it's just a status board.
 import threading as _threading
-from datetime import datetime as _dt
+from datetime import datetime as _dt, date as _date
 
 _SCRAPE_LOCK = _threading.Lock()
 _LAST_SCRAPE = {"state": "idle"}  # state: idle | running | done | error
@@ -487,8 +487,116 @@ def bulk_ingest_jobs():
         inserted += 1
 
     db.session.commit()
+    _cache_bust("jobs_list")
     print(f"[scraper] inserted={inserted} skipped={skipped}")
     return jsonify({"inserted": inserted, "skipped": skipped}), 200
+
+
+def _scraper_authorized() -> bool:
+    key = request.headers.get("X-Scraper-Key", "")
+    return bool(SCRAPER_SECRET) and key == SCRAPER_SECRET
+
+
+def _has_korean(text) -> bool:
+    return any("\uac00" <= ch <= "\ud7a3" for ch in (text or ""))
+
+
+@admin_bp.route("/jobs/sync-state", methods=["GET"])
+def jobs_sync_state():
+    """Scraper-only. Every scraped job we know about, so the GitHub Actions
+    runner can decide what to add, refresh or close."""
+    if not _scraper_authorized():
+        return jsonify({"error": "Unauthorized"}), 401
+    rows = Job.query.filter(Job.apply_link.like("%wanted.co.kr/wd/%")).all()
+    return jsonify({"jobs": [{
+        "link": j.apply_link,
+        "active": bool(j.is_active),
+        "korean": _has_korean(j.title) or _has_korean(j.description),
+        "deadline": j.deadline or "",
+    } for j in rows]}), 200
+
+
+_SYNC_FIELDS = ("title", "company", "location", "salary", "description", "requirements",
+                "visa_compatible", "deadline", "tags", "foreigner_friendly", "foreigner_note")
+_SYNC_LIMITS = {"title": 200, "company": 150, "location": 150, "salary": 100,
+                "visa_compatible": 200, "deadline": 50, "tags": 300, "foreigner_note": 300}
+
+
+@admin_bp.route("/jobs/sync", methods=["POST"])
+def jobs_sync():
+    """Scraper-only. Apply a sync plan in one transaction:
+      upsert: job dicts keyed by apply_link (insert new, refresh + reopen existing)
+      close:  apply_links that closed on the source site
+    Then hide anything past its deadline and refresh the cached list."""
+    if not _scraper_authorized():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    upserts = [d for d in (data.get("upsert") or []) if isinstance(d, dict)]
+    closes = {str(l).strip() for l in (data.get("close") or []) if str(l).strip()}
+
+    links = {(d.get("apply_link") or "").strip() for d in upserts} | closes
+    links.discard("")
+    existing = {j.apply_link: j for j in Job.query.filter(Job.apply_link.in_(links)).all()} if links else {}
+
+    result = {"inserted": 0, "updated": 0, "closed": 0, "expired": 0, "skipped": 0}
+    for d in upserts:
+        link = (d.get("apply_link") or "").strip()
+        title = (d.get("title") or "").strip()
+        company = (d.get("company") or "").strip()
+        if not link or not title or not company or link in closes:
+            result["skipped"] += 1
+            continue
+        if (d.get("foreigner_friendly") or "").lower() == "no":
+            # Explicitly closed to foreign applicants: never list it.
+            if link in existing and existing[link].is_active:
+                existing[link].is_active = False
+                result["closed"] += 1
+            result["skipped"] += 1
+            continue
+        job = existing.get(link)
+        if job is None:
+            job = Job(apply_link=link[:500], created_by=None)
+            db.session.add(job)
+            existing[link] = job
+            result["inserted"] += 1
+        else:
+            result["updated"] += 1
+        for f in _SYNC_FIELDS:
+            if f in d and d[f] is not None:
+                val = str(d[f]).strip()
+                setattr(job, f, val[:_SYNC_LIMITS[f]] if f in _SYNC_LIMITS else val)
+        job.job_type = (d.get("job_type") or d.get("type") or job.job_type or "internship").strip()[:50]
+        if not job.visa_compatible:
+            job.visa_compatible = "D-2, D-4"
+        job.is_active = True
+
+    for link in closes:
+        job = existing.get(link)
+        if job is not None and job.is_active:
+            job.is_active = False
+            result["closed"] += 1
+
+    for job in Job.query.filter_by(is_active=True).all():
+        if _deadline_passed(job.deadline):
+            job.is_active = False
+            result["expired"] += 1
+
+    db.session.commit()
+    _cache_bust("jobs_list")
+    print(f"[sync] {result}")
+    return jsonify(result), 200
+
+
+def _deadline_passed(deadline) -> bool:
+    """True for ISO deadlines (YYYY-MM-DD…) strictly before today (UTC).
+    Free-text or empty deadlines ("Rolling") are never treated as expired."""
+    raw = (deadline or "").strip()[:10]
+    if len(raw) != 10:
+        return False
+    try:
+        return _date.fromisoformat(raw) < _dt.utcnow().date()
+    except ValueError:
+        return False
 
 
 @admin_bp.route("/jobs", methods=["GET"])
@@ -496,7 +604,12 @@ def list_jobs():
     cached = _cache_get("jobs_list")
     if cached is not None:
         return jsonify(cached), 200
-    jobs = Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
+    # Hide postings past their deadline even if the nightly cleanup hasn't run
+    # yet (free instances sleep, so scheduled jobs can be missed).
+    jobs = [
+        j for j in Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
+        if not _deadline_passed(j.deadline)
+    ]
     # list_view=True trims description text → smaller, faster payload.
     payload = {"jobs": [j.to_dict(list_view=True) for j in jobs]}
     _cache_set("jobs_list", payload)
@@ -539,6 +652,8 @@ def create_job():
 @admin_bp.route("/jobs/<int:job_id>", methods=["GET"])
 def get_job(job_id):
     job = Job.query.filter_by(id=job_id, is_active=True).first_or_404()
+    if _deadline_passed(job.deadline):
+        return jsonify({"error": "This internship has closed."}), 404
     return jsonify({"job": job.to_dict()}), 200
 
 

@@ -1,15 +1,15 @@
-name: Scrape Internship Jobs
+name: Sync internships
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # 6 AM UTC daily
-    - cron: "0 18 * * *"  # 6 PM UTC daily
-  workflow_dispatch:        # allow manual trigger from GitHub UI
+    - cron: "0 6 * * *"   # 3 PM KST
+    - cron: "0 18 * * *"  # 3 AM KST
+  workflow_dispatch:        # "Run workflow" button in the Actions tab
 
 jobs:
-  scrape:
+  sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -19,13 +19,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests==2.32.3 groq==0.9.0 httpx==0.27.0
 
-      - name: Run scraper
+      - name: Sync internships with Wanted
         env:
           ICOM_API_URL: ${{ secrets.ICOM_API_URL }}
           SCRAPER_SECRET: ${{ secrets.SCRAPER_SECRET }}
-          MAX_PER_RUN: "15"
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           WANTED_QUERY: "인턴"
-          WANTED_LIMIT: "40"
+          WANTED_PAGES: "2"
+          NEW_LIMIT: "40"
+          TRANSLATE_LIMIT: "60"
+          TIME_BUDGET_MIN: "22"
         run: python scraper/daemon.py

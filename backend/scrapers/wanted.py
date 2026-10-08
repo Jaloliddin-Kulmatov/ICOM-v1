@@ -538,6 +538,11 @@ def run_scraper(app) -> dict:
             # Translate Korean → English + classify foreigner-friendly.
             # Always works: tries Groq first, falls back to Google Translate.
             parsed = _translate_with_groq(parsed)
+            if _looks_korean(parsed.get("title", "")) or _looks_korean(parsed.get("description", "")):
+                # Translation failed (no Groq key and Google rate-limited).
+                # Don't list it in Korean; a later run will pick it up again.
+                summary["deferred"] = summary.get("deferred", 0) + 1
+                continue
 
             # Skip postings explicitly closed to foreign applicants — saves DB
             # space and prevents misleading our international-student audience.

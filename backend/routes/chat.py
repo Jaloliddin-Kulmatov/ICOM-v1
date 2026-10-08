@@ -133,10 +133,31 @@ def list_posts():
     return jsonify({"posts": [p.to_dict() for p in visible]}), 200
 
 
+def _viewer() -> User | None:
+    """Signed-in user if a valid token was sent, else None (never raises)."""
+    try:
+        verify_jwt_in_request(optional=True)
+        ident = get_jwt_identity()
+        return User.query.get(int(ident)) if ident else None
+    except Exception:
+        return None
+
+
+def _can_view(post: ChatPost, user: User | None) -> bool:
+    """University-scoped posts are private to students of that university."""
+    scope = (post.scope or "").strip()
+    if not scope:
+        return True
+    from routes.clubs import _uni_matches
+    return bool(user and _uni_matches((user.university or "").strip(), scope))
+
+
 @chat_bp.route("/posts/<int:post_id>", methods=["GET"])
 def get_post(post_id: int):
     post = ChatPost.query.filter_by(id=post_id, is_active=True).first()
-    if not post:
+    # Same 404 for "doesn't exist" and "not your university" so private
+    # posts can't be discovered by guessing IDs.
+    if not post or not _can_view(post, _viewer()):
         return jsonify({"error": "Post not found or removed."}), 404
     return jsonify({"post": post.to_dict(include_answers=True)}), 200
 
@@ -205,7 +226,7 @@ def add_answer(post_id: int):
         return jsonify({"error": "Sign in required."}), 401
 
     post = ChatPost.query.filter_by(id=post_id, is_active=True).first()
-    if not post:
+    if not post or not _can_view(post, user):
         return jsonify({"error": "Post not found or removed."}), 404
 
     data = request.get_json(silent=True) or {}
