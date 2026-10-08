@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation";
 import {
   Search, X, Briefcase, Users, GraduationCap, Globe,
-  Sparkles, ArrowRight, Loader2, Building2,
+  Sparkles, ArrowRight, Loader2, Building2, MessageSquare,
 } from "lucide-react";
 import { UNIVERSITIES } from "@/lib/constants";
 
@@ -13,7 +13,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 // ── Result types ──────────────────────────────────────────────────────────────
 
 interface Result {
-  type: "page" | "university" | "job" | "club" | "community" | "ai";
+  type: "page" | "university" | "job" | "club" | "community" | "question" | "ai";
   label: string;
   sub?: string;
   href: string;
@@ -94,6 +94,8 @@ function iconForType(type: Result["type"]): React.ReactNode {
       return <Users size={14} className="text-indigo-500 dark:text-indigo-400" />;
     case "community":
       return <Globe size={14} className="text-emerald-500 dark:text-emerald-400" />;
+    case "question":
+      return <MessageSquare size={14} className="text-coral-600 dark:text-coral-400" />;
     default:
       return <Building2 size={14} className="text-cyan-500 dark:text-cyan-400" />;
   }
@@ -101,7 +103,8 @@ function iconForType(type: Result["type"]): React.ReactNode {
 
 function labelForType(type: Result["type"]): string {
   switch (type) {
-    case "job": return "Job";
+    case "job": return "Internship";
+    case "question": return "Question";
     case "club": return "Club";
     case "community": return "Community";
     case "university": return "University";

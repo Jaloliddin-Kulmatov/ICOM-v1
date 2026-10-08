@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import or_, func, text
 
 from app import db
-from models import Club, Job, ClubMembership
+from models import Club, Job, ClubMembership, ChatPost
 
 search_bp = Blueprint("search", __name__)
 
@@ -148,7 +148,10 @@ def search():
             "href": f"/community/{c.id}",   # direct link to club page
         })
 
+    from routes.admin import _deadline_passed
     for j in jobs:
+        if _deadline_passed(j.deadline):
+            continue
         results.append({
             "type": "job",
             "id": j.id,
@@ -157,7 +160,26 @@ def search():
             "company": j.company,
             "location": j.location,
             "job_type": j.job_type,
-            "href": f"/jobs/{j.id}",          # direct link to job page
+            "href": f"/internships/{j.id}",
+        })
+
+    # ── Community questions (All Korea feed only; university posts stay private)
+    words = [w for w in q_lower.split() if w]
+    questions = (
+        ChatPost.query
+        .filter(ChatPost.is_active == True, or_(ChatPost.scope == None, ChatPost.scope == ""))  # noqa: E711,E712
+        .filter(*[or_(func.lower(ChatPost.title).contains(w), func.lower(ChatPost.content).contains(w)) for w in words])
+        .order_by(ChatPost.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for p in questions:
+        results.append({
+            "type": "question",
+            "id": p.id,
+            "label": p.title,
+            "sub": (p.content or "")[:80],
+            "href": f"/chat/{p.id}",
         })
 
     return jsonify({"results": results, "query": q}), 200

@@ -185,7 +185,7 @@ export default function ChatWidget() {
           onClick={() => { if (!didDrag.current) setOpen(true); }}
           aria-label="Open AI Assistant"
           style={{ left: pos.x, top: pos.y, transform: "translate(-50%, -50%)" }}
-          className="fixed z-50 flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white items-center justify-center shadow-[0_4px_24px_rgba(0,153,74,0.5)] hover:shadow-[0_4px_32px_rgba(0,153,74,0.7)] hover:scale-105 active:scale-95 transition-shadow duration-200 animate-pulse-glow cursor-grab active:cursor-grabbing select-none"
+          className="fixed z-50 hidden md:flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white items-center justify-center shadow-[0_4px_24px_rgba(0,153,74,0.5)] hover:shadow-[0_4px_32px_rgba(0,153,74,0.7)] hover:scale-105 active:scale-95 transition-shadow duration-200 animate-pulse-glow cursor-grab active:cursor-grabbing select-none"
         >
           <Sparkles size={22} />
         </button>

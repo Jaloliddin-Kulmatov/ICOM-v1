@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useQueryState } from "@/hooks/use-query-state";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
 import { Search, ChevronDown, Sparkles, MessageSquare } from "lucide-react";
@@ -173,8 +174,8 @@ function FAQItem({ faq }: { faq: FAQ }) {
 }
 
 export default function FAQPage() {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useQueryState("q", "");
+  const [category, setCategory] = useQueryState("topic", "All");
   const [openAll, setOpenAll] = useState(false);
 
   const filtered = useMemo(() => {

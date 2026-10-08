@@ -79,6 +79,14 @@
 
 /* ─── Components ─────────────────────────────────────────────── */
 @layer components {
+  /* Small fact chips used on cards (deadline, field, foreigner-friendly…) */
+  .chip-muted, .chip-good, .chip-urgent {
+    @apply inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11.5px] font-semibold whitespace-nowrap;
+  }
+  .chip-muted  { @apply bg-secondary text-foreground/75; }
+  .chip-good   { @apply bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300; }
+  .chip-urgent { @apply bg-coral-500/[0.12] text-coral-600 dark:text-coral-400; }
+
   /* Glass card — adapts to theme */
   .glass {
     background: rgba(255,255,255,0.05);

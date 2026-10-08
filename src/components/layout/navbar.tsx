@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
   Users, Briefcase, Compass, MessageSquare,
-  LayoutDashboard, LogIn, LogOut, ShieldCheck,
+  LayoutDashboard, LogIn, LogOut, ShieldCheck, MessageSquareHeart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -213,6 +213,13 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 {label}
               </Link>
             ))}
+            <Link
+              href="/feedback"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <MessageSquareHeart size={17} />
+              Send feedback
+            </Link>
             <div className="pt-2 border-t border-border space-y-1">
               {user ? (
                 <>

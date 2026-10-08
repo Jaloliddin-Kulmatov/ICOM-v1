@@ -14,7 +14,7 @@ export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden mesh-gradient">
       <div className="absolute inset-0 dot-grid opacity-60 pointer-events-none" />
-      <div className="absolute top-1/4 left-1/3 w-[480px] h-[480px] rounded-full bg-indigo-600/8 dark:bg-indigo-600/12 blur-[80px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/3 w-[480px] h-[480px] rounded-full bg-indigo-600/8 dark:bg-indigo-600/[0.12] blur-[80px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[360px] h-[360px] rounded-full bg-violet-600/6 dark:bg-violet-600/10 blur-[80px] pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 text-center py-24">
