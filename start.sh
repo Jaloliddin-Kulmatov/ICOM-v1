@@ -25,7 +25,7 @@ pip install -r requirements.txt -q
 
 if [ ! -f ".env" ]; then
   cp .env.example .env
-  echo "  ⚠️  Created backend/.env from example. Add your OPENAI_API_KEY there."
+  echo "  ⚠️  Created backend/.env from example. Add your GROQ_API_KEY there."
 fi
 
 echo "  Starting Flask on http://localhost:5001 ..."

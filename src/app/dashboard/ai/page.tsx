@@ -55,7 +55,7 @@ export default function AIPage() {
     } finally { setLoading(false); }
   }, [loading, messages]);
 
-  // Auto-send a question if the page was opened with ?q=… (e.g. from /support)
+  // Auto-send a question if the page was opened with ?q=… (e.g. from /guide)
   useEffect(() => {
     if (autoSentRef.current) return;
     if (typeof window === "undefined") return;
@@ -75,7 +75,7 @@ export default function AIPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
             <div>
@@ -94,7 +94,7 @@ export default function AIPage() {
         <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
           {messages.length === 0 && (
             <div className="text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
                 <Sparkles size={28} className="text-indigo-400" />
               </div>
               <h2 className="text-base font-semibold text-foreground mb-2">Ask me anything about Korea</h2>
@@ -111,7 +111,7 @@ export default function AIPage() {
 
           {messages.map(m => (
             <div key={m.id} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${m.role === "assistant" ? "bg-gradient-to-br from-indigo-500 to-violet-600" : "bg-white/10 border border-white/15"}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${m.role === "assistant" ? "bg-gradient-to-br from-indigo-500 to-indigo-700" : "bg-white/10 border border-white/15"}`}>
                 {m.role === "assistant" ? <Bot size={14} className="text-white" /> : <User size={13} className="text-muted-foreground" />}
               </div>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${m.role === "user" ? "bg-indigo-500 text-white rounded-tr-sm" : "bg-white/5 border border-white/10 text-foreground rounded-tl-sm"}`}>
@@ -122,7 +122,7 @@ export default function AIPage() {
 
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
                 <Bot size={14} className="text-white" />
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
@@ -150,7 +150,7 @@ export default function AIPage() {
             <button
               onClick={() => send(input)}
               disabled={!input.trim() || loading}
-              className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
+              className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
             >
               {loading ? <Loader2 size={14} className="text-white animate-spin" /> : <Send size={14} className="text-white" />}
             </button>

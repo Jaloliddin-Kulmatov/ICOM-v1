@@ -41,7 +41,7 @@ export default function AboutPage() {
             <div className="grid gap-4">
               {team.map(member => (
                 <div key={member.name} className="p-6 rounded-2xl border border-border bg-card flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shrink-0">
                     {member.name[0]}
                   </div>
                   <div>

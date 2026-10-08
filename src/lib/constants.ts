@@ -126,7 +126,7 @@ export const NAV_LINKS = [
   { href: "/community", label: "Community" },
   { href: "/internships", label: "Internships" },
   { href: "/universities", label: "Universities" },
-  { href: "/support", label: "Support" },
+  { href: "/guide", label: "Guide" },
 ];
 
 export const SUPPORT_CATEGORIES = [

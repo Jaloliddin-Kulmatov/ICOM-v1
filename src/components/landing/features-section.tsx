@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 const features = [
   {
     icon: Users,
-    color: "from-indigo-500 to-violet-500",
+    color: "from-indigo-500 to-indigo-600",
     badge: "Community",
     title: "Student Community Platform",
     description:
@@ -52,7 +52,7 @@ const features = [
     description:
       "Step-by-step guides for every challenge — visa extensions, bank accounts, hospital visits, housing, and more.",
     highlights: ["Visa extension guides", "Bank account setup", "Housing directory", "Health insurance help"],
-    href: "/support",
+    href: "/guide",
   },
   {
     icon: Sparkles,

@@ -42,7 +42,7 @@ export default function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14 animate-slide-up" style={{ animationDelay: "0.15s" }}>
           {user ? (
             <>
-              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(99,102,241,0.4)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.6)]">
+              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(0,153,74,0.4)] hover:shadow-[0_4px_32px_rgba(0,153,74,0.6)]">
                 <Link href="/dashboard">
                   <LayoutDashboard size={17} className="mr-2" />
                   Go to Dashboard
@@ -58,7 +58,7 @@ export default function HeroSection() {
             </>
           ) : (
             <>
-              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(99,102,241,0.4)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.6)]">
+              <Button size="xl" asChild className="w-full sm:w-auto shadow-[0_4px_24px_rgba(0,153,74,0.4)] hover:shadow-[0_4px_32px_rgba(0,153,74,0.6)]">
                 <Link href="/register">
                   Get started free
                   <ArrowRight size={17} className="ml-2" />

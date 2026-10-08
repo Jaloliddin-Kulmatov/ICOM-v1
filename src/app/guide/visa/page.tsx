@@ -100,8 +100,8 @@ export default function VisaPage() {
       <main className="pt-16">
         <div className="border-b border-border bg-gradient-to-b from-blue-500/5 to-transparent">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-            <Link href="/support" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors">
-              <ArrowLeft size={13} /> Back to Support
+            <Link href="/guide" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors">
+              <ArrowLeft size={13} /> Back to Guide
             </Link>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
@@ -195,7 +195,7 @@ export default function VisaPage() {
               <CheckCircle2 size={16} className="text-emerald-500 mb-2" />
               <h3 className="text-xs font-semibold text-foreground mb-1">Need personal help?</h3>
               <p className="text-xs text-muted-foreground mb-3">Ask the AI assistant or browse the FAQ for quick answers.</p>
-              <Link href="/support/faq" className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 hover:bg-emerald-500/15 transition-colors">
+              <Link href="/guide/faq" className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 hover:bg-emerald-500/15 transition-colors">
                 Go to FAQ <ChevronRight size={11} />
               </Link>
             </div>

@@ -1,15 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LogoMark from "@/components/ui/logo-mark";
+
+const SEEN_KEY = "icom_splash_seen";
 
 export default function SplashScreen() {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
-    // Start fade at 1500ms, remove from DOM at 1900ms (400ms fade)
-    const t1 = setTimeout(() => setFading(true), 1500);
-    const t2 = setTimeout(() => setVisible(false), 1900);
+    // Show the splash once per browser session, not on every full page load.
+    let seen = false;
+    try { seen = sessionStorage.getItem(SEEN_KEY) === "1"; sessionStorage.setItem(SEEN_KEY, "1"); } catch { /* storage unavailable */ }
+    if (seen) { setVisible(false); return; }
+    // Start fade at 1100ms, remove from DOM at 1500ms (400ms fade)
+    const t1 = setTimeout(() => setFading(true), 1100);
+    const t2 = setTimeout(() => setVisible(false), 1500);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -17,37 +24,30 @@ export default function SplashScreen() {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#050508] transition-opacity duration-400 ${
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0b1220] transition-opacity duration-400 ${
         fading ? "opacity-0" : "opacity-100"
       }`}
     >
-      {/* Ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-indigo-600/20 blur-3xl pointer-events-none" />
-
       <div className="flex flex-col items-center gap-6 animate-fade-in relative">
-        {/* Pulsing ring behind logo */}
-        <div className="relative flex items-center justify-center">
-          <div className="absolute w-28 h-28 rounded-full bg-indigo-500/10 animate-ping" style={{ animationDuration: "1.5s" }} />
-          <img src="/logo.svg" alt="ICOM" className="w-20 h-20 drop-shadow-2xl relative z-10" />
-        </div>
+        <LogoMark className="w-20 h-20 drop-shadow-2xl" />
 
         <div className="text-center space-y-1.5">
-          <p className="text-3xl font-bold tracking-tight text-white">
-            ICOM<span className="text-indigo-400">.</span>
-          </p>
-          <p className="text-sm text-white/40 tracking-widest uppercase">
+          <p className="text-3xl font-extrabold tracking-tight text-white">ICOM</p>
+          <p className="text-sm text-white/50 tracking-widest uppercase">
             International Community in Korea
           </p>
         </div>
 
-        {/* Loading dots */}
-        <div className="flex items-center gap-1.5 mt-2">
+        {/* Metro-line loader: three stations lighting up in turn */}
+        <div className="flex items-center mt-2" aria-hidden>
           {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 animate-bounce"
-              style={{ animationDelay: `${i * 150}ms`, animationDuration: "0.8s" }}
-            />
+            <div key={i} className="flex items-center">
+              {i > 0 && <div className="w-6 h-[3px] bg-white/20" />}
+              <div
+                className="w-2.5 h-2.5 rounded-full border-2 border-indigo-400 animate-pulse"
+                style={{ animationDelay: `${i * 200}ms`, animationDuration: "0.9s" }}
+              />
+            </div>
           ))}
         </div>
       </div>

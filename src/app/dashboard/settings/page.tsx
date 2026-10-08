@@ -41,7 +41,7 @@ const CLUB_CATS = ["academic","sports","culture","social","language","tech","art
 const COMM_CATS = ["national community","religion & culture","support & community"];
 
 const AVATAR_GRADIENTS = [
-  "from-indigo-500 to-violet-600","from-emerald-500 to-cyan-600",
+  "from-indigo-500 to-indigo-700","from-emerald-500 to-cyan-600",
   "from-rose-500 to-pink-600","from-amber-500 to-orange-500",
   "from-sky-500 to-blue-600","from-violet-500 to-purple-600",
 ];
@@ -448,7 +448,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl">
         {/* ── Profile header ── */}
         <div className="flex items-center gap-4 mb-8 p-5 rounded-2xl border border-border bg-card">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-black shrink-0 shadow-lg">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xl font-black shrink-0 shadow-lg">
             {avatarInit}
           </div>
           <div className="flex-1 min-w-0">

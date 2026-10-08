@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import LogoMark from "@/components/ui/logo-mark";
 import { Github, Linkedin, Mail, Send, Globe } from "lucide-react";
 
 // Custom KakaoTalk icon (yellow bubble)
@@ -25,7 +26,7 @@ const footerLinks = {
     { label: "Clubs", href: "/community" },
     { label: "Jobs & Internships", href: "/internships" },
     { label: "Chat / Q&A", href: "/chat" },
-    { label: "Support Guides", href: "/support" },
+    { label: "Guide", href: "/guide" },
     { label: "AI Assistant", href: "/dashboard/ai" },
   ],
   Company: [
@@ -43,11 +44,11 @@ const footerLinks = {
     { label: "Security", href: "/privacy#security" },
   ],
   Resources: [
-    { label: "Visa Guides", href: "/support/visa" },
-    { label: "Housing", href: "/support/housing" },
-    { label: "Banking", href: "/support/banking" },
-    { label: "Korean Life", href: "/daily-life" },
-    { label: "FAQ", href: "/support/faq" },
+    { label: "Visa Guides", href: "/guide/visa" },
+    { label: "Housing", href: "/guide/housing" },
+    { label: "Banking", href: "/guide/banking" },
+    { label: "Daily Life", href: "/guide/living" },
+    { label: "FAQ", href: "/guide/faq" },
   ],
 };
 
@@ -78,21 +79,16 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/8 bg-[#050508]">
+    <footer className="border-t border-white/8 bg-[#0b1220]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 md:pb-8">
         {/* Top section */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <img
-                src="/logo.svg"
-                alt="ICOM logo"
-                className="h-8 w-8 rounded-full select-none"
-                draggable={false}
-              />
+              <LogoMark className="h-8 w-8" />
               <span className="font-bold text-xl tracking-tight text-foreground">
-                ICOM<span className="text-indigo-400">.</span>
+                ICOM
               </span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-4">

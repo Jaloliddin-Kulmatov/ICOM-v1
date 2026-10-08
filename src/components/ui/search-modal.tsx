@@ -46,23 +46,23 @@ const STATIC_PAGES: Result[] = [
   },
   {
     type: "page",
-    label: "Daily Life Guide",
+    label: "Daily Life",
     sub: "Transport, food, banking tips",
-    href: "/daily-life",
+    href: "/guide/living",
     icon: <Globe size={14} className="text-emerald-500 dark:text-emerald-400" />,
   },
   {
     type: "page",
     label: "Visa Guides",
     sub: "D-2, D-4 extensions and info",
-    href: "/support/visa",
+    href: "/guide/visa",
     icon: <Globe size={14} className="text-amber-500 dark:text-amber-400" />,
   },
   {
     type: "page",
-    label: "Support & Resources",
-    sub: "Housing, banking, insurance",
-    href: "/support",
+    label: "Guide",
+    sub: "Arrival checklist, visa, housing, banking, insurance",
+    href: "/guide",
     icon: <Globe size={14} className="text-rose-500 dark:text-rose-400" />,
   },
   {
@@ -261,7 +261,7 @@ export default function SearchModal({
         className="w-full max-w-xl overflow-hidden animate-fade-in
           bg-white/95 dark:bg-[#0e0e1a]
           border border-blue-100 dark:border-white/12
-          rounded-2xl shadow-[0_8px_40px_rgba(99,102,241,0.15)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+          rounded-2xl shadow-[0_8px_40px_rgba(0,153,74,0.15)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}

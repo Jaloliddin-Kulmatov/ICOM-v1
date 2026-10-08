@@ -73,13 +73,13 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
       href={detailHref(job.id)}
       className={`group relative rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card block cursor-pointer ${
         featured
-          ? "border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 to-violet-950/20"
+          ? "border-indigo-500/30 bg-gradient-to-br from-indigo-500/[0.06] to-transparent"
           : "border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5"
       }`}
     >
       {/* Featured glow */}
       {featured && (
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-violet-500/5 pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-indigo-600/5 pointer-events-none" />
       )}
 
       {/* Header */}

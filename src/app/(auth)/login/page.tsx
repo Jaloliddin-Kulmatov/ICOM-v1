@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import LogoMark from "@/components/ui/logo-mark";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,10 +90,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-glow">
-              <span className="text-white font-black text-sm">IC</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">ICOM<span className="text-indigo-500">.</span></span>
+            <LogoMark className="w-9 h-9" />
+            <span className="text-xl font-bold text-foreground">ICOM</span>
           </Link>
           <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Sign in to your ICOM account</p>

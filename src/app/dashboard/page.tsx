@@ -38,8 +38,8 @@ interface MyClub {
 const CLUB_CATEGORIES = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
 
 const quickLinks = [
-  { href: "/support",      icon: "🗺️", label: "Life Guide" },
-  { href: "/support/visa", icon: "🛂", label: "Visa Info" },
+  { href: "/guide",      icon: "🗺️", label: "Life Guide" },
+  { href: "/guide/visa", icon: "🛂", label: "Visa Info" },
   { href: "/community",    icon: "👥", label: "Community" },
   { href: "/internships",         icon: "💼", label: "Jobs" },
   { href: "/universities", icon: "🎓", label: "University" },
@@ -224,10 +224,10 @@ export default function DashboardPage() {
         <aside className="lg:sticky lg:top-20 self-start">
           <Link
             href="/dashboard/ai"
-            className="block rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-purple-500/10 p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group"
+            className="block rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-indigo-600/10 to-indigo-600/10 p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group"
           >
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                 <Sparkles size={18} className="text-white" />
               </div>
               <div>
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-semibold group-hover:opacity-90 transition-opacity">
+            <div className="mt-4 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-700 text-white text-xs font-semibold group-hover:opacity-90 transition-opacity">
               Start chatting <ArrowRight size={12} />
             </div>
           </Link>

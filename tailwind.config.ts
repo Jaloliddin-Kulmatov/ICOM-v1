@@ -35,33 +35,46 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        icon: {
-          50: "#f0f0ff",
-          100: "#e4e4ff",
-          200: "#ccccff",
-          300: "#a8a8ff",
-          400: "#7c7cff",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
+        // ── Seoul Morning brand palette ─────────────────────────────
+        // The codebase uses Tailwind's indigo/violet/purple/cyan classes
+        // everywhere, so the rebrand remaps those scales here:
+        //   indigo        → ICOM green (subway-line green, the brand colour)
+        //   violet/purple → navy ink (secondary)
+        //   cyan          → teal (supporting accent)
+        indigo: {
+          50: "#ecf9f1", 100: "#d1f0de", 200: "#a5e1c0", 300: "#6dcb98", 400: "#2fb36f",
+          500: "#00994a", 600: "#007f3b", 700: "#006a33", 800: "#0b552b", 900: "#0c4625", 950: "#042a15",
+        },
+        violet: {
+          50: "#f0f3f9", 100: "#dfe5f1", 200: "#c1cce3", 300: "#97a9cd", 400: "#6f86b6",
+          500: "#4f6799", 600: "#3d527d", 700: "#2f3f62", 800: "#22304b", 900: "#16213a", 950: "#0d1424",
+        },
+        purple: {
+          50: "#f0f3f9", 100: "#dfe5f1", 200: "#c1cce3", 300: "#97a9cd", 400: "#6f86b6",
+          500: "#4f6799", 600: "#3d527d", 700: "#2f3f62", 800: "#22304b", 900: "#16213a", 950: "#0d1424",
         },
         cyan: {
-          400: "#22d3ee",
-          500: "#06b6d4",
+          50: "#ebfaf6", 100: "#cdf2e9", 200: "#9fe5d4", 300: "#7fdcc8", 400: "#3cc4a8",
+          500: "#15a98d", 600: "#0d8a74", 700: "#0c6e5e", 800: "#0e584c", 900: "#0f4940", 950: "#032b26",
+        },
+        coral: { 400: "#ff8577", 500: "#ff6b5a", 600: "#e5533f" },
+        icon: {
+          50: "#ecf9f1", 100: "#d1f0de", 200: "#a5e1c0", 300: "#6dcb98", 400: "#2fb36f",
+          500: "#00994a", 600: "#007f3b", 700: "#006a33", 800: "#0b552b", 900: "#0c4625",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Cal Sans", "Inter", "system-ui", "sans-serif"],
+        // Gothic A1 covers Latin and Hangul in one family, so mixed text like
+        // "외국인등록증 (ARC)" sits on one baseline.
+        sans: ["Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
+        display: ["Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "hero-gradient": "linear-gradient(135deg, #050508 0%, #0d0d1a 50%, #0f0b1e 100%)",
-        "card-gradient": "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.05) 100%)",
-        "glow-gradient": "radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 70%)",
+        "hero-gradient": "linear-gradient(135deg, #070b14 0%, #0b1220 50%, #0d1424 100%)",
+        "card-gradient": "linear-gradient(135deg, rgba(0,153,74,0.1) 0%, rgba(61,82,125,0.05) 100%)",
+        "glow-gradient": "radial-gradient(ellipse at center, rgba(0,153,74,0.15) 0%, transparent 70%)",
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-out",
@@ -89,8 +102,8 @@ const config: Config = {
           "50%": { transform: "translateY(-20px)" },
         },
         pulseGlow: {
-          "0%, 100%": { boxShadow: "0 0 20px rgba(99,102,241,0.3)" },
-          "50%": { boxShadow: "0 0 40px rgba(99,102,241,0.6)" },
+          "0%, 100%": { boxShadow: "0 0 20px rgba(0,153,74,0.3)" },
+          "50%": { boxShadow: "0 0 40px rgba(0,153,74,0.6)" },
         },
         gradientX: {
           "0%, 100%": { backgroundPosition: "0% 50%" },
@@ -98,8 +111,8 @@ const config: Config = {
         },
       },
       boxShadow: {
-        glow: "0 0 30px rgba(99,102,241,0.3)",
-        "glow-lg": "0 0 60px rgba(99,102,241,0.4)",
+        glow: "0 0 30px rgba(0,153,74,0.3)",
+        "glow-lg": "0 0 60px rgba(0,153,74,0.4)",
         glass: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
         card: "0 1px 3px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.3)",
       },

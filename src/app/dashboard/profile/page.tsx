@@ -34,7 +34,7 @@ const COUNTRY_OPTIONS = [
 ];
 
 const GRAD_MAP: Record<string, string> = {
-  "0": "from-indigo-500 to-violet-600",
+  "0": "from-indigo-500 to-indigo-700",
   "1": "from-emerald-500 to-cyan-600",
   "2": "from-rose-500 to-pink-600",
   "3": "from-amber-500 to-orange-500",
@@ -43,7 +43,7 @@ const GRAD_MAP: Record<string, string> = {
 };
 
 function getGradient(id: number) {
-  return GRAD_MAP[String(id % 6)] ?? "from-indigo-500 to-violet-600";
+  return GRAD_MAP[String(id % 6)] ?? "from-indigo-500 to-indigo-700";
 }
 
 function initials(name: string) {

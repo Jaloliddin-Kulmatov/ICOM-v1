@@ -185,7 +185,7 @@ export default function ChatDetailPage() {
           {/* Question */}
           <div className="p-5 sm:p-6 rounded-2xl border border-border bg-card">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-sm font-bold shrink-0">
                 {post.author_name[0]?.toUpperCase() || "?"}
               </div>
               <div className="flex-1 min-w-0">

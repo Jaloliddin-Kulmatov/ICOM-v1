@@ -108,7 +108,7 @@ export default function BookmarksPage() {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold ${
-                        p.posted_as_type === "university" ? "bg-gradient-to-br from-indigo-500 to-violet-600" :
+                        p.posted_as_type === "university" ? "bg-gradient-to-br from-indigo-500 to-indigo-700" :
                         p.posted_as_type === "club"       ? "bg-gradient-to-br from-emerald-500 to-cyan-600" :
                         p.posted_as_type === "community"  ? "bg-gradient-to-br from-violet-500 to-purple-600" :
                                                             "bg-gradient-to-br from-slate-500 to-slate-700"

@@ -372,7 +372,7 @@ function ClubCard({ club, onAction, onManage }: {
       href={`/community/${club.id}`}
       className={`group block rounded-2xl border overflow-hidden transition-all duration-200 hover:-translate-y-0.5 ${
         isApproved
-          ? "border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50 hover:shadow-[0_4px_20px_rgba(99,102,241,0.12)]"
+          ? "border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50 hover:shadow-[0_4px_20px_rgba(0,153,74,0.12)]"
           : isPending
           ? "border-amber-500/20 bg-amber-500/5 hover:border-amber-500/35"
           : "border-border bg-card hover:border-indigo-500/25 hover:shadow-sm"

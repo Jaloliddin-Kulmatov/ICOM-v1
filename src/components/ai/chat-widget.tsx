@@ -185,7 +185,7 @@ export default function ChatWidget() {
           onClick={() => { if (!didDrag.current) setOpen(true); }}
           aria-label="Open AI Assistant"
           style={{ left: pos.x, top: pos.y, transform: "translate(-50%, -50%)" }}
-          className="fixed z-50 flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white items-center justify-center shadow-[0_4px_24px_rgba(99,102,241,0.5)] hover:shadow-[0_4px_32px_rgba(99,102,241,0.7)] hover:scale-105 active:scale-95 transition-shadow duration-200 animate-pulse-glow cursor-grab active:cursor-grabbing select-none"
+          className="fixed z-50 flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white items-center justify-center shadow-[0_4px_24px_rgba(0,153,74,0.5)] hover:shadow-[0_4px_32px_rgba(0,153,74,0.7)] hover:scale-105 active:scale-95 transition-shadow duration-200 animate-pulse-glow cursor-grab active:cursor-grabbing select-none"
         >
           <Sparkles size={22} />
         </button>
@@ -203,9 +203,9 @@ export default function ChatWidget() {
           <div
             onMouseDown={onMouseDown}
             onTouchStart={onTouchStart}
-            className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0 cursor-grab active:cursor-grabbing select-none">
+            className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 shrink-0 cursor-grab active:cursor-grabbing select-none">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
                 <Sparkles size={14} className="text-white" />
               </div>
               <div>
@@ -245,7 +245,7 @@ export default function ChatWidget() {
                 {/* Welcome */}
                 {messages.length === 0 && (
                   <div className="text-center py-4 animate-fade-in">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
                       <Sparkles size={22} className="text-indigo-500" />
                     </div>
                     <p className="text-sm font-semibold text-foreground mb-1">Hi! I&apos;m ICOM AI</p>
@@ -270,7 +270,7 @@ export default function ChatWidget() {
                   <div key={m.id} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                       m.role === "assistant"
-                        ? "bg-gradient-to-br from-indigo-500 to-violet-600"
+                        ? "bg-gradient-to-br from-indigo-500 to-indigo-700"
                         : "bg-muted border border-border"
                     }`}>
                       {m.role === "assistant"
@@ -290,7 +290,7 @@ export default function ChatWidget() {
 
                 {loading && (
                   <div className="flex gap-2">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
                       <Bot size={12} className="text-white" />
                     </div>
                     <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2.5 flex items-center gap-1">
@@ -331,7 +331,7 @@ export default function ChatWidget() {
                   <button
                     onClick={() => send(input)}
                     disabled={!input.trim() || loading}
-                    className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
+                    className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
                   >
                     <Send size={12} className="text-white" />
                   </button>
@@ -352,9 +352,9 @@ export default function ChatWidget() {
       {open && (
         <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-card animate-slide-up">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-violet-500/10 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
                 <Sparkles size={15} className="text-white" />
               </div>
               <div>
@@ -386,7 +386,7 @@ export default function ChatWidget() {
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
             {messages.length === 0 && (
               <div className="text-center py-8 animate-fade-in">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
                   <Sparkles size={26} className="text-indigo-500" />
                 </div>
                 <p className="text-base font-semibold text-foreground mb-1">Hi! I&apos;m ICOM AI</p>
@@ -411,7 +411,7 @@ export default function ChatWidget() {
               <div key={m.id} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   m.role === "assistant"
-                    ? "bg-gradient-to-br from-indigo-500 to-violet-600"
+                    ? "bg-gradient-to-br from-indigo-500 to-indigo-700"
                     : "bg-muted border border-border"
                 }`}>
                   {m.role === "assistant"
@@ -431,7 +431,7 @@ export default function ChatWidget() {
 
             {loading && (
               <div className="flex gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shrink-0">
                   <Bot size={13} className="text-white" />
                 </div>
                 <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-3 py-2.5 flex items-center gap-1">
@@ -474,7 +474,7 @@ export default function ChatWidget() {
               <button
                 onClick={() => send(input)}
                 disabled={!input.trim() || loading}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
+                className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-90 transition-all shrink-0"
               >
                 <Send size={13} className="text-white" />
               </button>

@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
-  Users, Briefcase, Globe, MessageSquare,
-  LayoutDashboard, LogIn, Home, LogOut, ShieldCheck,
+  Users, Briefcase, Compass, MessageSquare,
+  LayoutDashboard, LogIn, LogOut, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import LogoMark from "@/components/ui/logo-mark";
 import SearchModal from "@/components/ui/search-modal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -18,14 +19,14 @@ import { useNotifCount } from "@/hooks/use-notif-count";
 
 // Universities was retired from the primary nav on both desktop and mobile —
 // the page still exists at /universities (linked from ambassador flows / direct
-// URL) but it's no longer a top-level destination. Desktop and mobile now share
-// the same link set.
+// URL) but it's no longer a top-level destination. Daily Life and Support were
+// merged into one Guide section (/guide, with daily life at /guide/living).
+// Desktop and mobile share the same link set.
 const desktopNavLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/community", label: "Clubs", icon: Users },
   { href: "/internships", label: "Internships", icon: Briefcase },
-  { href: "/daily-life", label: "Daily Life", icon: Home },
-  { href: "/support", label: "Support", icon: Globe },
+  { href: "/guide", label: "Guide", icon: Compass },
 ];
 
 const mobileNavLinks = desktopNavLinks;
@@ -78,15 +79,10 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href={user ? "/dashboard" : "/"} prefetch className="flex items-center gap-2 group shrink-0">
-            <img
-              src="/logo.svg"
-              alt="ICOM logo"
-              className="w-8 h-8 rounded-full shadow-sm group-hover:shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-shadow select-none"
-              draggable={false}
-            />
+            <LogoMark className="w-8 h-8 rounded-[9px] shadow-sm group-hover:shadow-[0_0_16px_rgba(0,153,74,0.45)] transition-shadow" />
             <div className="flex flex-col leading-none">
               <span className="font-bold text-base tracking-tight text-foreground">
-                ICOM<span className="text-indigo-500">.</span>
+                ICOM
               </span>
               <span className="text-[9px] text-muted-foreground font-medium tracking-wide hidden sm:block">
                 International Community in Korea
@@ -154,7 +150,8 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 </Button>
 
                 <Link
-                  href="/dashboard"
+                  href="/dashboard/profile"
+                  title="Your profile"
                   className="flex items-center gap-2 ml-1 px-2 py-1 rounded-xl hover:bg-accent transition-colors"
                 >
                   <Avatar size="sm" online>

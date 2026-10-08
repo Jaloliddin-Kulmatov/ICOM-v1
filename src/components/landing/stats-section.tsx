@@ -94,7 +94,7 @@ export default function StatsSection() {
 
   return (
     <section ref={ref} className="py-24 px-4 sm:px-6 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-950/20 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-transparent pointer-events-none" />
 
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
