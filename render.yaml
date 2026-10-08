@@ -9,7 +9,7 @@ services:
     plan: free
     # bootstrap.py creates tables and seeds data once per deploy, so the web
     # process itself starts fast (free instances sleep and cold-start often).
-    buildCommand: pip install -r requirements-render.txt && python bootstrap.py
+    buildCommand: pip install -r requirements.txt && python bootstrap.py
     # One worker keeps APScheduler from running twice; threads handle concurrency.
     startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
     healthCheckPath: /api/health
