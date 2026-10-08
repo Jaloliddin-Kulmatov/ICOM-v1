@@ -336,3 +336,16 @@ def test_admin_endpoints_never_500(client, admin, bob):
         if ADMIN_ONLY in url or url.startswith(ADMIN_ONLY_PREFIXES):
             assert getattr(bob, method)(url, json=body or {}).status_code in (401, 403, 404, 405), (method, url)
     assert client.get("/api/admin/jobs/alerts/unsubscribe?token=bad").status_code < 500
+
+
+def test_search_finds_questions_not_private_or_expired(client, alice, admin):
+    alice.post("/api/chat/posts", json={"title": "Cheapest gimbap near campus", "content": "Budget food"})
+    alice.post("/api/chat/posts", json={"title": "Private gimbap club", "content": "x", "scope": "university"})
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    admin.post("/api/admin/jobs", json={"title": "Gimbap marketing intern", "company": "Old Co", "deadline": yesterday})
+    results = client.get("/api/search?q=gimbap").get_json()["results"]
+    labels = {r["label"] for r in results}
+    assert "Cheapest gimbap near campus" in labels
+    assert "Private gimbap club" not in labels
+    assert "Gimbap marketing intern" not in labels
+    assert all(r["href"].startswith(("/community/", "/internships/", "/chat/")) for r in results)

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useQueryState } from "@/hooks/use-query-state";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { Badge } from "@/components/ui/badge";
@@ -529,8 +530,9 @@ export default function CommunityPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState<{ clubs: number; communities: number } | null>(null);
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [search, setSearch] = useQueryState("q", "");
+  const [activeCategory, setActiveCategory] = useQueryState("category", "all");
+  const [mineOnly, setMineOnly] = useQueryState("mine", "");
   const [activeTab, setActiveTab] = useState<"club" | "community">("club");
   const [showCreate, setShowCreate] = useState(false);
   const [manageClub, setManageClub] = useState<Club | null>(null);
@@ -645,17 +647,38 @@ export default function CommunityPage() {
 
   const tabClubs = clubs.filter(c => (c.club_type || "club") === activeTab);
 
-  // Fixed category lists per tab — clubs use subject categories, communities use group types
-  const categoryList = activeTab === "club" ? CLUB_CATEGORIES : COMMUNITY_CATEGORIES;
-  const categories = ["all", ...categoryList];
+  // Every search word must appear in the name, description, country,
+  // university or meeting place.
+  const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesSearch = (c: Club) => {
+    if (!words.length) return true;
+    const hay = [c.name, c.description, c.country, c.university, c.location, c.category]
+      .filter(Boolean).join(" ").toLowerCase();
+    return words.every((w) => hay.includes(w));
+  };
+  const isMine = (c: Club) => c.is_creator || c.my_status === "approved" || c.my_status === "pending";
+
+  // Categories come from the clubs that actually exist in this tab, with
+  // counts, so a category button can never lead to an empty list.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    tabClubs.filter(matchesSearch).filter((c) => !mineOnly || isMine(c)).forEach((c) => {
+      const k = (c.category || "other").toLowerCase();
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubs, activeTab, search, mineOnly]);
+  const knownOrder = activeTab === "club" ? CLUB_CATEGORIES : COMMUNITY_CATEGORIES;
+  const categories = ["all", ...Array.from(categoryCounts.keys()).sort(
+    (a, b) => (knownOrder.indexOf(a) + 1 || 99) - (knownOrder.indexOf(b) + 1 || 99) || a.localeCompare(b)
+  )];
+  const myCount = tabClubs.filter(isMine).length;
 
   const filtered = tabClubs
     .filter(c => {
-      const matchCat = activeCategory === "all" || c.category.toLowerCase() === activeCategory.toLowerCase();
-      const matchSearch = !search ||
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        (c.description || "").toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchSearch;
+      const matchCat = activeCategory === "all" || (c.category || "other").toLowerCase() === activeCategory.toLowerCase();
+      return matchCat && matchesSearch(c) && (!mineOnly || isMine(c));
     })
     .sort((a, b) => {
       // Priority: creator (2) > joined (1) > pending (0.5) > none (0)
@@ -789,14 +812,25 @@ export default function CommunityPage() {
           {activeTabMain !== "news" && <>
             {/* Mobile: horizontal category scroll */}
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 mb-4 lg:hidden">
-              {categories.map(cat => (
-                <button key={cat} onClick={() => setActiveCategory(cat)}
-                  className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-all border ${
-                    activeCategory === cat
-                      ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
-                      : "text-muted-foreground bg-white/5 border-white/10 hover:border-white/20"
+              {user && myCount > 0 && (
+                <button onClick={() => setMineOnly(mineOnly ? "" : "1")} aria-pressed={!!mineOnly}
+                  className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-semibold transition-colors border ${
+                    mineOnly ? "bg-indigo-600 text-white border-indigo-600" : "bg-card text-foreground/80 border-border"
                   }`}>
-                  {cat === "all" ? "All" : cat}
+                  Joined · {myCount}
+                </button>
+              )}
+              {categories.map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat)} aria-pressed={activeCategory === cat}
+                  className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-semibold capitalize transition-colors border ${
+                    activeCategory === cat
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-card text-foreground/80 border-border hover:border-indigo-500/40"
+                  }`}>
+                  {cat === "all" ? "All" : cat}{" "}
+                  <span className={activeCategory === cat ? "text-white/80" : "text-muted-foreground"}>
+                    {cat === "all" ? tabClubs.filter(matchesSearch).filter((c) => !mineOnly || isMine(c)).length : categoryCounts.get(cat) || 0}
+                  </span>
                 </button>
               ))}
             </div>
@@ -808,18 +842,29 @@ export default function CommunityPage() {
                 <div>
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Category</h2>
                   <div className="space-y-0.5">
-                    {categories.map(cat => (
-                      <button key={cat} onClick={() => setActiveCategory(cat)}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                          activeCategory === cat ? "bg-indigo-500/10 text-indigo-400" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    {user && myCount > 0 && (
+                      <button onClick={() => setMineOnly(mineOnly ? "" : "1")} aria-pressed={!!mineOnly}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors mb-1 ${
+                          mineOnly ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300" : "text-muted-foreground hover:text-foreground hover:bg-accent"
                         }`}>
                         <Globe size={13} />
-                        <span className="font-medium capitalize">{cat === "all" ? "All Clubs" : cat}</span>
+                        <span className="font-semibold flex-1 text-left">Joined by me</span>
+                        <span className="tabular-nums text-xs">{myCount}</span>
+                      </button>
+                    )}
+                    {categories.map(cat => (
+                      <button key={cat} onClick={() => setActiveCategory(cat)} aria-pressed={activeCategory === cat}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                          activeCategory === cat ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        }`}>
+                        <Globe size={13} />
+                        <span className="font-medium capitalize flex-1 text-left">{cat === "all" ? (activeTab === "club" ? "All clubs" : "All communities") : cat}</span>
+                        <span className="tabular-nums text-xs">{cat === "all" ? tabClubs.filter(matchesSearch).filter((c) => !mineOnly || isMine(c)).length : categoryCounts.get(cat) || 0}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="p-4 rounded-2xl border border-white/8 bg-white/3 text-xs text-muted-foreground space-y-2">
+                <div className="p-4 rounded-2xl border border-border bg-card text-xs text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">How it works</p>
                   <p>Click <strong>Join</strong> to request membership. Open clubs accept you instantly; others wait for owner approval.</p>
                   <p>Once approved, you can chat with members, see the KakaoTalk link, and post news for your club.</p>

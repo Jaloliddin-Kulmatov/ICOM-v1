@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryState } from "@/hooks/use-query-state";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -99,12 +100,15 @@ export default function ChatPage() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<ChatPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useQueryState("q", "");
+  const [sort, setSort] = useQueryState("sort", "popular");
   const [showComposer, setShowComposer] = useState(false);
   // Two-tab view: "all" shows every question, "uni" filters to questions
   // from students at the user's university (e.g. JBNU Chat). Defaults to
   // "all" when the user has no university or isn't signed in.
-  const [tab, setTab] = useState<"all" | "uni">("all");
+  const [tabParam, setTabParam] = useQueryState("feed", "all");
+  const tab: "all" | "uni" = tabParam === "uni" ? "uni" : "all";
+  const setTab = (t: "all" | "uni") => setTabParam(t);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -209,29 +213,32 @@ export default function ChatPage() {
   const tabFilteredPosts = tab === "uni" && myRegion ? uniPosts : allKoreaPosts;
 
   const visiblePosts = useMemo(() => {
-    const base = !search
+    // Every search word must appear in the title, question or author name.
+    const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+    const base = !words.length
       ? tabFilteredPosts
-      : tabFilteredPosts.filter(p =>
-          p.title.toLowerCase().includes(search.toLowerCase()) ||
-          p.content.toLowerCase().includes(search.toLowerCase())
-        );
+      : tabFilteredPosts.filter((p) => {
+          const hay = `${p.title} ${p.content} ${p.author_name || ""}`.toLowerCase();
+          return words.every((w) => hay.includes(w));
+        });
+    const newest = (a: ChatPost, b: ChatPost) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
-    if (search) return base;
+    if (sort === "new") return [...base].sort(newest);
+    if (sort === "unanswered") return base.filter((p) => !p.answer_count).sort(newest);
+    if (words.length) return base;
 
-    // Top 3 newest (backend order)
+    // Popular: the 3 newest stay on top so fresh questions get seen, then
+    // the most-answered first, ties broken by newest.
     const latest = base.slice(0, 3);
-    const latestIds = new Set(latest.map(p => p.id));
-
-    // Rest: most answered first, then newest
+    const latestIds = new Set(latest.map((p) => p.id));
     const rest = base
-      .filter(p => !latestIds.has(p.id))
-      .sort((a, b) =>
-        b.answer_count - a.answer_count ||
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
+      .filter((p) => !latestIds.has(p.id))
+      .sort((a, b) => b.answer_count - a.answer_count || newest(a, b));
     return [...latest, ...rest];
-  }, [tabFilteredPosts, search]);
+  }, [tabFilteredPosts, search, sort]);
+
+  const unansweredCount = useMemo(() => tabFilteredPosts.filter((p) => !p.answer_count).length, [tabFilteredPosts]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -323,7 +330,24 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-3">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 flex items-center gap-2" role="group" aria-label="Sort questions">
+          {([["popular", "Popular"], ["new", "Newest"], ["unanswered", `Unanswered · ${unansweredCount}`]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setSort(k)}
+              aria-pressed={sort === k}
+              className={`h-8 px-3.5 rounded-full text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                sort === k
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-card text-foreground/80 border-border hover:border-foreground/30"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 space-y-3">
           {loading ? (
             <div className="text-center py-16">
               <Loader2 size={24} className="animate-spin text-muted-foreground mx-auto" />
@@ -332,6 +356,8 @@ export default function ChatPage() {
             <div className="text-center py-16 text-muted-foreground text-sm">
               {search
                 ? `No questions matching "${search}".`
+                : sort === "unanswered"
+                  ? "Every question here has an answer. Nice work, everyone!"
                 : tab === "uni" && myRegion
                   ? `No questions yet from ${myRegion.uniLabel} students. Be the first to ask!`
                   : "No questions yet. Be the first to ask!"}
@@ -339,72 +365,72 @@ export default function ChatPage() {
           ) : (
             visiblePosts.map((p) => {
               const isLocal = rankPost(p) > 0;
+              const answered = p.answer_count > 0;
               return (
-              <Link
+              <article
                 key={p.id}
-                href={`/chat/${p.id}`}
-                className={`relative block p-4 sm:p-5 rounded-2xl border bg-card hover:shadow-sm transition-all ${
-                  isLocal
-                    ? "border-indigo-500/30 ring-1 ring-indigo-500/10"
-                    : "border-border hover:border-indigo-500/30"
+                className={`group relative flex gap-3.5 p-4 sm:p-5 rounded-2xl border bg-card transition-colors hover:border-indigo-500/40 focus-within:border-indigo-500/60 ${
+                  isLocal ? "border-indigo-500/30" : "border-border"
                 }`}
               >
+                {/* Answer count, Stack Overflow style: green once answered */}
+                <div
+                  className={`shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center text-center ${
+                    answered
+                      ? "bg-emerald-600 text-white"
+                      : "border-2 border-dashed border-border text-muted-foreground"
+                  }`}
+                  aria-label={`${p.answer_count} ${p.answer_count === 1 ? "answer" : "answers"}`}
+                >
+                  <span className="text-lg font-extrabold leading-none tabular-nums">{p.answer_count}</span>
+                  <span className="text-[10px] font-semibold mt-0.5">{p.answer_count === 1 ? "answer" : "answers"}</span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[15px] font-bold text-foreground leading-snug pr-8">
+                    <Link
+                      href={`/chat/${p.id}`}
+                      className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none group-hover:text-indigo-700 dark:group-hover:text-indigo-300"
+                    >
+                      {p.title}
+                    </Link>
+                  </h3>
+                  <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed line-clamp-2">
+                    {p.content}
+                  </p>
+                  {p.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image_url} alt="" className="mt-2 max-h-32 rounded-lg border border-border object-cover" />
+                  )}
+                  <div className="mt-2.5 flex items-center gap-x-2 gap-y-1 text-xs text-muted-foreground flex-wrap">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center" aria-hidden>
+                        {p.author_name[0]?.toUpperCase() || "?"}
+                      </span>
+                      <span className="font-semibold text-foreground/80">{p.author_name}</span>
+                    </span>
+                    {p.author_university && <span>· {p.author_university.toUpperCase()}</span>}
+                    {p.author_country && <span>· {p.author_country}</span>}
+                    <span>· {formatRelativeTime(p.created_at)}</span>
+                    {p.scope && scopeMatchesMyUni(p.scope) ? (
+                      <span className="chip-muted"><GraduationCap size={11} /> {myRegion?.uniLabel} only</span>
+                    ) : isLocal && (
+                      <span className="chip-muted"><MapPin size={11} /> Near you</span>
+                    )}
+                    {!answered && <span className="chip-urgent">Needs an answer</span>}
+                  </div>
+                </div>
+
                 {user && (user.id === p.user_id || user.role === "admin") && (
                   <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePost(p.id); }}
-                    className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                    title="Delete post"
-                    aria-label="Delete post"
+                    onClick={() => handleDeletePost(p.id)}
+                    className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Delete "${p.title}"`}
                   >
                     <Trash2 size={14} />
                   </button>
                 )}
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {p.author_name[0]?.toUpperCase() || "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1 flex-wrap">
-                      <span className="font-medium text-foreground">{p.author_name}</span>
-                      {p.author_university && <span>· {p.author_university}</span>}
-                      {p.author_country && <span>· {p.author_country}</span>}
-                      <span>· {formatRelativeTime(p.created_at)}</span>
-                      {p.scope && scopeMatchesMyUni(p.scope) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded-full font-semibold">
-                          <GraduationCap size={9} /> {myRegion?.uniLabel} only
-                        </span>
-                      ) : isLocal && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-full font-semibold">
-                          <MapPin size={9} /> Near you
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-sm font-bold text-foreground leading-snug mb-1">
-                      {p.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2">
-                      {p.content}
-                    </p>
-                    {p.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={p.image_url}
-                        alt=""
-                        className="max-h-32 rounded-lg border border-border object-cover mb-2"
-                      />
-                    )}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <MessageSquare size={11} />
-                        {p.answer_count} {p.answer_count === 1 ? "answer" : "answers"}
-                      </span>
-                      <span className="flex items-center gap-1 text-indigo-500">
-                        Read & answer <ArrowRight size={11} />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+              </article>
               );
             })
           )}

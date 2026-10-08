@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useQueryState, useQueryListState } from "@/hooks/use-query-state";
+import { jobCategory, jobCity, daysLeft, matchesSearch, sortJobs, SORTS, type SortKey } from "@/lib/job-filters";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2, X } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2, X, CalendarClock, Globe2, ArrowUpDown } from "lucide-react";
 import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
@@ -38,76 +40,55 @@ const PROVINCE_KO: Record<string, string> = {
   "Gyeongnam":    "경상남도",
 };
 
-// The listings are almost all internships, so employment-type tabs are useless.
-// We DERIVE the FIELD (IT, Marketing, Design, …) from the title/description/tags
-// so the filter segments internships by what they actually are.
-// Order matters — most specific first (a "data engineer" is IT, not Business).
-function jobCategory(job: Job): string {
-  const h = `${job.title} ${(job.description || "").slice(0, 140)} ${(job.tags || []).join(" ")}`.toLowerCase();
-  if (/\b(software|developer|engineer|frontend|back-?end|full[-\s]?stack|data|ai|ml|devops|programmer|web\s?dev|app dev|ios|android|python|java|backend)\b/.test(h)) return "IT / Software";
-  if (/design|designer|\bux\b|\bui\b|graphic|package design|illustrat/.test(h)) return "Design";
-  if (/market|brand|campaign|influencer|growth|\bpr\b|content|\bsns\b|social media|advertis/.test(h)) return "Marketing";
-  if (/\bsales\b|b2b|b2c|account manager|business development|\bbd\b/.test(h)) return "Sales";
-  if (/research|\br&d\b|\blab\b|연구/.test(h)) return "Research";
-  if (/\bhr\b|human resource|recruit|people team/.test(h)) return "HR";
-  if (/plan|strateg|operation|management|scm|logistic|business|admin|financ|account|invest/.test(h)) return "Business";
-  return "Other";
-}
+const PAGE_SIZE = 20;
+const DEADLINES: Record<string, string> = {
+  any: "Any deadline",
+  week: "Closing within 7 days",
+  month: "Closing within 30 days",
+  rolling: "Rolling (no deadline)",
+};
 
-// Map every location string to ONE canonical English city, matching English
-// (any case) OR Korean aliases. This dedupes "Seoul"/"seoul"/"서울" and drops
-// junk values into "Other", so the Location dropdown is clean English.
-const CITY_ALIASES: [string, string][] = [
-  ["seoul", "Seoul"], ["서울", "Seoul"],
-  ["jeonju", "Jeonju"], ["전주", "Jeonju"],
-  ["busan", "Busan"], ["부산", "Busan"],
-  ["incheon", "Incheon"], ["인천", "Incheon"],
-  ["daejeon", "Daejeon"], ["대전", "Daejeon"],
-  ["daegu", "Daegu"], ["대구", "Daegu"],
-  ["gwangju", "Gwangju"], ["광주", "Gwangju"],
-  ["ulsan", "Ulsan"], ["울산", "Ulsan"],
-  ["sejong", "Sejong"], ["세종", "Sejong"],
-  ["suwon", "Suwon"], ["수원", "Suwon"],
-  ["seongnam", "Seongnam"], ["성남", "Seongnam"],
-  ["yongin", "Yongin"], ["용인", "Yongin"],
-  ["bucheon", "Bucheon"], ["부천", "Bucheon"],
-  ["anyang", "Anyang"], ["안양", "Anyang"],
-  ["hwaseong", "Hwaseong"], ["화성", "Hwaseong"],
-  ["cheonan", "Cheonan"], ["천안", "Cheonan"],
-  ["iksan", "Iksan"], ["익산", "Iksan"],
-  ["gunsan", "Gunsan"], ["군산", "Gunsan"],
-  ["pohang", "Pohang"], ["포항", "Pohang"],
-  ["changwon", "Changwon"], ["창원", "Changwon"],
-  ["gimhae", "Gimhae"], ["김해", "Gimhae"],
-  ["jeju", "Jeju"], ["제주", "Jeju"],
-];
-// Provinces — checked only if no city matched (a city is more specific).
-const REGION_ALIASES: [string, string][] = [
-  ["gyeonggi", "Gyeonggi"], ["경기", "Gyeonggi"],
-  ["jeollabuk", "Jeollabuk-do"], ["전북", "Jeollabuk-do"], ["전라북도", "Jeollabuk-do"],
-  ["jeollanam", "Jeollanam-do"], ["전남", "Jeollanam-do"], ["전라남도", "Jeollanam-do"],
-  ["gangwon", "Gangwon"], ["강원", "Gangwon"],
-  ["chungbuk", "Chungcheongbuk-do"], ["충북", "Chungcheongbuk-do"], ["충청북도", "Chungcheongbuk-do"],
-  ["chungnam", "Chungcheongnam-do"], ["충남", "Chungcheongnam-do"], ["충청남도", "Chungcheongnam-do"],
-  ["gyeongbuk", "Gyeongsangbuk-do"], ["경북", "Gyeongsangbuk-do"], ["경상북도", "Gyeongsangbuk-do"],
-  ["gyeongnam", "Gyeongsangnam-do"], ["경남", "Gyeongsangnam-do"], ["경상남도", "Gyeongsangnam-do"],
-];
-function jobCity(job: Job): string {
-  const loc = (job.location || "").toLowerCase();
-  if (!loc.trim()) return "Other";
-  if (loc.includes("remote") || loc.includes("재택")) return "Remote";
-  for (const [alias, canon] of CITY_ALIASES) if (loc.includes(alias)) return canon;
-  for (const [alias, canon] of REGION_ALIASES) if (loc.includes(alias)) return canon;
-  return "Other";
+type Filters = {
+  search: string; category: string; city: string; deadline: string;
+  friendly: boolean; visas: string[]; region: string[] | null;
+};
+
+/** Apply every filter except the ones named in `skip` (used for facet counts). */
+function applyFilters(jobs: Job[], f: Filters, skip: (keyof Filters)[] = []): Job[] {
+  return jobs.filter((job) => {
+    if (!skip.includes("search") && !matchesSearch(job, f.search)) return false;
+    if (!skip.includes("category") && f.category !== "All" && jobCategory(job) !== f.category) return false;
+    if (!skip.includes("city") && f.city !== "All Locations" && jobCity(job) !== f.city) return false;
+    if (!skip.includes("friendly") && f.friendly && job.foreignerFriendly !== "yes") return false;
+    if (!skip.includes("visas") && f.visas.length && !f.visas.some((v) => job.visaCompatible.includes(v))) return false;
+    if (!skip.includes("deadline") && f.deadline !== "any") {
+      const d = daysLeft(job);
+      if (f.deadline === "rolling" && d !== null) return false;
+      if (f.deadline === "week" && (d === null || d > 7)) return false;
+      if (f.deadline === "month" && (d === null || d > 30)) return false;
+    }
+    if (!skip.includes("region") && f.region) {
+      const loc = (job.location || "").toLowerCase();
+      if (!f.region.some((k) => loc.includes(k))) return false;
+    }
+    return true;
+  });
 }
 
 export default function JobsPage() {
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [locationFilter, setLocationFilter] = useState("All Locations");
-  const [visaFilter, setVisaFilter] = useState<string[]>([]);
-  const [regionFilter, setRegionFilter] = useState(false);
+  // Every filter lives in the URL (?q=&field=&city=…) so back/refresh/share keep it.
+  const [search, setSearch] = useQueryState("q", "");
+  const [activeCategory, setActiveCategory] = useQueryState("field", "All");
+  const [locationFilter, setLocationFilter] = useQueryState("city", "All Locations");
+  const [deadlineFilter, setDeadlineFilter] = useQueryState("deadline", "any");
+  const [friendlyOnly, setFriendlyOnly] = useQueryState("welcome", "");
+  const [sort, setSort] = useQueryState("sort", "newest");
+  const [visaFilter, setVisaFilter, toggleVisa] = useQueryListState("visa");
+  const [regionParam, setRegionParam] = useQueryState("near", "");
+  const regionFilter = regionParam === "1";
+  const [showFilters, setShowFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
@@ -253,37 +234,64 @@ export default function JobsPage() {
     finally { setAlertsBusy(false); }
   };
 
-  const toggleVisa = (v: string) =>
-    setVisaFilter((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
+  const filters: Filters = {
+    search, category: activeCategory, city: locationFilter, deadline: deadlineFilter,
+    friendly: friendlyOnly === "1", visas: visaFilter,
+    region: regionFilter && myRegion ? myRegion.keywords : null,
+  };
 
-  // Unique cities present in the current jobs, for the Location dropdown.
+  // Faceted counts: each option shows how many results it would give with
+  // the other filters applied, so users never pick a dead end.
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const base = applyFilters(allJobs, filters, ["category"]);
+    base.forEach((j) => counts.set(jobCategory(j), (counts.get(jobCategory(j)) || 0) + 1));
+    return { counts, total: base.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allJobs, search, locationFilter, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, myRegion]);
+
   const locations = useMemo(() => {
+    const counts = new Map<string, number>();
+    applyFilters(allJobs, filters, ["city"]).forEach((j) => counts.set(jobCity(j), (counts.get(jobCity(j)) || 0) + 1));
+    const other = counts.get("Other") || 0;
+    counts.delete("Other");
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return [...sorted, ...(other ? [["Other", other] as [string, number]] : [])];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allJobs, search, activeCategory, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, myRegion]);
+
+  // Only offer visa chips that some listing actually mentions.
+  const visaOptions = useMemo(() => {
     const set = new Set<string>();
-    allJobs.forEach((j) => set.add(jobCity(j)));
-    const hasOther = set.has("Other");
-    set.delete("Other");
-    const sorted = Array.from(set).filter(Boolean).sort();
-    return ["All Locations", ...sorted, ...(hasOther ? ["Other"] : [])];
+    allJobs.forEach((j) => j.visaCompatible.forEach((v) => set.add(v)));
+    return ["D-2", "D-4", "D-10", "F-2", "E-7"].filter((v) => set.has(v));
   }, [allJobs]);
 
-  const filteredJobs = allJobs.filter((job) => {
-    const matchSearch = !search || job.title.toLowerCase().includes(search.toLowerCase()) || job.company.toLowerCase().includes(search.toLowerCase());
-    // Category is derived from the job title/tags (see jobCategory).
-    const matchCategory = activeCategory === "All" || jobCategory(job) === activeCategory;
-    // Location filter: exact city match from the dropdown.
-    const matchLocation = locationFilter === "All Locations" || jobCity(job) === locationFilter;
-    const matchVisa = visaFilter.length === 0 || visaFilter.some((v) => job.visaCompatible.includes(v));
+  const friendlyCount = useMemo(
+    () => applyFilters(allJobs, filters, ["friendly"]).filter((j) => j.foreignerFriendly === "yes").length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allJobs, search, activeCategory, locationFilter, deadlineFilter, visaFilter.join(), regionFilter, myRegion]
+  );
 
-    // Region filter: when on, keep only jobs whose location string contains
-    // any of the user's region keywords (English or Korean city/province).
-    let matchRegion = true;
-    if (regionFilter && myRegion) {
-      const loc = (job.location || "").toLowerCase();
-      matchRegion = myRegion.keywords.some((k) => loc.includes(k));
-    }
+  const filteredJobs = useMemo(
+    () => sortJobs(applyFilters(allJobs, filters), (sort in SORTS ? sort : "newest") as SortKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allJobs, search, activeCategory, locationFilter, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, myRegion, sort]
+  );
 
-    return matchSearch && matchCategory && matchLocation && matchVisa && matchRegion;
-  });
+  // Start from the top of the list whenever the filters change.
+  React.useEffect(() => { setVisibleCount(PAGE_SIZE); },
+    [search, activeCategory, locationFilter, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, sort]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeCount =
+    (activeCategory !== "All" ? 1 : 0) + (locationFilter !== "All Locations" ? 1 : 0) +
+    (deadlineFilter !== "any" ? 1 : 0) + (friendlyOnly === "1" ? 1 : 0) +
+    visaFilter.length + (regionFilter ? 1 : 0) + (search ? 1 : 0);
+
+  const clearAll = () => {
+    setSearch(""); setActiveCategory("All"); setLocationFilter("All Locations");
+    setDeadlineFilter("any"); setFriendlyOnly(""); setVisaFilter([]); setRegionParam("");
+  };
 
   // Load saved alert preferences from localStorage on mount
   React.useEffect(() => {
@@ -299,7 +307,7 @@ export default function JobsPage() {
       <Navbar />
       <main className="pt-16 pb-20 md:pb-0">
         {/* Page header */}
-        <div className="border-b border-white/8 bg-gradient-to-b from-white/2 to-transparent">
+        <div className="border-b border-border bg-gradient-to-b from-indigo-500/[0.05] to-transparent">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -319,7 +327,7 @@ export default function JobsPage() {
                   <div className="text-xl font-bold gradient-text-primary">{allJobs.length || "—"}</div>
                   <div className="text-xs text-muted-foreground">Internships</div>
                 </div>
-                <div className="h-8 w-px bg-white/10" />
+                <div className="h-8 w-px bg-border" />
                 <div className="text-center">
                   <div className="text-xl font-bold text-emerald-400">Real</div>
                   <div className="text-xs text-muted-foreground">Apply links</div>
@@ -328,95 +336,146 @@ export default function JobsPage() {
             </div>
 
             {/* Search + filters */}
-            <div className="mt-6 space-y-4">
-              <div className="flex gap-3">
-                <div className="flex-1">
+            <div className="mt-6 space-y-3">
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by role, company, or keyword..."
+                    placeholder="Search role, company, skill or city"
                     icon={<Search size={15} />}
                     className="h-11"
+                    aria-label="Search internships"
                   />
                 </div>
-                <Button variant="glass" className="gap-2 h-11 px-4 shrink-0">
+                <Button
+                  variant="outline"
+                  className="md:hidden gap-2 h-11 px-4 shrink-0"
+                  onClick={() => setShowFilters((v) => !v)}
+                  aria-expanded={showFilters}
+                  aria-controls="internship-filters"
+                >
                   <SlidersHorizontal size={15} />
-                  <span className="hidden sm:inline">Filters</span>
+                  Filters
+                  {activeCount > 0 && (
+                    <span className="ml-0.5 h-5 min-w-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">
+                      {activeCount}
+                    </span>
+                  )}
                 </Button>
               </div>
 
-              {/* Category tabs + location filter */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 flex-1">
-                  {JOB_CATEGORIES.map((cat) => (
+              {/* Field — the main way students browse */}
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1" role="group" aria-label="Field">
+                {JOB_CATEGORIES.map((cat) => {
+                  const n = cat === "All" ? categoryCounts.total : categoryCounts.counts.get(cat) || 0;
+                  const on = activeCategory === cat;
+                  if (!on && cat !== "All" && n === 0) return null;
+                  return (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        activeCategory === cat
-                          ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40"
-                          : "text-muted-foreground hover:text-foreground bg-white/5 border border-white/8 hover:border-white/15"
+                      aria-pressed={on}
+                      className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        on
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-card text-foreground/80 border-border hover:border-indigo-500/40"
                       }`}
                     >
                       {cat}
+                      <span className={`tabular-nums ${on ? "text-white/80" : "text-muted-foreground"}`}>{n}</span>
                     </button>
-                  ))}
-                </div>
-                {/* Location dropdown — cities present in the current listings */}
-                <div className="relative shrink-0">
-                  <MapPin size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  );
+                })}
+              </div>
+
+              {/* Secondary filters — collapsible on phones, always visible on desktop */}
+              <div id="internship-filters" className={`${showFilters ? "flex" : "hidden"} md:flex flex-wrap items-center gap-2`}>
+                <label className="relative">
+                  <span className="sr-only">Location</span>
+                  <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <select
                     value={locationFilter}
                     onChange={(e) => setLocationFilter(e.target.value)}
-                    className="appearance-none h-9 pl-8 pr-7 rounded-full text-xs font-medium bg-white/5 border border-white/8 text-foreground hover:border-white/15 focus:outline-none focus:border-indigo-500/40 cursor-pointer"
+                    className={`appearance-none h-9 pl-8 pr-8 rounded-full text-xs font-semibold border bg-card cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      locationFilter !== "All Locations" ? "border-indigo-500 text-indigo-700 dark:text-indigo-300" : "border-border text-foreground"
+                    }`}
                   >
-                    {locations.map((loc) => (
-                      <option key={loc} value={loc} className="bg-[#1a1a2e] text-white">{loc}</option>
+                    <option value="All Locations">All locations</option>
+                    {locations.map(([loc, n]) => (
+                      <option key={loc} value={loc}>{loc} ({n})</option>
                     ))}
                   </select>
-                </div>
-              </div>
+                </label>
 
-              {/* Visa + region filter pills */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
-                  <CheckCircle2 size={11} />
-                  Visa compatible:
-                </span>
-                {["D-2", "D-4", "F-2", "E-7"].map((v) => (
+                <label className="relative">
+                  <span className="sr-only">Deadline</span>
+                  <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={deadlineFilter}
+                    onChange={(e) => setDeadlineFilter(e.target.value)}
+                    className={`appearance-none h-9 pl-8 pr-8 rounded-full text-xs font-semibold border bg-card cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      deadlineFilter !== "any" ? "border-indigo-500 text-indigo-700 dark:text-indigo-300" : "border-border text-foreground"
+                    }`}
+                  >
+                    {Object.entries(DEADLINES).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  onClick={() => setFriendlyOnly(friendlyOnly === "1" ? "" : "1")}
+                  aria-pressed={friendlyOnly === "1"}
+                  className={`h-9 inline-flex items-center gap-1.5 px-3.5 rounded-full text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    friendlyOnly === "1"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-card text-foreground border-border hover:border-emerald-500/50"
+                  }`}
+                >
+                  <Globe2 size={13} />
+                  Foreigners welcome
+                  <span className={`tabular-nums ${friendlyOnly === "1" ? "text-white/80" : "text-muted-foreground"}`}>{friendlyCount}</span>
+                </button>
+
+                {visaOptions.length > 1 && visaOptions.map((v) => (
                   <button
                     key={v}
                     onClick={() => toggleVisa(v)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                    aria-pressed={visaFilter.includes(v)}
+                    className={`h-9 inline-flex items-center gap-1 px-3 rounded-full text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       visaFilter.includes(v)
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        : "text-muted-foreground border-white/10 hover:border-white/20 hover:text-foreground"
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-card text-foreground border-border hover:border-indigo-500/40"
                     }`}
                   >
-                    {v}
+                    <CheckCircle2 size={12} /> {v}
                   </button>
                 ))}
 
-                {/* My Region — only shown for signed-in users with a
-                    recognised university. Keywords include English +
-                    Korean city/province so it matches Wanted.co.kr's
-                    Korean location strings ("서울", "전주") too. */}
                 {myRegion && (
-                  <>
-                    <span className="text-xs text-muted-foreground/40 px-1">·</span>
-                    <button
-                      onClick={() => setRegionFilter((p) => !p)}
-                      title={`Show internships near ${myRegion.city} (${myRegion.province})`}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5 ${
-                        regionFilter
-                          ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/40"
-                          : "text-muted-foreground border-white/10 hover:border-white/20 hover:text-foreground"
-                      }`}
-                    >
-                      <MapPin size={11} />
-                      My Region · {myRegion.city}
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setRegionParam(regionFilter ? "" : "1")}
+                    aria-pressed={regionFilter}
+                    title={`Show internships near ${myRegion.city} (${myRegion.province})`}
+                    className={`h-9 inline-flex items-center gap-1.5 px-3.5 rounded-full text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      regionFilter
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-card text-foreground border-border hover:border-indigo-500/40"
+                    }`}
+                  >
+                    <MapPin size={12} />
+                    Near {myRegion.city}
+                  </button>
+                )}
+
+                {activeCount > 0 && (
+                  <button
+                    onClick={clearAll}
+                    className="h-9 inline-flex items-center gap-1 px-3 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X size={13} /> Clear all
+                  </button>
                 )}
               </div>
             </div>
@@ -462,7 +521,7 @@ export default function JobsPage() {
               )}
 
               {/* Info banner */}
-              <div className="flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-5">
+              <div className="hidden md:flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 mb-5">
                 <Sparkles size={18} className="text-violet-400 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
@@ -472,27 +531,56 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing <span className="text-foreground font-medium">{filteredJobs.length}</span> results
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                  {loading ? "Loading…" : (
+                    <>
+                      <span className="text-foreground font-semibold tabular-nums">{filteredJobs.length}</span>
+                      {filteredJobs.length === allJobs.length ? " internships" : ` of ${allJobs.length} internships`}
+                    </>
+                  )}
                 </p>
-                <select className="text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-muted-foreground focus:outline-none focus:border-indigo-500/50">
-                  <option>Most Recent</option>
-                  <option>Salary: High to Low</option>
-                  <option>Most Applied</option>
-                  <option>Deadline Soon</option>
-                </select>
+                <label className="relative">
+                  <span className="sr-only">Sort</span>
+                  <ArrowUpDown size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                    className="appearance-none text-xs font-semibold bg-card border border-border rounded-lg h-8 pl-7 pr-7 text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {Object.entries(SORTS).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {loading ? (
-                  <div className="py-16 text-center text-muted-foreground text-sm">Loading internships…</div>
-                ) : filteredJobs.length === 0 ? (
-                  <div className="py-16 text-center text-muted-foreground text-sm">No internships match your filters.</div>
-                ) : (
-                  filteredJobs.map((job) => (
-                    <JobCard key={job.id} job={job} />
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-40 rounded-2xl border border-border bg-card animate-pulse" />
                   ))
+                ) : filteredJobs.length === 0 ? (
+                  <div className="py-16 px-6 text-center rounded-2xl border border-dashed border-border">
+                    <p className="text-sm font-semibold text-foreground">No internships match these filters</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">Try a different field or city, or remove a filter.</p>
+                    <Button size="sm" variant="outline" onClick={clearAll}>Clear all filters</Button>
+                  </div>
+                ) : (
+                  <>
+                    {filteredJobs.slice(0, visibleCount).map((job) => (
+                      <JobCard key={job.id} job={job} />
+                    ))}
+                    {visibleCount < filteredJobs.length && (
+                      <Button
+                        variant="outline"
+                        className="w-full h-11"
+                        onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                      >
+                        Show more · {filteredJobs.length - visibleCount} left
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

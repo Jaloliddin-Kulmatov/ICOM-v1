@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useQueryState } from "@/hooks/use-query-state";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { UNIVERSITIES } from "@/lib/constants";
@@ -42,8 +43,8 @@ const JBNU_INFO = {
 };
 
 export default function UniversitiesPage() {
-  const [search, setSearch] = useState("");
-  const [province, setProvince] = useState("All");
+  const [search, setSearch] = useQueryState("q", "");
+  const [province, setProvince] = useQueryState("province", "All");
   const [showAmbassador, setShowAmbassador] = useState(false);
 
   const filtered = UNIVERSITIES.filter(u => {
