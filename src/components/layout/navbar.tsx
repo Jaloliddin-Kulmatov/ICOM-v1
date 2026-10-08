@@ -111,7 +111,11 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
 
           {/* Right side */}
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
+            {/* Signed-out phones need the room for Sign in + Register; the
+                theme toggle is in the menu there instead. */}
+            <div className={user ? "" : "hidden sm:block"}>
+              <ThemeToggle />
+            </div>
 
             {/* Search — always visible */}
             <button
@@ -167,16 +171,13 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
               </>
             ) : (
               <>
-                {/* Sign in: only useful for returning users — force=1 bypasses the
-                    "new visitors go to /register" redirect on the login page. */}
-                <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                {/* force=1 bypasses the "new visitors go to /register" redirect
+                    on the login page. */}
+                <Button variant="outline" size="sm" asChild className="px-3">
                   <Link href="/login?force=1">Sign in</Link>
                 </Button>
-                <Button size="sm" asChild className="gap-1.5">
-                  <Link href="/register">
-                    <LogIn size={13} />
-                    Get started
-                  </Link>
+                <Button size="sm" asChild className="px-3">
+                  <Link href="/register">Register</Link>
                 </Button>
               </>
             )}
@@ -247,10 +248,14 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 </>
               ) : (
                 <div className="flex flex-col gap-2 mt-1">
+                  <div className="sm:hidden flex items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground">
+                    Dark mode
+                    <ThemeToggle />
+                  </div>
                   <Button className="w-full gap-2" asChild>
                     <Link href="/register">
                       <LogIn size={14} />
-                      Create free account
+                      Register free
                     </Link>
                   </Button>
                   <Button variant="outline" className="w-full" asChild>
