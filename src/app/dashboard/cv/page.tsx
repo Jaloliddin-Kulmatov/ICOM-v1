@@ -4,9 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { api, uploadFile, downloadFile } from "@/lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
-import { FileText, Download, Upload, Trash2, Check, Loader2, UserRound, ShieldCheck } from "lucide-react";
+import { FileText, Download, Upload, Trash2, Check, Loader2, UserRound, ShieldCheck, AlertTriangle, RotateCw } from "lucide-react";
 
 // Only the basics employers look for first. Saved next to the uploaded CV
 // (backend/routes/cv.py keeps any other fields that were already stored).
@@ -20,46 +22,88 @@ const NATIONALITIES = [
 ];
 
 const inputCls =
-  "w-full h-11 rounded-xl border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring";
+  "disabled:opacity-60 disabled:cursor-wait w-full h-11 rounded-xl border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring";
 
 export default function CVPage() {
   const { user } = useAuth();
   const [basics, setBasics] = useState<Basics>({ full_name: "", headline: "", nationality: "" });
   const [rest, setRest] = useState<Record<string, unknown>>({});
-  const [loaded, setLoaded] = useState(false);
+  const [load, setLoad] = useState<"loading" | "ready" | "failed">("loading");
+  const [loadError, setLoadError] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState("");
   const [file, setFile] = useState<FileMeta | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Latest unsaved data, so a pending save still goes out if the page closes.
+  const pending = useRef<Record<string, unknown> | null>(null);
 
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
-    api.get<{ cv: Record<string, string> | null; file: FileMeta | null }>("/cv/me").then(({ data }) => {
-      const cv = data?.cv || {};
+    if (!userId || !user) return;
+    let cancelled = false;
+    setLoad("loading");
+    api.get<{ cv: Record<string, string> | null; file: FileMeta | null }>("/cv/me").then(({ data, error: e }) => {
+      if (cancelled) return;
+      if (e || !data) {
+        // Don't let people type into a form we can't save.
+        setLoadError(e || "Couldn't load your CV.");
+        setLoad("failed");
+        return;
+      }
+      const cv = data.cv || {};
       setRest(cv);
       setBasics({
         full_name: cv.full_name || user.name || "",
         headline: cv.headline || "",
         nationality: cv.nationality || user.country || "",
       });
-      setFile(data?.file || null);
-      setLoaded(true);
+      setFile(data.file || null);
+      setLoad("ready");
     });
-  }, [user]);
+    return () => { cancelled = true; };
+    // Reload only when the signed-in person changes, not on every profile refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, attempt]);
 
-  // Save 1 s after the last change.
-  useEffect(() => {
-    if (!loaded || !dirty.current) return;
+  const save = async (body: Record<string, unknown>) => {
     setSaveState("saving");
-    const t = setTimeout(async () => {
-      const { error: e } = await api.put("/cv/me", { ...rest, ...basics });
-      setSaveState(e ? "error" : "saved");
-    }, 1000);
+    const { error: e } = await api.put("/cv/me", body);
+    if (pending.current === body) pending.current = null;
+    setSaveError(e || "");
+    setSaveState(e ? "error" : "saved");
+  };
+
+  // Save 0.8 s after the last change.
+  useEffect(() => {
+    if (load !== "ready" || !dirty.current) return;
+    const body = { ...rest, ...basics };
+    pending.current = body;
+    setSaveState("saving");
+    const t = setTimeout(() => save(body), 800);
     return () => clearTimeout(t);
-  }, [basics, loaded, rest]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basics, load, rest]);
+
+  // Leaving the page (or closing the tab) with a save still waiting → send it now.
+  useEffect(() => {
+    const flush = () => {
+      const body = pending.current;
+      if (!body) return;
+      pending.current = null;
+      const token = localStorage.getItem("icon_token");
+      fetch(`${API_BASE}/cv/me`, {
+        method: "PUT", keepalive: true, body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      }).catch(() => { /* best effort */ });
+    };
+    window.addEventListener("pagehide", flush);
+    return () => { window.removeEventListener("pagehide", flush); flush(); };
+  }, []);
 
   const set = (k: keyof Basics, v: string) => { dirty.current = true; setBasics((b) => ({ ...b, [k]: v })); };
 
@@ -89,6 +133,19 @@ export default function CVPage() {
       <div className="max-w-2xl">
         <h1 className="text-2xl font-extrabold text-foreground tracking-tight">My CV</h1>
         <p className="text-sm text-muted-foreground mt-1">Upload your CV and add the three things employers look for first.</p>
+
+        {load === "failed" && (
+          <div role="alert" className="mt-5 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/[0.06] p-4">
+            <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Couldn&apos;t load your CV</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{loadError.replace(/\.$/, "")}. Nothing was changed.</p>
+            </div>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => setAttempt((n) => n + 1)}>
+              <RotateCw size={13} /> Retry
+            </Button>
+          </div>
+        )}
 
         {/* Upload */}
         <section
@@ -147,24 +204,30 @@ export default function CVPage() {
               About you
             </h2>
             <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5" aria-live="polite">
-              {saveState === "saving" && <><Loader2 size={13} className="animate-spin" /> Saving…</>}
+              {load === "ready" && saveState === "saving" && <><Loader2 size={13} className="animate-spin" /> Saving…</>}
               {saveState === "saved" && <><Check size={13} className="text-emerald-600" /> Saved</>}
-              {saveState === "error" && <span className="text-red-600">Couldn&apos;t save</span>}
+              {load === "loading" && <><Loader2 size={13} className="animate-spin" /> Loading…</>}
+              {saveState === "error" && (
+                <button type="button" className="text-red-600 inline-flex items-center gap-1 hover:underline"
+                  title={saveError} onClick={() => save({ ...rest, ...basics })}>
+                  <RotateCw size={12} /> Couldn&apos;t save. Retry
+                </button>
+              )}
             </span>
           </div>
           <div className="space-y-4">
             <label className="block">
               <span className="block text-xs font-semibold text-foreground/80 mb-1.5">Full name</span>
-              <input id="cv-name" className={inputCls} value={basics.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Linh Tran" />
+              <input id="cv-name" disabled={load !== "ready"} className={inputCls} value={basics.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Linh Tran" />
             </label>
             <label className="block">
               <span className="block text-xs font-semibold text-foreground/80 mb-1.5">What you do</span>
-              <input id="cv-headline" className={inputCls} value={basics.headline} onChange={(e) => set("headline", e.target.value)}
+              <input id="cv-headline" disabled={load !== "ready"} className={inputCls} value={basics.headline} onChange={(e) => set("headline", e.target.value)}
                 placeholder="e.g. Marketing student at JBNU, or Backend developer" />
             </label>
             <label className="block">
               <span className="block text-xs font-semibold text-foreground/80 mb-1.5">Nationality</span>
-              <input id="cv-nationality" list="cv-nationalities" className={inputCls} value={basics.nationality}
+              <input id="cv-nationality" disabled={load !== "ready"} list="cv-nationalities" className={inputCls} value={basics.nationality}
                 onChange={(e) => set("nationality", e.target.value)} placeholder="Vietnam" />
               <datalist id="cv-nationalities">{NATIONALITIES.map((n) => <option key={n} value={n} />)}</datalist>
             </label>
