@@ -158,3 +158,10 @@ def test_seen_pointer(client, alice):
     assert alice.get(f"/api/messages/conversations/{cid}").get_json()["conversation"]["other_read_up_to"] < mid
     reader.get(f"/api/messages/conversations/{cid}")
     assert alice.get(f"/api/messages/conversations/{cid}?after={mid}").get_json()["conversation"]["other_read_up_to"] == mid
+
+
+def test_cv_basics_with_nationality(alice):
+    r = alice.put("/api/cv/me", json={"full_name": "Alice Kim", "headline": "Marketing student at JBNU", "nationality": "Vietnam"})
+    assert r.status_code == 200
+    cv = alice.get("/api/cv/me").get_json()["cv"]
+    assert (cv["full_name"], cv["headline"], cv["nationality"]) == ("Alice Kim", "Marketing student at JBNU", "Vietnam")

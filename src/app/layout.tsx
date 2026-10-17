@@ -1,15 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { Gothic_A1 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import FeedbackWidget from "@/components/feedback/feedback-widget";
 import ChatWidget from "@/components/ai/chat-widget";
-import SplashScreen from "@/components/ui/splash-screen";
 import VisitTracker from "@/components/analytics/visit-tracker";
 import InstallPrompt from "@/components/pwa/install-prompt";
 import { AuthProvider } from "@/lib/auth";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
+// Self-hosted by Next (no request to Google at page load). The font is split
+// into hundreds of small unicode-range files; preload is off so the browser
+// fetches only the few a page actually uses instead of all of them.
+const gothic = Gothic_A1({
+  weight: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-gothic",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -85,7 +95,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       storageKey="icon-theme"
     >
       <AuthProvider>
-        <SplashScreen />
         <VisitTracker />
         {children}
         <MobileBottomNav />
@@ -125,7 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={gothic.variable} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"

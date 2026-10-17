@@ -1,6 +1,7 @@
 import sys, os
 from collections import defaultdict
-from flask import Blueprint, request, jsonify
+import json
+from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -20,17 +21,18 @@ import time as _time
 
 _RESP_CACHE: dict = {}
 _RESP_TTL = 30  # seconds
+_JOBS_TTL = 300  # the job list only changes on sync/admin edits, which bust it
 
 
 def _cache_get(key):
     e = _RESP_CACHE.get(key)
-    if e and (_time.time() - e[0]) < _RESP_TTL:
+    if e and (_time.time() - e[0]) < e[2]:
         return e[1]
     return None
 
 
-def _cache_set(key, value):
-    _RESP_CACHE[key] = (_time.time(), value)
+def _cache_set(key, value, ttl=_RESP_TTL):
+    _RESP_CACHE[key] = (_time.time(), value, ttl)
 
 
 def _cache_bust(*prefixes):
@@ -601,19 +603,32 @@ def _deadline_passed(deadline) -> bool:
 
 @admin_bp.route("/jobs", methods=["GET"])
 def list_jobs():
-    cached = _cache_get("jobs_list")
-    if cached is not None:
-        return jsonify(cached), 200
+    # ?full=1 (admin editor) returns untrimmed text and skips the cache.
+    full = request.args.get("full") == "1"
+    if not full:
+        cached = _cache_get("jobs_list")
+        if cached is not None:
+            return _json_response(cached)
     # Hide postings past their deadline even if the nightly cleanup hasn't run
     # yet (free instances sleep, so scheduled jobs can be missed).
     jobs = [
         j for j in Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
         if not _deadline_passed(j.deadline)
     ]
-    # list_view=True trims description text → smaller, faster payload.
-    payload = {"jobs": [j.to_dict(list_view=True) for j in jobs]}
-    _cache_set("jobs_list", payload)
-    return jsonify(payload), 200
+    payload = {"jobs": [j.to_dict(list_view=not full) for j in jobs]}
+    if full:
+        return jsonify(payload), 200
+    # Serialize once; every visitor in the next few minutes gets the same bytes.
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    _cache_set("jobs_list", body, ttl=_JOBS_TTL)
+    return _json_response(body)
+
+
+def _json_response(body: str):
+    resp = Response(body, status=200, mimetype="application/json")
+    # Let browsers reuse the list for a minute (it only changes on sync).
+    resp.headers["Cache-Control"] = "public, max-age=60"
+    return resp
 
 
 @admin_bp.route("/jobs", methods=["POST"])

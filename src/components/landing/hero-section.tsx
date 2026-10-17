@@ -25,7 +25,7 @@ export default function HeroSection() {
         </div>
 
         {/* Headline */}
-        <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-extrabold tracking-tight leading-[1.06] mb-6 animate-slide-up">
+        <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-extrabold tracking-tight leading-[1.06] mb-6">
           <span className="text-foreground">The home for</span>
           <br />
           <span className="gradient-text">international</span>
@@ -33,7 +33,7 @@ export default function HeroSection() {
           <span className="text-foreground">students in Korea</span>
         </h1>
 
-        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
           Community, jobs, visa guidance, housing, banking, and an AI assistant —
           everything you need, in one place.
         </p>

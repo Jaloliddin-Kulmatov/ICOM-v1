@@ -21,7 +21,7 @@ MAX_FILE_BYTES = 2 * 1024 * 1024
 MAX_ITEMS = 20
 
 # Field limits for the CV maker. Anything not listed here is dropped.
-TEXT_FIELDS = {"full_name": 100, "headline": 150, "email": 200, "phone": 50,
+TEXT_FIELDS = {"full_name": 100, "headline": 150, "nationality": 60, "email": 200, "phone": 50,
                "location": 120, "summary": 2000, "visa": 60}
 LIST_SCHEMAS = {
     "education": {"school": 150, "degree": 120, "field": 120, "start": 20, "end": 20, "details": 1000},

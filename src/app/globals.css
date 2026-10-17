@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;600;700;800;900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -179,15 +177,3 @@
 .animate-float      { animation: floatY 5s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
 .animate-spin-slow  { animation: spin 3s linear infinite; }
-
-/* ─── CV printing: "Download PDF" on /dashboard/cv prints only the CV ─── */
-@media print {
-  @page { size: A4; margin: 0; }
-  body * { visibility: hidden !important; }
-  #cv-print, #cv-print * { visibility: visible !important; }
-  #cv-print {
-    position: absolute; left: 0; top: 0; width: 210mm; min-height: 297mm;
-    box-shadow: none !important; border-radius: 0 !important; padding: 16mm 18mm !important;
-  }
-  .cv-no-print { display: none !important; }
-}
