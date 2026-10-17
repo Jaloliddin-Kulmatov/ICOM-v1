@@ -1,3 +1,5 @@
+from sqlalchemy.orm import joinedload
+
 from app import db
 from datetime import datetime, date as date_type
 
@@ -306,9 +308,9 @@ class Job(db.Model):
         description = self.description or ""
         requirements = [r.strip() for r in (self.requirements or "").split("\n") if r.strip()]
         if list_view:
-            if len(description) > 280:
-                description = description[:280].rstrip() + "…"
-            requirements = requirements[:4]
+            if len(description) > 200:
+                description = description[:200].rstrip() + "…"
+            requirements = []
         return {
             "id": self.id,
             "title": self.title,
@@ -381,7 +383,9 @@ class ChatPost(db.Model):
 
     author = db.relationship("User", foreign_keys=[user_id])
 
-    def to_dict(self, include_answers=False):
+    def to_dict(self, include_answers=False, answer_count=None):
+        if answer_count is None:
+            answer_count = ChatAnswer.query.filter_by(post_id=self.id, is_active=True).count()
         out = {
             "id": self.id,
             "user_id": self.user_id,
@@ -392,12 +396,13 @@ class ChatPost(db.Model):
             "content": self.content,
             "scope": (self.scope or ""),
             "image_url": self.image_url or "",
-            "answer_count": ChatAnswer.query.filter_by(post_id=self.id, is_active=True).count(),
+            "answer_count": answer_count,
             "created_at": self.created_at.isoformat() + "Z",
         }
         if include_answers:
             answers = (
-                ChatAnswer.query.filter_by(post_id=self.id, is_active=True)
+                ChatAnswer.query.options(joinedload(ChatAnswer.author))
+                .filter_by(post_id=self.id, is_active=True)
                 .order_by(ChatAnswer.created_at.asc()).all()
             )
             out["answers"] = [a.to_dict() for a in answers]

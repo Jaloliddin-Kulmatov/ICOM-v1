@@ -18,6 +18,9 @@ import re
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
 from app import db
 from models import ChatPost, ChatAnswer, User
 
@@ -115,7 +118,8 @@ def list_posts():
         viewer_uni = ""
 
     posts = (
-        ChatPost.query.filter_by(is_active=True)
+        ChatPost.query.options(joinedload(ChatPost.author))
+        .filter_by(is_active=True)
         .order_by(ChatPost.created_at.desc())
         .limit(100)
         .all()
@@ -130,7 +134,12 @@ def list_posts():
         elif viewer_uni and _uni_matches(viewer_uni, scope):
             visible.append(p)  # scoped to the viewer's own university
 
-    return jsonify({"posts": [p.to_dict() for p in visible]}), 200
+    counts = dict(
+        db.session.query(ChatAnswer.post_id, func.count(ChatAnswer.id))
+        .filter(ChatAnswer.post_id.in_([p.id for p in visible]), ChatAnswer.is_active.is_(True))
+        .group_by(ChatAnswer.post_id).all()
+    ) if visible else {}
+    return jsonify({"posts": [p.to_dict(answer_count=counts.get(p.id, 0)) for p in visible]}), 200
 
 
 def _viewer() -> User | None:

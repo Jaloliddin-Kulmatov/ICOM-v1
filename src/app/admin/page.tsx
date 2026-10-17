@@ -157,7 +157,7 @@ export default function AdminPage() {
     // cold call never blocks the others and the panel fills in as data arrives.
     const jobs: Promise<unknown>[] = [
       apiCallRetry("GET", "/admin/clubs").then(d => setClubs((d.clubs as Club[]) || [])),
-      apiCallRetry("GET", "/admin/jobs").then(d => setJobs((d.jobs as Job[]) || [])),
+      apiCallRetry("GET", "/admin/jobs?full=1").then(d => setJobs((d.jobs as Job[]) || [])),
       apiCallRetry("GET", "/ambassador/applications").then(d => setAmbassadors((d.applications as AmbassadorApp[]) || [])),
       apiCallRetry("GET", "/admin/users").then(d => setAppUsers((d.users as AppUser[]) || [])),
       apiCallRetry("GET", "/feedback").then(d => setFeedback((d.feedback as FeedbackItem[]) || [])),
@@ -259,7 +259,7 @@ export default function AdminPage() {
           setScrapeStatus({ kind: "done", newCount: added, finishedAt: Date.now() });
           setScraping(false);
           // Refresh the table so the new rows show.
-          try { const f = await apiCall("GET", "/admin/jobs"); setJobs(f.jobs || []); } catch {}
+          try { const f = await apiCall("GET", "/admin/jobs?full=1"); setJobs(f.jobs || []); } catch {}
           return;
         }
         if (st.state === "error") {
@@ -315,7 +315,7 @@ export default function AdminPage() {
           const added = typeof st.added === "number" ? st.added : 0;
           setScrapeStatus({ kind: "done", newCount: added, finishedAt: Date.now() });
           setResetting(false);
-          try { const f = await apiCall("GET", "/admin/jobs"); setJobs(f.jobs || []); } catch {}
+          try { const f = await apiCall("GET", "/admin/jobs?full=1"); setJobs(f.jobs || []); } catch {}
           return;
         }
         if (st.state === "error") {

@@ -349,3 +349,27 @@ def test_search_finds_questions_not_private_or_expired(client, alice, admin):
     assert "Private gimbap club" not in labels
     assert "Gimbap marketing intern" not in labels
     assert all(r["href"].startswith(("/community/", "/internships/", "/chat/")) for r in results)
+
+
+def test_chat_list_answer_counts(client, alice, bob):
+    pid = alice.post("/api/chat/posts", json={"title": "Best SIM card?", "content": "Prepaid please"}).get_json()["post"]["id"]
+    bob.post(f"/api/chat/posts/{pid}/answers", json={"content": "Try a prepaid eSIM"})
+    bob.post(f"/api/chat/posts/{pid}/answers", json={"content": "Or the airport counter"})
+    post = next(p for p in client.get("/api/chat/posts").get_json()["posts"] if p["id"] == pid)
+    assert post["answer_count"] == 2 and post["author_name"].startswith("Alice")
+    alice.delete(f"/api/chat/posts/{pid}")
+
+
+def test_jobs_list_is_light_and_admin_gets_full_text(client, admin):
+    long_text = "Help our team with research. " * 30
+    jid = admin.post("/api/admin/jobs", json={"title": "Data Intern", "company": "Lab",
+                                              "description": long_text, "requirements": "Python\nSQL"}).get_json()["job"]["id"]
+    r = client.get("/api/admin/jobs")
+    assert r.headers["Cache-Control"] == "public, max-age=60"
+    card = next(j for j in r.get_json()["jobs"] if j["id"] == jid)
+    assert len(card["description"]) <= 201 and card["requirements"] == []
+    full = next(j for j in admin.get("/api/admin/jobs?full=1").get_json()["jobs"] if j["id"] == jid)
+    assert full["description"] == long_text.strip() or full["description"] == long_text
+    assert full["requirements"] == ["Python", "SQL"]
+    admin.delete(f"/api/admin/jobs/{jid}")
+    assert all(j["id"] != jid for j in client.get("/api/admin/jobs").get_json()["jobs"])  # cache busted

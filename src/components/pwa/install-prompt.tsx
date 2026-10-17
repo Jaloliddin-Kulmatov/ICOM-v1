@@ -33,6 +33,13 @@ export default function InstallPrompt() {
     if (typeof window === "undefined") return;
     // Already installed (standalone) → never show.
     if (window.matchMedia("(display-mode: standalone)").matches) return;
+    // Phones only. On computers and tablets the browser's own install button
+    // is enough, and this card just covers the page.
+    const ua = navigator.userAgent;
+    const isPhone =
+      /iphone|ipod|android.+mobile|windows phone|mobile safari/i.test(ua) ||
+      (window.matchMedia("(pointer: coarse)").matches && Math.min(window.screen.width, window.screen.height) < 600);
+    if (!isPhone) return;
     // Dismissed within the last hour → stay hidden.
     const last = localStorage.getItem("icom_install_dismissed_v2");
     if (last && Date.now() - parseInt(last) < 60 * 60 * 1000) return;
@@ -40,7 +47,7 @@ export default function InstallPrompt() {
     // iOS: no beforeinstallprompt anywhere, but every iOS browser supports
     // Share → Add to Home Screen, so we show instructions.
     const ios =
-      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+      /iphone|ipod/i.test(navigator.userAgent) &&
       !(window as unknown as Record<string, unknown>).MSStream;
     if (ios) {
       setIsIOS(true);

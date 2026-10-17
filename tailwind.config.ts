@@ -66,8 +66,8 @@ const config: Config = {
       fontFamily: {
         // Gothic A1 covers Latin and Hangul in one family, so mixed text like
         // "외국인등록증 (ARC)" sits on one baseline.
-        sans: ["Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
-        display: ["Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
+        sans: ["var(--font-gothic)", "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
+        display: ["var(--font-gothic)", "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
