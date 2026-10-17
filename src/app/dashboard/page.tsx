@@ -42,7 +42,8 @@ const quickLinks = [
   { href: "/guide/visa", icon: "🛂", label: "Visa Info" },
   { href: "/community",    icon: "👥", label: "Community" },
   { href: "/internships",         icon: "💼", label: "Jobs" },
-  { href: "/universities", icon: "🎓", label: "University" },
+  { href: "/dashboard/cv", icon: "📄", label: "My CV" },
+  { href: "/dashboard/messages", icon: "💬", label: "Messages" },
   { href: "/dashboard/ai", icon: "✨", label: "AI Chat" },
 ];
 

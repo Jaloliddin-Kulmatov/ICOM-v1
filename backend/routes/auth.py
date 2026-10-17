@@ -333,6 +333,20 @@ def delete_me():
                 Post.query.filter(Post.id.in_(club_post_ids)).delete(synchronize_session=False)
             Club.query.filter(Club.id.in_(owned_club_ids)).delete(synchronize_session=False)
 
+        # 4b) CV, uploaded CV file, direct messages, blocks and reports.
+        from models import Resume, ResumeFile, Conversation, DirectMessage, UserBlock, Report
+        Resume.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        ResumeFile.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        conv_ids = [c.id for c in Conversation.query.filter(
+            (Conversation.user_a_id == user_id) | (Conversation.user_b_id == user_id)).all()]
+        if conv_ids:
+            DirectMessage.query.filter(DirectMessage.conversation_id.in_(conv_ids))\
+                .delete(synchronize_session=False)
+            Conversation.query.filter(Conversation.id.in_(conv_ids)).delete(synchronize_session=False)
+        UserBlock.query.filter((UserBlock.blocker_id == user_id) | (UserBlock.blocked_id == user_id))\
+            .delete(synchronize_session=False)
+        Report.query.filter_by(reporter_id=user_id).delete(synchronize_session=False)
+
         # 5) Jobs the user created — set created_by to NULL so postings survive
         #    (don't lose career data when the poster deletes their account).
         Job.query.filter_by(created_by=user_id).update(

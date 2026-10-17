@@ -78,6 +78,8 @@ export default function FeedbackWidget() {
     }
   };
 
+  if (pathname?.startsWith("/dashboard/messages")) return null;
+
   return (
     <>
       {/* Floating button — bottom-right on both mobile and desktop, positioned to

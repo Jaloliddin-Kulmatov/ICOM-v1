@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import MessageButton from "@/components/messages/message-button";
 import Navbar from "@/components/layout/navbar";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
@@ -194,6 +195,7 @@ export default function ChatDetailPage() {
                   {post.author_university && <span>· {post.author_university}</span>}
                   {post.author_country && <span>· {post.author_country}</span>}
                   <span>· {formatRelativeTime(post.created_at)}</span>
+                  <MessageButton userId={post.user_id} name={post.author_name} compact />
                 </div>
                 <h1 className="text-xl font-bold text-foreground leading-snug">{post.title}</h1>
               </div>
@@ -246,15 +248,18 @@ export default function ChatDetailPage() {
                       </p>
 
                       {/* Reply button — show for all signed-in users except the answer author */}
+                      <div className="mt-2 flex items-center gap-2">
                       {user && (
                         <button
                           onClick={() => startReply(a)}
-                          className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-indigo-400 transition-colors"
+                          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-indigo-400 transition-colors"
                         >
                           <CornerDownRight size={11} />
                           Reply
                         </button>
                       )}
+                      <MessageButton userId={a.user_id} name={a.author_name} compact />
+                      </div>
                     </div>
                     {user?.id === a.user_id && (
                       <button

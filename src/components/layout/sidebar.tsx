@@ -44,6 +44,7 @@ const sidebarSections = [
     links: [
       { href: "/dashboard/ai", icon: Sparkles, label: "AI Assistant", badge: "AI" },
       { href: "/dashboard/messages", icon: MessageSquare, label: "Messages" },
+      { href: "/dashboard/cv", icon: FileText, label: "My CV" },
       { href: "/dashboard/bookmarks", icon: Bookmark, label: "Saved" },
       { href: "/dashboard/achievements", icon: Trophy, label: "Achievements" },
     ],

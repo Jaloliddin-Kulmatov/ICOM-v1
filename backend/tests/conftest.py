@@ -62,6 +62,9 @@ class User:
     def post(self, url, **kw):
         return self.client.post(url, headers=self.h, **kw)
 
+    def put(self, url, **kw):
+        return self.client.put(url, headers=self.h, **kw)
+
     def patch(self, url, **kw):
         return self.client.patch(url, headers=self.h, **kw)
 

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, Menu, X, Search, Sparkles,
   Users, Briefcase, Compass, MessageSquare,
-  LayoutDashboard, LogIn, LogOut, ShieldCheck, MessageSquareHeart,
+  LayoutDashboard, LogIn, LogOut, ShieldCheck, MessageSquareHeart, MessageCircle, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import SearchModal from "@/components/ui/search-modal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useNotifCount } from "@/hooks/use-notif-count";
+import { useDmUnread } from "@/hooks/use-dm-unread";
 
 // Universities was retired from the primary nav on both desktop and mobile —
 // the page still exists at /universities (linked from ambassador flows / direct
@@ -39,6 +40,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
   const [searchOpen, setSearchOpen] = useState(false);
   const { user, logout } = useAuth();
   const notifCount = useNotifCount(user?.id);
+  const dmUnread = useDmUnread(user?.id);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -113,7 +115,7 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
           <div className="flex items-center gap-1.5">
             {/* Signed-out phones need the room for Sign in + Register; the
                 theme toggle is in the menu there instead. */}
-            <div className={user ? "" : "hidden sm:block"}>
+            <div className="hidden sm:block">
               <ThemeToggle />
             </div>
 
@@ -139,6 +141,17 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 <Button variant="ghost" size="icon-sm" asChild title="AI Assistant">
                   <Link href="/dashboard/ai">
                     <Sparkles size={15} className="text-violet-500" />
+                  </Link>
+                </Button>
+
+                <Button variant="ghost" size="icon-sm" className="relative" title="Messages" asChild>
+                  <Link href="/dashboard/messages" aria-label={dmUnread ? `Messages, ${dmUnread} unread` : "Messages"}>
+                    <MessageCircle size={15} />
+                    {dmUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-indigo-600 text-white text-[8px] font-bold flex items-center justify-center px-0.5 leading-none pointer-events-none">
+                        {dmUnread > 9 ? "9+" : dmUnread}
+                      </span>
+                    )}
                   </Link>
                 </Button>
 
@@ -221,12 +234,25 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
               <MessageSquareHeart size={17} />
               Send feedback
             </Link>
+            <div className="sm:hidden flex items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground">
+              Dark mode
+              <ThemeToggle />
+            </div>
             <div className="pt-2 border-t border-border space-y-1">
               {user ? (
                 <>
                   <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
                     <LayoutDashboard size={17} />
                     Dashboard
+                  </Link>
+                  <Link href="/dashboard/messages" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
+                    <MessageCircle size={17} />
+                    Messages
+                    {dmUnread > 0 && <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">{dmUnread}</span>}
+                  </Link>
+                  <Link href="/dashboard/cv" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
+                    <FileText size={17} />
+                    My CV
                   </Link>
                   {user.role === "admin" && (
                     <Link
@@ -248,10 +274,6 @@ export default function Navbar({ transparent = false }: { transparent?: boolean 
                 </>
               ) : (
                 <div className="flex flex-col gap-2 mt-1">
-                  <div className="sm:hidden flex items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground">
-                    Dark mode
-                    <ThemeToggle />
-                  </div>
                   <Button className="w-full gap-2" asChild>
                     <Link href="/register">
                       <LogIn size={14} />

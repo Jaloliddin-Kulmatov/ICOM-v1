@@ -54,9 +54,52 @@ export const api = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
 
+  put: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+
   delete: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "DELETE",
       body: body ? JSON.stringify(body) : undefined,
     }),
 };
+
+/** Upload a file as multipart/form-data (the browser sets the boundary). */
+export async function uploadFile<T>(path: string, field: string, file: File): Promise<ApiResult<T>> {
+  const token = getToken();
+  const form = new FormData();
+  form.append(field, file);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method: "POST",
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { data: null, error: json.error || "Upload failed", status: res.status };
+    return { data: json as T, error: null, status: res.status };
+  } catch {
+    return { data: null, error: "Could not reach the server. Check your connection.", status: 0 };
+  }
+}
+
+/** Download an authenticated file and hand it to the browser as a save. */
+export async function downloadFile(path: string, fallbackName: string): Promise<string | null> {
+  const token = getToken();
+  try {
+    const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) return (await res.json().catch(() => ({}))).error || "Download failed";
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return null;
+  } catch {
+    return "Could not reach the server. Check your connection.";
+  }
+}

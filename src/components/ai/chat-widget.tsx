@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { Sparkles, X, Send, Minimize2, Bot, User, RefreshCw } from "lucide-react";
 
 interface Message {
@@ -63,6 +64,7 @@ async function sendToAI(message: string, history: Message[]): Promise<string> {
 }
 
 export default function ChatWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -173,6 +175,9 @@ export default function ChatWidget() {
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
   };
+
+  // The messages page has its own composer in the corner; don't cover it.
+  if (pathname?.startsWith("/dashboard/messages")) return null;
 
   return (
     <>
