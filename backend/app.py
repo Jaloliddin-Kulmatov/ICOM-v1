@@ -107,6 +107,8 @@ def create_app():
     from routes.chat import chat_bp
     from routes.track import track_bp
     from routes.news import news_bp
+    from routes.cv import cv_bp
+    from routes.messages import messages_bp, users_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
@@ -119,6 +121,11 @@ def create_app():
     app.register_blueprint(chat_bp, url_prefix="/api/chat")
     app.register_blueprint(track_bp, url_prefix="/api/track")
     app.register_blueprint(news_bp, url_prefix="/api/news")
+    app.register_blueprint(cv_bp, url_prefix="/api/cv")
+    app.register_blueprint(messages_bp, url_prefix="/api/messages")
+    app.register_blueprint(users_bp, url_prefix="/api/users")
+    # Uploaded CVs are capped at 2 MB in routes/cv.py; reject anything far bigger early.
+    app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
     @app.route("/")
     def index():

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
 import Link from "next/link";
+import MessageButton from "@/components/messages/message-button";
 import {
   ArrowLeft, Users, MessageSquare, Info, Globe, MapPin, Clock,
   Phone, Link as LinkIcon, Send, Loader2, CornerUpLeft, X, Lock,
@@ -876,6 +877,7 @@ export default function CommunityDetailPage() {
                               .join(" · ")}
                           </p>
                         </div>
+                        <MessageButton userId={m.user_id} name={displayName} />
                       </div>
                     );
                   })}

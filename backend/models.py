@@ -473,3 +473,100 @@ class Notice(db.Model):
             "posted_date": self.posted_date or "",
             "created_at": self.created_at.isoformat() + "Z",
         }
+
+
+# ── CV / résumé ────────────────────────────────────────────────────────────────
+
+class Resume(db.Model):
+    """A student's CV built in the ICOM CV maker. `data` holds the sections
+    (headline, summary, education, experience, skills, languages, links) as
+    JSON so the format can grow without migrations."""
+    __tablename__ = "resumes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    data = db.Column(db.JSON, default=dict)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {"data": self.data or {}, "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None}
+
+
+class ResumeFile(db.Model):
+    """An uploaded CV (PDF or Word). Stored in the database for now; small
+    files only (limit enforced in routes/cv.py)."""
+    __tablename__ = "resume_files"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    filename = db.Column(db.String(200), nullable=False)
+    mime = db.Column(db.String(100), nullable=False)
+    size = db.Column(db.Integer, nullable=False)
+    content = db.Column(db.LargeBinary, nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def meta(self):
+        return {"filename": self.filename, "mime": self.mime, "size": self.size,
+                "uploaded_at": self.uploaded_at.isoformat() + "Z"}
+
+
+# ── Direct messages ────────────────────────────────────────────────────────────
+
+class Conversation(db.Model):
+    """A one-to-one conversation. user_a_id is always the smaller id so each
+    pair of users has exactly one conversation."""
+    __tablename__ = "conversations"
+    __table_args__ = (db.UniqueConstraint("user_a_id", "user_b_id", name="uq_conversation_pair"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_a_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    user_b_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_message_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def other_id(self, me: int) -> int:
+        return self.user_b_id if self.user_a_id == me else self.user_a_id
+
+
+class DirectMessage(db.Model):
+    __tablename__ = "direct_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey("conversations.id"), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "conversation_id": self.conversation_id,
+            "sender_id": self.sender_id,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() + "Z",
+            "read": self.read_at is not None,
+        }
+
+
+class UserBlock(db.Model):
+    __tablename__ = "user_blocks"
+    __table_args__ = (db.UniqueConstraint("blocker_id", "blocked_id", name="uq_user_block"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    blocker_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    blocked_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Report(db.Model):
+    """A user reporting a message, post or person for admins to review."""
+    __tablename__ = "reports"
+
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    target_type = db.Column(db.String(30), nullable=False)   # message | user | chat_post | chat_answer
+    target_id = db.Column(db.Integer, nullable=False)
+    reason = db.Column(db.String(500), default="")
+    status = db.Column(db.String(20), default="open")        # open | resolved
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
