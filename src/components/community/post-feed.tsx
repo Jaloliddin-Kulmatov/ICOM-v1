@@ -417,7 +417,7 @@ export default function PostFeed() {
           <p className="text-sm font-semibold text-foreground mb-1">Sign in to view posts</p>
           <p className="text-xs text-muted-foreground">Join the ICOM community to see what&apos;s happening</p>
         </div>
-        <Link href="/login" className="px-5 py-2 rounded-xl bg-indigo-500 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors">
+        <Link href="/login?force=1" className="px-5 py-2 rounded-xl bg-indigo-500 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors">
           Sign in
         </Link>
       </div>

@@ -515,7 +515,7 @@ export default function CommunityDetailPage() {
                     )}
                     {!user && (
                       <Link
-                        href="/login"
+                        href="/login?force=1"
                         className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-500 border border-indigo-400/30 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors backdrop-blur-sm"
                       >
                         Sign in to Join
@@ -627,7 +627,7 @@ export default function CommunityDetailPage() {
                   )}
                   {!user && (
                     <Link
-                      href="/login"
+                      href="/login?force=1"
                       className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
                     >
                       Sign in to Join
