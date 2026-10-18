@@ -6,7 +6,7 @@ name: Keep backend awake
 # the free plan's 750 hours a month). /api/health doesn't touch the database.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "4-59/10 * * * *"   # off the busy :00 mark, which GitHub delays most
   workflow_dispatch:
 
 jobs:

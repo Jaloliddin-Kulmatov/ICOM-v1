@@ -493,7 +493,7 @@ function ClubCard({ club, onAction, onManage }: {
           )}
           {!user && (
             <Link
-              href="/login"
+              href="/login?force=1"
               onClick={e => e.stopPropagation()}
               className="px-3 py-1.5 rounded-xl text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
             >
@@ -738,7 +738,7 @@ export default function CommunityPage() {
               </button>
             ) : (
               <Link
-                href="/login"
+                href="/login?force=1"
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors shrink-0 shadow-sm"
               >
                 <Plus size={15} /> Create
@@ -892,7 +892,7 @@ export default function CommunityPage() {
                 <div className="flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
                   <LogIn size={16} className="text-indigo-400 shrink-0" />
                   <p className="text-sm text-muted-foreground flex-1">
-                    <Link href="/login" className="text-indigo-400 font-medium hover:text-indigo-300">Sign in</Link>{" "}
+                    <Link href="/login?force=1" className="text-indigo-400 font-medium hover:text-indigo-300">Sign in</Link>{" "}
                     to join clubs, create your own, or see KakaoTalk group links.
                   </p>
                 </div>
