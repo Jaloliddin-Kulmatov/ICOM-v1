@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "Learning Hangul (한글) — Start Here",
@@ -153,6 +154,7 @@ export default function LanguagePage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">Learn Hangul, ace the TOPIK exam, find language exchange partners, and discover the best free apps and websites for learning Korean.</p>
+            <GuideUpdated slug="language" />
           </div>
         </div>
 

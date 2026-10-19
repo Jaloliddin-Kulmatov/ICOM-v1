@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FileText, ChevronDown, ChevronRight, ExternalLink, AlertCircle, CheckCircle2, ArrowLeft, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "D-2 Student Visa",
@@ -113,6 +114,7 @@ export default function VisaPage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">Everything about D-2, D-4, ARC registration, extensions, and status changes in Korea.</p>
+            <GuideUpdated slug="visa" />
           </div>
         </div>
 

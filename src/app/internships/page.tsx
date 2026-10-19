@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { useQueryState, useQueryListState } from "@/hooks/use-query-state";
-import { jobCategory, jobCity, daysLeft, matchesSearch, sortJobs, SORTS, type SortKey } from "@/lib/job-filters";
+import { jobCategory, jobCity, daysLeft, matchesSearch, sortJobs, matchScore, SORTS, type SortKey } from "@/lib/job-filters";
+import { JOB_FIELDS } from "@/lib/profile-options";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import JobCard from "@/components/jobs/job-card";
@@ -14,8 +15,9 @@ import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
 
-const ALERT_FIELDS = ["IT / Tech", "Marketing", "Engineering", "Business / Admin", "Design", "Finance", "Research / R&D", "Media / Content", "Sales", "All Fields"];
-const ALERT_LOCATIONS = ["Jeonju / Jeonbuk", "Seoul", "Busan", "Daejeon", "Gwangju", "All Korea"];
+// Same names as the job filters, so alert emails match what the filters show.
+const ALERT_FIELDS = ["All Fields", ...JOB_FIELDS];
+const ALERT_LOCATIONS = ["All Korea", "Seoul", "Seongnam", "Incheon", "Suwon", "Busan", "Daejeon", "Daegu", "Gwangju", "Jeonju", "Remote"];
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -134,6 +136,7 @@ export default function JobsPage() {
             created_at?: string;
             foreigner_friendly?: string; foreigner_note?: string;
             apply_count?: number;
+            insights?: Job["insights"];
           }) => ({
             id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
             type: "internship" as Job["type"], salary: j.salary || "", description: j.description || "",
@@ -149,6 +152,7 @@ export default function JobsPage() {
             tags: j.tags, isNew: j.isNew, isHot: false, isBookmarked: false,
             applyLink: j.apply_link || "",
             foreignerFriendly: (j.foreigner_friendly || "") as Job["foreignerFriendly"],
+            insights: j.insights,
             foreignerNote: j.foreigner_note || "",
           }));
           setAllJobs(mapped);
@@ -166,7 +170,12 @@ export default function JobsPage() {
     if (!token) return;
     fetch(`${API}/admin/jobs/alerts`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setAlertsEnabled(!!d.enabled); })
+      .then(d => {
+        if (!d) return;
+        setAlertsEnabled(!!d.enabled);
+        if (d.field) setAlertField(d.field);
+        if (d.city) setAlertLocation(d.city);
+      })
       .catch(() => { /* harmless */ });
   }, [user]);
 
@@ -274,9 +283,9 @@ export default function JobsPage() {
   );
 
   const filteredJobs = useMemo(
-    () => sortJobs(applyFilters(allJobs, filters), (sort in SORTS ? sort : "newest") as SortKey),
+    () => sortJobs(applyFilters(allJobs, filters), (sort in SORTS ? sort : "newest") as SortKey, user),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allJobs, search, activeCategory, locationFilter, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, myRegion, sort]
+    [allJobs, search, activeCategory, locationFilter, deadlineFilter, friendlyOnly, visaFilter.join(), regionFilter, myRegion, sort, user]
   );
 
   // Start from the top of the list whenever the filters change.
@@ -298,8 +307,8 @@ export default function JobsPage() {
     if (typeof window === "undefined") return;
     const f = localStorage.getItem("job_alert_field");
     const l = localStorage.getItem("job_alert_location");
-    if (f) setAlertField(f);
-    if (l) setAlertLocation(l);
+    if (f && ALERT_FIELDS.includes(f)) setAlertField(f);     // ignore names from the old list
+    if (l && ALERT_LOCATIONS.includes(l)) setAlertLocation(l);
   }, []);
 
   return (
@@ -569,7 +578,7 @@ export default function JobsPage() {
                 ) : (
                   <>
                     {filteredJobs.slice(0, visibleCount).map((job) => (
-                      <JobCard key={job.id} job={job} />
+                      <JobCard key={job.id} job={job} match={sort === "for-you" ? matchScore(job, user).reasons : undefined} />
                     ))}
                     {visibleCount < filteredJobs.length && (
                       <Button

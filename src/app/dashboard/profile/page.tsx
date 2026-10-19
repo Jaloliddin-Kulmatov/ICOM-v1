@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import CareerProfileCard from "@/components/profile/career-profile-card";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -290,6 +291,9 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+
+        {/* ── Career & visa (job matching, visa reminders) ── */}
+        <CareerProfileCard />
 
         {/* ── My clubs ── */}
         {!clubsLoading && totalClubs > 0 && (

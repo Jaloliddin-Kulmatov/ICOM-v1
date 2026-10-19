@@ -8,6 +8,7 @@ import { Search, ChevronDown, Sparkles, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 interface FAQ {
   q: string;
   a: string;
@@ -212,6 +213,7 @@ export default function FAQPage() {
             <p className="text-muted-foreground mb-8 leading-relaxed">
               Real answers for international students in Korea — written specifically for JBNU and Jeonju life.
             </p>
+            <GuideUpdated slug="faq" />
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}

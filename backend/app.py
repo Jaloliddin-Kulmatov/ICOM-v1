@@ -93,6 +93,8 @@ def create_app():
             return resp
 
     db.init_app(app)
+    import response_cache
+    response_cache.install(db)
     jwt.init_app(app)
     bcrypt.init_app(app)
 
@@ -134,6 +136,19 @@ def create_app():
     @app.route("/api/health")
     def health():
         return jsonify({"status": "ok"}), 200
+
+    @app.route("/api/health/db")
+    def health_db():
+        """How long one database round trip takes from this server, in ms.
+        Under ~10 ms means the server and database are in the same region."""
+        import time
+        from sqlalchemy import text
+        times = []
+        for _ in range(3):
+            t = time.perf_counter()
+            db.session.execute(text("SELECT 1"))
+            times.append(round((time.perf_counter() - t) * 1000, 1))
+        return jsonify({"db_round_trip_ms": min(times), "samples_ms": times}), 200
 
     with app.app_context():
         db.create_all()
@@ -277,6 +292,28 @@ def _run_lightweight_migrations():
                 print("[migration] Added users.job_alerts_enabled")
     except Exception as e:
         print(f"[migration] users.job_alerts_enabled failed (probably already done): {e}")
+
+    # Career profile, saved alert search, reminders and checklist on users;
+    # accepted answers in chat.
+    for table, col, ddl in (
+        ("users", "visa_expiry", "VARCHAR(10)"),
+        ("users", "topik_level", "INTEGER"),
+        ("users", "job_field", "VARCHAR(60)"),
+        ("users", "city", "VARCHAR(60)"),
+        ("users", "alert_field", "VARCHAR(60)"),
+        ("users", "alert_city", "VARCHAR(60)"),
+        ("users", "alert_last_sent", "TIMESTAMP"),
+        ("users", "visa_reminder_sent", "VARCHAR(20)"),
+        ("users", "checklist", "JSON"),
+        ("chat_answers", "is_accepted", "BOOLEAN DEFAULT FALSE"),
+    ):
+        try:
+            if table in insp.get_table_names() and col not in [c["name"] for c in insp.get_columns(table)]:
+                with db.engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+                print(f"[migration] Added {table}.{col}")
+        except Exception as e:
+            print(f"[migration] {table}.{col} failed (probably already done): {e}")
 
     # scope on chat_posts — audience targeting. Empty = global ("All Korea"),
     # a university token (e.g. "jbnu") = that university's chat only.
@@ -905,7 +942,11 @@ def _cleanup_expired_jobs(flask_app):
         try:
             from job_lifecycle import sweep
             from routes.admin import _cache_bust
+            from routes.news import sweep_news
+            from routes.clubs import sweep_events
             result = sweep()
+            result.update(sweep_news())
+            result.update(sweep_events())
             _cache_bust("jobs_list")
             print(f"[cleanup] {result}")
         except Exception as e:
@@ -1032,6 +1073,17 @@ def _start_scheduler(flask_app):
         hour=15,
         minute=10,
         id="verify_jobs",
+        replace_existing=True,
+        misfire_grace_time=6 * 3600,
+    )
+    # 10:00 KST: new-internship alerts and visa expiry reminders.
+    import daily_emails
+    scheduler.add_job(
+        lambda: daily_emails.run(flask_app),
+        trigger="cron",
+        hour=1,
+        minute=0,
+        id="daily_emails",
         replace_existing=True,
         misfire_grace_time=6 * 3600,
     )

@@ -2,12 +2,31 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Sparkles, X, Send, Minimize2, Bot, User, RefreshCw } from "lucide-react";
+
+type Source = { title: string; url: string };
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sources?: Source[];   // ICOM guides the answer was based on
+}
+
+function SourceLinks({ sources }: { sources?: Source[] }) {
+  if (!sources?.length) return null;
+  return (
+    <p className="mt-1.5 text-[11px] text-muted-foreground">
+      From ICOM guides:{" "}
+      {sources.map((s, i) => (
+        <React.Fragment key={s.url}>
+          {i > 0 && ", "}
+          <Link href={s.url} className="font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">{s.title}</Link>
+        </React.Fragment>
+      ))}
+    </p>
+  );
 }
 
 const QUICK = [
@@ -19,7 +38,7 @@ const QUICK = [
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-async function sendToAI(message: string, history: Message[]): Promise<string> {
+async function sendToAI(message: string, history: Message[]): Promise<{ reply: string; sources: Source[] }> {
   const token = typeof window !== "undefined" ? localStorage.getItem("icon_token") : null;
   const url = `${API_BASE}/ai/chat`;
   const body = JSON.stringify({
@@ -44,7 +63,7 @@ async function sendToAI(message: string, history: Message[]): Promise<string> {
         throw new Error(err.error || "AI service error");
       }
       const data = await res.json();
-      return data.reply as string;
+      return { reply: data.reply as string, sources: (data.sources || []) as Source[] };
     } finally {
       clearTimeout(t);
     }
@@ -155,8 +174,8 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      const reply = await sendToAI(msg, messages);
-      setMessages((prev) => [...prev, { id: Date.now().toString() + "r", role: "assistant", content: reply }]);
+      const { reply, sources } = await sendToAI(msg, messages);
+      setMessages((prev) => [...prev, { id: Date.now().toString() + "r", role: "assistant", content: reply, sources }]);
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : "";
       // Network failure / CORS / backend cold-start — user-friendly message,
@@ -289,6 +308,7 @@ export default function ChatWidget() {
                         : "bg-muted text-foreground rounded-tl-sm border border-border"
                     }`}>
                       {m.content}
+                      {m.role === "assistant" && <SourceLinks sources={m.sources} />}
                     </div>
                   </div>
                 ))}
@@ -430,6 +450,7 @@ export default function ChatWidget() {
                     : "bg-muted text-foreground rounded-tl-sm border border-border"
                 }`}>
                   {m.content}
+                  {m.role === "assistant" && <SourceLinks sources={m.sources} />}
                 </div>
               </div>
             ))}

@@ -22,6 +22,17 @@ class User(db.Model):
     job_alerts_enabled = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    # Career profile: powers job matching and visa reminders.
+    visa_expiry = db.Column(db.String(10))     # YYYY-MM-DD
+    topik_level = db.Column(db.Integer)        # 0 = none, 1–6
+    job_field = db.Column(db.String(60))       # e.g. "IT", "Marketing" (same names as the job filters)
+    city = db.Column(db.String(60))            # where they want to work
+    # Saved job search for alert emails, and what was last emailed.
+    alert_field = db.Column(db.String(60))
+    alert_city = db.Column(db.String(60))
+    alert_last_sent = db.Column(db.DateTime)
+    visa_reminder_sent = db.Column(db.String(20))  # "<expiry>:<days>" of the last reminder sent
+    checklist = db.Column(db.JSON)             # arrival checklist: list of finished step ids
 
     def to_dict(self):
         return {
@@ -34,6 +45,13 @@ class User(db.Model):
             "role": self.role,
             "is_verified": self.is_verified,
             "job_alerts_enabled": bool(self.job_alerts_enabled),
+            "visa_expiry": self.visa_expiry or "",
+            "topik_level": self.topik_level,
+            "job_field": self.job_field or "",
+            "city": self.city or "",
+            "alert_field": self.alert_field or "",
+            "alert_city": self.alert_city or "",
+            "checklist": self.checklist or [],
             "created_at": self.created_at.isoformat() + "Z",
         }
 
@@ -309,6 +327,8 @@ class Job(db.Model):
         # list_view trims the heavy description/requirements text so the list
         # endpoint payload stays small (cards only show a preview). The detail
         # endpoint returns the full text.
+        from job_insights import insights
+        hints = insights(self)   # from the full text, before trimming for the list
         description = self.description or ""
         requirements = [r.strip() for r in (self.requirements or "").split("\n") if r.strip()]
         if list_view:
@@ -334,6 +354,7 @@ class Job(db.Model):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() + "Z",
             "isNew": (datetime.utcnow() - self.created_at).days < 3,
+            "insights": hints,
         }
 
 
@@ -407,9 +428,10 @@ class ChatPost(db.Model):
             answers = (
                 ChatAnswer.query.options(joinedload(ChatAnswer.author))
                 .filter_by(post_id=self.id, is_active=True)
-                .order_by(ChatAnswer.created_at.asc()).all()
+                .order_by(ChatAnswer.is_accepted.desc(), ChatAnswer.created_at.asc()).all()
             )
             out["answers"] = [a.to_dict() for a in answers]
+            out["solved"] = any(a.is_accepted for a in answers)
         return out
 
 
@@ -421,6 +443,8 @@ class ChatAnswer(db.Model):
     user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     content    = db.Column(db.Text, nullable=False)
     is_active  = db.Column(db.Boolean, default=True)
+    # Marked by the person who asked: the answer that solved it.
+    is_accepted = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     author = db.relationship("User", foreign_keys=[user_id])
@@ -430,6 +454,7 @@ class ChatAnswer(db.Model):
             "id": self.id,
             "post_id": self.post_id,
             "user_id": self.user_id,
+            "is_accepted": bool(self.is_accepted),
             "author_name": self.author.name if self.author else "Unknown",
             "author_university": (self.author.university if self.author else "") or "",
             "author_country": (self.author.country if self.author else "") or "",
@@ -579,3 +604,30 @@ class Report(db.Model):
     reason = db.Column(db.String(500), default="")
     status = db.Column(db.String(20), default="open")        # open | resolved
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ClubEvent(db.Model):
+    """A dated club meetup. Members can add it to their own calendar."""
+    __tablename__ = "club_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"), nullable=False, index=True)
+    title = db.Column(db.String(150), nullable=False)
+    starts_at = db.Column(db.DateTime, nullable=False, index=True)   # Korea time, no timezone
+    ends_at = db.Column(db.DateTime)
+    location = db.Column(db.String(200), default="")
+    description = db.Column(db.Text, default="")
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "club_id": self.club_id,
+            "title": self.title,
+            "starts_at": self.starts_at.isoformat(timespec="minutes"),
+            "ends_at": self.ends_at.isoformat(timespec="minutes") if self.ends_at else None,
+            "location": self.location or "",
+            "description": self.description or "",
+            "created_by": self.created_by,
+        }

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 /* ── Data ───────────────────────────────────────────────────── */
 
 const transport = [
@@ -85,6 +86,7 @@ export default function DailyLifePage() {
             <p className="text-muted-foreground text-sm max-w-lg mx-auto">
               The essentials only — places, transport, apps and budget.
             </p>
+            <GuideUpdated slug="living" center />
           </div>
         </div>
 

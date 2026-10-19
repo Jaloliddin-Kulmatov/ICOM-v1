@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "Opening a Bank Account",
@@ -160,6 +161,7 @@ export default function BankingPage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">Open accounts, send money home, set up Kakao Pay and Naver Pay — everything about managing money in Korea.</p>
+            <GuideUpdated slug="banking" />
           </div>
         </div>
 

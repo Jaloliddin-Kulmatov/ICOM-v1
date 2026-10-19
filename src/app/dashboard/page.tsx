@@ -9,6 +9,7 @@ import {
   Plus, LogOut, CheckCircle2, Calendar,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import NextSteps from "@/components/dashboard/next-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -143,6 +144,9 @@ export default function DashboardPage() {
           <Link href="/dashboard/ai"><Sparkles size={14} className="text-violet-400" /> Ask AI</Link>
         </Button>
       </div>
+
+      {/* ── Visa, internships for you, arrival checklist, club events ── */}
+      <NextSteps />
 
       {/* ── My Clubs & Communities + ICOM AI (side by side on desktop) ── */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">

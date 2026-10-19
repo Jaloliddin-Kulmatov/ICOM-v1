@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "National Health Insurance (NHIS) Enrollment",
@@ -140,6 +141,7 @@ export default function InsurancePage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">NHIS enrollment, using Korean hospitals, English-friendly clinics, dental, mental health, and emergency care.</p>
+            <GuideUpdated slug="insurance" />
           </div>
         </div>
 

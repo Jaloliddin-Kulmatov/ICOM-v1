@@ -9,8 +9,9 @@ import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, MessageSquare, Send,
-  AlertCircle, Trash2, ShieldCheck, CornerDownRight, X,
+  AlertCircle, Trash2, ShieldCheck, CornerDownRight, X, CheckCircle2, BookOpen,
 } from "lucide-react";
+import { relatedGuide } from "@/lib/related-guide";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -23,6 +24,7 @@ interface Answer {
   author_country: string;
   content: string;
   created_at: string;
+  is_accepted?: boolean;
 }
 
 interface PostDetail {
@@ -37,6 +39,7 @@ interface PostDetail {
   answer_count: number;
   answers: Answer[];
   created_at: string;
+  solved?: boolean;
 }
 
 function getToken() {
@@ -122,6 +125,15 @@ export default function ChatDetailPage() {
     setReply("");
   };
 
+  // The person who asked marks the answer that solved it (or unmarks it).
+  const acceptAnswer = async (answerId: number) => {
+    const res = await fetch(`${API}/chat/answers/${answerId}/accept`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (res.ok) load();
+  };
+
   const deleteAnswer = async (answerId: number) => {
     if (!confirm("Remove this answer?")) return;
     const res = await fetch(`${API}/chat/answers/${answerId}`, {
@@ -205,6 +217,15 @@ export default function ChatDetailPage() {
               {post.content}
             </p>
 
+            {(() => {
+              const guide = relatedGuide(`${post.title} ${post.content}`);
+              return guide ? (
+                <Link href={guide.href} className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/[0.06] px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/10">
+                  <BookOpen size={13} /> Related: {guide.title}
+                </Link>
+              ) : null;
+            })()}
+
             {post.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -231,7 +252,12 @@ export default function ChatDetailPage() {
           ) : (
             <div className="space-y-3">
               {post.answers.map((a) => (
-                <div key={a.id} className="p-4 sm:p-5 rounded-2xl border border-border bg-card">
+                <div key={a.id} className={`p-4 sm:p-5 rounded-2xl border bg-card ${a.is_accepted ? "border-emerald-500/50 ring-1 ring-emerald-500/20" : "border-border"}`}>
+                  {a.is_accepted && (
+                    <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 size={14} /> Accepted answer
+                    </p>
+                  )}
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {a.author_name[0]?.toUpperCase() || "?"}
@@ -259,6 +285,18 @@ export default function ChatDetailPage() {
                         </button>
                       )}
                       <MessageButton userId={a.user_id} name={a.author_name} compact />
+                      {user?.id === post.user_id && (
+                        <button
+                          onClick={() => acceptAnswer(a.id)}
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold transition-colors ${
+                            a.is_accepted ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground hover:text-emerald-600"
+                          }`}
+                          aria-pressed={!!a.is_accepted}
+                        >
+                          <CheckCircle2 size={11} />
+                          {a.is_accepted ? "Accepted" : "Accept answer"}
+                        </button>
+                      )}
                       </div>
                     </div>
                     {user?.id === a.user_id && (
