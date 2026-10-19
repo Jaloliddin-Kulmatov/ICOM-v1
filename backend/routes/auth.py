@@ -9,7 +9,7 @@ from app import db, bcrypt
 from models import (
     User, Club, ClubMembership, ClubMessage,
     Post, PostComment, AmbassadorApplication, Feedback, AISession, Job,
-    ChatPost, ChatAnswer, ClubEvent,
+    ChatPost, ChatAnswer, ClubEvent, Device,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -358,6 +358,7 @@ def delete_me():
             ChatPost.query.filter(ChatPost.id.in_(user_chat_ids)).delete(synchronize_session=False)
         AISession.query.filter_by(user_id=user_id).delete(synchronize_session=False)
         ClubEvent.query.filter_by(created_by=user_id).update({ClubEvent.created_by: None}, synchronize_session=False)
+        Device.query.filter_by(user_id=user_id).delete(synchronize_session=False)
         own_comment_ids = [c.id for c in PostComment.query.filter_by(user_id=user_id).all()]
         if own_comment_ids:
             PostComment.query.filter(PostComment.parent_id.in_(own_comment_ids))\

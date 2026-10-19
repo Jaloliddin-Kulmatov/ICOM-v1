@@ -631,3 +631,16 @@ class ClubEvent(db.Model):
             "description": self.description or "",
             "created_by": self.created_by,
         }
+
+
+class Device(db.Model):
+    """A phone with the ICOM app installed, for push notifications."""
+    __tablename__ = "devices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    push_token = db.Column(db.String(255), unique=True, nullable=False)   # ExponentPushToken[...]
+    platform = db.Column(db.String(10), default="")                        # ios | android
+    app_version = db.Column(db.String(20), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)

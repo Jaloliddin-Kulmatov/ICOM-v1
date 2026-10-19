@@ -201,6 +201,10 @@ def send_message(conv_id):
     conv.last_message_at = datetime.utcnow()
     db.session.add(msg)
     db.session.commit()
+    from push import notify_user
+    sender = User.query.get(me)
+    notify_user(conv.other_id(me), sender.name if sender else "New message", content,
+                {"type": "message", "conversation_id": conv.id})
     return jsonify({"message": msg.to_dict()}), 201
 
 

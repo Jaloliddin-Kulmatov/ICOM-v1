@@ -258,6 +258,10 @@ def add_answer(post_id: int):
     )
     db.session.add(ans)
     db.session.commit()
+    if post.user_id != user.id:
+        from push import notify_user
+        notify_user(post.user_id, "New answer to your question", f"{user.name}: {content}",
+                    {"type": "answer", "post_id": post.id})
     return jsonify({"answer": ans.to_dict()}), 201
 
 

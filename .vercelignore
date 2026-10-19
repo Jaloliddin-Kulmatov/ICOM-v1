@@ -1,0 +1,2 @@
+# The phone app has its own build (Expo/EAS); the website doesn't need it.
+mobile

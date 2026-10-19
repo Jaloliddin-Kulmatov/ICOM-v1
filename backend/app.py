@@ -126,6 +126,9 @@ def create_app():
     app.register_blueprint(cv_bp, url_prefix="/api/cv")
     app.register_blueprint(messages_bp, url_prefix="/api/messages")
     app.register_blueprint(users_bp, url_prefix="/api/users")
+    from routes.devices import devices_bp, app_config_bp
+    app.register_blueprint(devices_bp, url_prefix="/api/devices")
+    app.register_blueprint(app_config_bp, url_prefix="/api/app")
     # Uploaded CVs are capped at 2 MB in routes/cv.py; reject anything far bigger early.
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
