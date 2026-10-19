@@ -26,6 +26,16 @@ os.environ.update({
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import app as app_module  # noqa: E402
+from sqlalchemy import event  # noqa: E402
+from sqlalchemy.engine import Engine  # noqa: E402
+
+
+@event.listens_for(Engine, "connect")
+def _sqlite_foreign_keys(dbapi_conn, _record):
+    """Enforce foreign keys like Postgres does, so tests catch deletes that
+    would fail in production (SQLite ignores them by default)."""
+    if type(dbapi_conn).__module__.startswith("sqlite3"):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
 
 @pytest.fixture(scope="session")

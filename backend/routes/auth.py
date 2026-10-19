@@ -9,6 +9,7 @@ from app import db, bcrypt
 from models import (
     User, Club, ClubMembership, ClubMessage,
     Post, PostComment, AmbassadorApplication, Feedback, AISession, Job,
+    ChatPost, ChatAnswer,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -304,6 +305,24 @@ def delete_me():
         }), 400
 
     try:
+        # 0) Chat Q&A, AI sessions, and other people's replies that point at
+        #    this user's comments or club messages (Postgres enforces these
+        #    links, so the deletes below would fail without this).
+        user_chat_ids = [p.id for p in ChatPost.query.filter_by(user_id=user_id).all()]
+        ChatAnswer.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        if user_chat_ids:
+            ChatAnswer.query.filter(ChatAnswer.post_id.in_(user_chat_ids)).delete(synchronize_session=False)
+            ChatPost.query.filter(ChatPost.id.in_(user_chat_ids)).delete(synchronize_session=False)
+        AISession.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        own_comment_ids = [c.id for c in PostComment.query.filter_by(user_id=user_id).all()]
+        if own_comment_ids:
+            PostComment.query.filter(PostComment.parent_id.in_(own_comment_ids))\
+                .update({PostComment.parent_id: None}, synchronize_session=False)
+        own_msg_ids = [m.id for m in ClubMessage.query.filter_by(user_id=user_id).all()]
+        if own_msg_ids:
+            ClubMessage.query.filter(ClubMessage.reply_to_id.in_(own_msg_ids))\
+                .update({ClubMessage.reply_to_id: None}, synchronize_session=False)
+
         # 1) Comments authored by the user (drop first to avoid FK issues).
         PostComment.query.filter_by(user_id=user_id).delete(synchronize_session=False)
 

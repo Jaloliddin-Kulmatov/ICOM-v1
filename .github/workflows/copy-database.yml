@@ -1,0 +1,39 @@
+name: Copy database to Supabase
+
+# One-off: copies every ICOM table from Neon (SOURCE_DATABASE_URL) to
+# Supabase (TARGET_DATABASE_URL) and checks the row counts match.
+# Run it from the Actions tab. It never prints the connection strings.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type COPY to start'
+        required: true
+      replace:
+        description: 'Empty the Supabase tables first (only if a previous copy was incomplete)'
+        type: boolean
+        default: false
+
+jobs:
+  copy:
+    if: ${{ inputs.confirm == 'COPY' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Copy Neon → Supabase
+        working-directory: backend
+        env:
+          SOURCE_DATABASE_URL: ${{ secrets.SOURCE_DATABASE_URL }}
+          TARGET_DATABASE_URL: ${{ secrets.TARGET_DATABASE_URL }}
+        run: |
+          if [ -z "$SOURCE_DATABASE_URL" ] || [ -z "$TARGET_DATABASE_URL" ]; then
+            echo "::error title=Copy database::Add the GitHub secrets SOURCE_DATABASE_URL (Neon) and TARGET_DATABASE_URL (Supabase session pooler) first."
+            exit 1
+          fi
+          python copy_database.py ${{ inputs.replace && '--replace' || '' }}
