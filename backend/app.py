@@ -214,6 +214,25 @@ def _run_lightweight_migrations():
     except Exception as e:
         print(f"[migration] jobs.apply_link failed (probably already done): {e}")
 
+    # checked_at / closed_at on jobs (job expiry + deletion). Existing open
+    # jobs count as checked now, so they get a full STALE_DAYS window for the
+    # daily verification to confirm them; existing closed ones start their
+    # 30-day countdown to deletion now.
+    try:
+        if "jobs" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("jobs")]
+            for col in ("checked_at", "closed_at"):
+                if col not in cols:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col} TIMESTAMP"))
+                        if col == "checked_at":
+                            conn.execute(text("UPDATE jobs SET checked_at = CURRENT_TIMESTAMP WHERE is_active"))
+                        else:
+                            conn.execute(text("UPDATE jobs SET closed_at = CURRENT_TIMESTAMP WHERE NOT is_active"))
+                    print(f"[migration] Added jobs.{col}")
+    except Exception as e:
+        print(f"[migration] jobs.checked_at/closed_at failed (probably already done): {e}")
+
     # website on clubs (official university / community website)
     try:
         if "clubs" in insp.get_table_names():
@@ -852,44 +871,41 @@ app = create_app()
 
 # ── Expired-job cleanup ──────────────────────────────────────────────────────
 def _cleanup_expired_jobs(flask_app):
-    """Soft-delete jobs whose deadline date is in the past.
-
-    Deadlines are stored as VARCHAR(50) and come in mixed shapes:
-      - "2025-08-31"        (scraped from Wanted — always ISO)
-      - "Jun 30"            (admin free text — skipped, can't parse year)
-      - "Open" / "" / None  (skipped)
-
-    We only deactivate rows whose deadline parses cleanly as YYYY-MM-DD and
-    that date is strictly before today (UTC). Free-text deadlines are left
-    alone — they're admin-managed.
-    """
-    from datetime import date, datetime
-    from models import Job
-
+    """Hide jobs past their deadline (Korea time) or unconfirmed for too long,
+    and delete ones closed more than 30 days ago. See job_lifecycle.py."""
     with flask_app.app_context():
         try:
-            today = datetime.utcnow().date()
-            active = Job.query.filter_by(is_active=True).all()
-            deactivated = 0
-            for job in active:
-                raw = (job.deadline or "").strip()
-                if len(raw) < 10:
-                    continue
-                try:
-                    dl = date.fromisoformat(raw[:10])
-                except ValueError:
-                    continue  # not an ISO date — leave it
-                if dl < today:
-                    job.is_active = False
-                    deactivated += 1
-            if deactivated:
-                db.session.commit()
-                print(f"[cleanup] deactivated {deactivated} expired job(s)")
-            else:
-                print("[cleanup] no expired jobs found")
+            from job_lifecycle import sweep
+            from routes.admin import _cache_bust
+            result = sweep()
+            _cache_bust("jobs_list")
+            print(f"[cleanup] {result}")
         except Exception as e:
             db.session.rollback()
             print(f"[cleanup] failed: {e}")
+
+
+def _verify_jobs_on_wanted(flask_app):
+    """Daily: ask Wanted whether each listed internship is still open, close
+    the ones that ended or were deleted, then sweep. Same code as the GitHub
+    Actions sync, so job expiry keeps working even if that workflow can't run.
+    Verify-only: new postings are added by the scrapers, not here."""
+    with flask_app.app_context():
+        try:
+            from models import Job
+            from scrapers.sync import build_plan
+            from routes.admin import apply_sync_plan
+            rows = Job.query.filter(Job.apply_link.like("%wanted.co.kr/wd/%")).all()
+            known = {j.apply_link: {"active": bool(j.is_active), "deadline": j.deadline or "",
+                                    "korean": False} for j in rows}
+            plan = build_plan(known, new_limit=0, translate_limit=0,
+                              time_budget_s=int(os.environ.get("VERIFY_BUDGET_MIN", 15)) * 60)
+            result = apply_sync_plan({"close": plan["close"], "seen": plan["seen"],
+                                      "deadlines": plan["deadlines"]})
+            print(f"[verify] {plan['stats']} → {result}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[verify] failed: {e}")
 
 
 if _startup_tasks_enabled():
@@ -933,7 +949,8 @@ def _start_scheduler(flask_app):
 
     Jobs:
       • wanted_scraper: 06:00 and 18:00 UTC — pull fresh internships
-      • cleanup_expired: 00:30 UTC daily — hide jobs past their deadline
+      • verify_jobs: 15:10 UTC (00:10 KST) daily — close internships that ended on Wanted
+      • cleanup_expired: 15:40 UTC (00:40 KST) daily — hide expired jobs, delete old closed ones
     """
     if os.environ.get("DISABLE_SCHEDULER") == "1":
         print("[scheduler] DISABLE_SCHEDULER=1 → skipping startup")
@@ -979,16 +996,25 @@ def _start_scheduler(flask_app):
     except Exception as e:
         print(f"[scheduler] Saramin job not scheduled: {e}")
 
-    # Daily expired-job sweep — runs at 00:30 UTC so it lands between days
-    # and doesn't overlap with the scraper.
+    # Just after midnight in Korea: check every listed internship on Wanted,
+    # then hide anything past its deadline and delete long-closed rows.
+    scheduler.add_job(
+        lambda: _verify_jobs_on_wanted(flask_app),
+        trigger="cron",
+        hour=15,
+        minute=10,
+        id="verify_jobs",
+        replace_existing=True,
+        misfire_grace_time=6 * 3600,
+    )
     scheduler.add_job(
         lambda: _cleanup_expired_jobs(flask_app),
         trigger="cron",
-        hour=0,
-        minute=30,
+        hour=15,
+        minute=40,
         id="cleanup_expired",
         replace_existing=True,
-        misfire_grace_time=3600,
+        misfire_grace_time=6 * 3600,
     )
 
     # Daily JBNU notice scrape (07:00 UTC) — international / tuition / education.

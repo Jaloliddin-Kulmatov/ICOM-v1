@@ -86,7 +86,9 @@ def main():
     )
     if not plan["upsert"] and not plan["close"]:
         print("[icom] nothing to change")
-    result = call("POST", "/admin/jobs/sync", json={"upsert": plan["upsert"], "close": plan["close"]})
+    result = call("POST", "/admin/jobs/sync",
+                  json={"upsert": plan["upsert"], "close": plan["close"],
+                        "seen": plan.get("seen", []), "deadlines": plan.get("deadlines", {})})
     print(f"[icom] applied: {result}")
 
 
