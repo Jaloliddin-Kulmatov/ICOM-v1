@@ -165,3 +165,21 @@ def test_cv_basics_with_nationality(alice):
     assert r.status_code == 200
     cv = alice.get("/api/cv/me").get_json()["cv"]
     assert (cv["full_name"], cv["headline"], cv["nationality"]) == ("Alice Kim", "Marketing student at JBNU", "Vietnam")
+
+
+def test_delete_account_with_chat_and_replies(client, bob):
+    """Deleting an account removes everything that points at the user, even
+    with foreign keys enforced (as on Postgres)."""
+    from conftest import User
+    carol = User(client, "Carol Park", "carol@example.com", university="jbnu", country="Vietnam")
+    pid = carol.post("/api/chat/posts", json={"title": "Where is the immigration office?", "content": "Jeonju"}).get_json()["post"]["id"]
+    bob.post(f"/api/chat/posts/{pid}/answers", json={"content": "Near the bus terminal"})
+    other = bob.post("/api/chat/posts", json={"title": "Bus card?", "content": "T-money"}).get_json()["post"]["id"]
+    carol.post(f"/api/chat/posts/{other}/answers", json={"content": "Any convenience store"})
+    carol.put("/api/cv/me", json={"full_name": "Carol Park"})
+    bob.post("/api/messages/conversations", json={"user_id": carol.id})
+    r = carol.delete("/api/auth/me", json={"confirm": "DELETE"})
+    assert r.status_code == 200, r.get_json()
+    assert client.get(f"/api/chat/posts/{pid}").status_code == 404
+    assert client.get(f"/api/chat/posts/{other}").get_json()["post"]["answer_count"] == 0
+    assert client.post("/api/auth/login", json={"email": "carol@example.com", "password": "secret123"}).status_code == 401

@@ -18,7 +18,7 @@
 | AI | Groq API (llama-3.3-70b-versatile) |
 | Internship scraper | Wanted.co.kr API + Groq/Google Translate auto-translation, APScheduler (06:00 & 18:00 UTC) |
 | Database | SQLite (dev) → PostgreSQL (production) |
-| Deployment | Vercel (frontend) · Render (API) · Neon (Postgres) |
+| Deployment | Vercel (frontend) · Render (API) · Supabase (Postgres) |
 
 ---
 
@@ -82,9 +82,9 @@ npm run dev
 |---|---|---|
 | Frontend | Vercel (Hobby), Seoul region | `vercel.json` |
 | Backend | Render (Free), Singapore region | `render.yaml` |
-| Database | Neon Postgres (Free), AWS Singapore | `DATABASE_URL` |
+| Database | Supabase Postgres (Free), Singapore (ap-southeast-1) | `DATABASE_URL` |
 
-1. **Database:** create a Neon project in AWS Singapore and copy its connection string (`postgresql://…?sslmode=require`).
+1. **Database:** create a Supabase project in Singapore. In *Connect*, copy the **Session pooler** connection string (Render has no IPv6, so the direct connection won't work) and add `?sslmode=require`. On startup the backend turns on row-level security for every table, so Supabase's public REST API can't read ICOM's data.
 2. **Backend:** in Render choose *New → Blueprint* and point it at this repo. It reads `render.yaml`. Fill in `DATABASE_URL`, `FRONTEND_URL` (`https://icom.ai.kr,https://www.icom.ai.kr`), `GROQ_API_KEY`, `SCRAPER_SECRET` and `ADMIN_SECRET`. The build runs `python bootstrap.py`, which creates tables and seeds data, so the web process starts fast.
 3. **Frontend:** import the repo in Vercel and set `NEXT_PUBLIC_API_URL` (your Render URL + `/api`) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Point `icom.ai.kr` at Vercel in your DNS.
 4. **Scraper:** set the `ICOM_API_URL` and `SCRAPER_SECRET` GitHub secrets so `.github/workflows/scrape-jobs.yml` keeps adding internships twice a day.
@@ -176,7 +176,7 @@ icom/
 
 **Backend sleeps on free tier** — Render's free tier spins down after 15 min of inactivity, so the first request takes a while. Use an uptime monitor on `/api/health`, or upgrade to a paid instance.
 
-**Database resets** — SQLite resets on every deploy. Use Neon Postgres via `DATABASE_URL` to persist data.
+**Database resets** — SQLite resets on every deploy. Use Supabase Postgres via `DATABASE_URL` to persist data.
 
 **CORS errors** — Make sure `FRONTEND_URL` in your backend env matches your frontend URL exactly (no trailing slash).
 

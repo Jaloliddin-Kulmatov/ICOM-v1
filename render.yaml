@@ -1,5 +1,5 @@
 # Backend only. The frontend is deployed on Vercel (see vercel.json) and the
-# database is Neon Postgres (free tier), connected through DATABASE_URL.
+# database is Supabase Postgres (free tier, Singapore), connected through DATABASE_URL.
 services:
   - type: web
     name: icom-backend
@@ -25,7 +25,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false          # Neon connection string (postgresql://...?sslmode=require)
+        sync: false          # Supabase session pooler string (postgresql://...pooler.supabase.com:5432/postgres?sslmode=require)
       - key: FRONTEND_URL
         sync: false          # https://icom.ai.kr,https://www.icom.ai.kr
       - key: GROQ_API_KEY

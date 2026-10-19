@@ -26,7 +26,7 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-change-me")
     db_url = os.environ.get("DATABASE_URL", "sqlite:///icon.db")
     # Always use psycopg2 (what requirements.txt installs). Render/Heroku give
-    # postgres://, Neon's SQLAlchemy snippet gives postgresql+psycopg://, and
+    # postgres://, some providers' SQLAlchemy snippets give postgresql+psycopg://, and
     # SQLAlchemy 2.1+ maps a bare postgresql:// to psycopg 3 by default.
     for prefix in ("postgres://", "postgresql://", "postgresql+psycopg://"):
         if db_url.startswith(prefix):
@@ -378,6 +378,34 @@ def _run_lightweight_migrations():
                     print(f"[migration] Added club_messages.{col_name}")
         except Exception as e:
             print(f"[migration] club_messages.{col_name} failed (probably already done): {e}")
+
+    _lock_supabase_data_api()
+
+
+def _lock_supabase_data_api():
+    """On Supabase, every table in the public schema is also reachable through
+    its auto-generated REST API with the project's public "anon" key. ICOM only
+    talks to the database through this backend, so turn row-level security on
+    for every table with no policies: the API then sees nothing, while the
+    backend (connecting as the table owner) is unaffected. No-op elsewhere."""
+    from sqlalchemy import text
+    if db.engine.dialect.name != "postgresql":
+        return
+    try:
+        with db.engine.begin() as conn:
+            if not conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = 'anon'")).first():
+                return  # not Supabase
+            tables = conn.execute(text(
+                "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity"
+            )).scalars().all()
+            for t in tables:
+                conn.execute(text(f'ALTER TABLE public."{t}" ENABLE ROW LEVEL SECURITY'))
+        if tables:
+            print(f"[migration] Supabase: row-level security on for {len(tables)} table(s)")
+    except Exception as e:
+        print(f"[migration] Supabase row-level security step failed: {e}")
+
 
 def _seed_communities():
     """Seed real international communities (nationality-based) on first deploy.
