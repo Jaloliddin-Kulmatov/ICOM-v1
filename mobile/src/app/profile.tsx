@@ -10,7 +10,8 @@ import { APP_VERSION, WEB_URL } from "@/lib/config";
 import { CITIES, JOB_FIELDS, TOPIK_LEVELS, daysUntil } from "@/lib/options";
 import { scheduleVisaReminders } from "@/lib/notifications";
 import { space, useColors } from "@/lib/theme";
-import { Button, Card, Chip, ChipRow, Input, Row, Screen, Text } from "@/components/ui";
+import { Button, Card, Chip, ChipRow, Row, Screen, Text } from "@/components/ui";
+import { DateField } from "@/components/date-field";
 
 type CvFile = { filename: string; size: number; uploaded_at: string };
 
@@ -39,7 +40,12 @@ export default function Profile() {
     if (e) { setError(e); return; }
     const n = await scheduleVisaReminders(form.visa_expiry || undefined, user.visa_type);
     await refresh();
-    setMessage(form.visa_expiry ? `Saved. ${n} visa reminder${n === 1 ? "" : "s"} set on this phone.` : "Saved.");
+    const left = daysUntil(form.visa_expiry);
+    setMessage(
+      !form.visa_expiry || Platform.OS === "web" ? "Saved."
+      : n > 0 ? `Saved. ${n} visa reminder${n === 1 ? "" : "s"} set on this phone.`
+      : left !== null && left <= 7 ? "Saved. Your visa expires within a week, so no reminders are left to set."
+      : "Saved. Turn on notifications for ICOM in your phone's settings to get visa reminders.");
   };
 
   const pickCv = async () => {
@@ -83,9 +89,8 @@ export default function Profile() {
       <Card>
         <Text variant="heading">Career & visa</Text>
         <Text variant="small">Used to match internships to you and to remind you before your visa expires. Only you see this.</Text>
-        <Input label="Visa expiry date" value={form.visa_expiry} onChangeText={(v) => setForm((f) => ({ ...f, visa_expiry: v.trim() }))}
-          placeholder="YYYY-MM-DD, e.g. 2027-03-31" keyboardType="numbers-and-punctuation" maxLength={10}
-          error={expiryInvalid ? "Use the format YYYY-MM-DD." : undefined} />
+        <DateField label="Visa expiry date" value={form.visa_expiry} onChange={(v) => setForm((f) => ({ ...f, visa_expiry: v }))}
+          placeholder="Not set" />
         <Text variant="small" style={{ fontWeight: "600", color: c.ink }}>Korean level</Text>
         <ChipRow>
           {TOPIK_LEVELS.map((l) => (

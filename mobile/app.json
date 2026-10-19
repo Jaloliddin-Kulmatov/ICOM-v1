@@ -51,7 +51,8 @@
             "backgroundColor": "#0b1220"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "icom",
     "description": "Internships, visa guides and a community for international students in Korea.",

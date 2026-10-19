@@ -93,7 +93,7 @@ export function Chip({ label, selected, onPress, tone = "muted", icon }: {
   }[tone];
   const sel = selected ? { bg: c.accent, fg: c.onAccent, border: c.accent } : tones;
   const body = (
-    <View style={[styles.chip, { backgroundColor: sel.bg, borderColor: sel.border }]}>
+    <View style={[styles.chip, { backgroundColor: sel.bg, borderColor: sel.border, alignSelf: "flex-start" }]}>
       {icon && <Ionicons name={icon} size={12} color={sel.fg} />}
       <RNText style={{ color: sel.fg, fontSize: 12, fontWeight: "600" }}>{label}</RNText>
     </View>
