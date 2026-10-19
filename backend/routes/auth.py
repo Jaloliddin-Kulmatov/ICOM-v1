@@ -9,7 +9,7 @@ from app import db, bcrypt
 from models import (
     User, Club, ClubMembership, ClubMessage,
     Post, PostComment, AmbassadorApplication, Feedback, AISession, Job,
-    ChatPost, ChatAnswer,
+    ChatPost, ChatAnswer, ClubEvent,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -273,8 +273,51 @@ def update_me():
         if value is not None:
             setattr(user, field, value.strip())
 
+    # Career profile (all optional; "" clears).
+    for field, limit in (("job_field", 60), ("city", 60)):
+        if data.get(field) is not None:
+            setattr(user, field, str(data[field]).strip()[:limit] or None)
+    if data.get("visa_expiry") is not None:
+        raw = str(data["visa_expiry"]).strip()
+        if raw:
+            from datetime import date
+            try:
+                date.fromisoformat(raw)
+            except ValueError:
+                return jsonify({"error": "Visa expiry must be a date like 2027-03-31."}), 400
+        if raw != (user.visa_expiry or ""):
+            user.visa_reminder_sent = None   # new date → reminders start over
+        user.visa_expiry = raw or None
+    if "topik_level" in data:
+        level = data["topik_level"]
+        if level in (None, ""):
+            user.topik_level = None
+        else:
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                level = -1
+            if not 0 <= level <= 6:
+                return jsonify({"error": "TOPIK level must be 0 (none) to 6."}), 400
+            user.topik_level = level
+
     db.session.commit()
     return jsonify({"user": user.to_dict()}), 200
+
+
+# Same ids as ARRIVAL_STEPS in src/lib/profile-options.ts.
+CHECKLIST_STEPS = {"arc", "bank", "insurance", "phone", "tmoney", "housing", "work-permit"}
+
+
+@auth_bp.route("/me/checklist", methods=["PUT"])
+@jwt_required()
+def save_checklist():
+    """Arrival checklist: the ids of the steps this student has finished."""
+    user = User.query.get_or_404(int(get_jwt_identity()))
+    done = (request.get_json(silent=True) or {}).get("done") or []
+    user.checklist = sorted({str(s) for s in done if str(s) in CHECKLIST_STEPS})
+    db.session.commit()
+    return jsonify({"checklist": user.checklist}), 200
 
 
 # ── Delete account (permanent, cascade) ─────────────────────────────────────
@@ -314,6 +357,7 @@ def delete_me():
             ChatAnswer.query.filter(ChatAnswer.post_id.in_(user_chat_ids)).delete(synchronize_session=False)
             ChatPost.query.filter(ChatPost.id.in_(user_chat_ids)).delete(synchronize_session=False)
         AISession.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        ClubEvent.query.filter_by(created_by=user_id).update({ClubEvent.created_by: None}, synchronize_session=False)
         own_comment_ids = [c.id for c in PostComment.query.filter_by(user_id=user_id).all()]
         if own_comment_ids:
             PostComment.query.filter(PostComment.parent_id.in_(own_comment_ids))\
@@ -350,6 +394,7 @@ def delete_me():
                 PostComment.query.filter(PostComment.post_id.in_(club_post_ids))\
                     .delete(synchronize_session=False)
                 Post.query.filter(Post.id.in_(club_post_ids)).delete(synchronize_session=False)
+            ClubEvent.query.filter(ClubEvent.club_id.in_(owned_club_ids)).delete(synchronize_session=False)
             Club.query.filter(Club.id.in_(owned_club_ids)).delete(synchronize_session=False)
 
         # 4b) CV, uploaded CV file, direct messages, blocks and reports.

@@ -79,6 +79,7 @@ export function matchesSearch(job: Job, query: string): boolean {
 }
 
 export const SORTS = {
+  "for-you": "Best match for me",
   newest: "Newest",
   closing: "Closing soon",
   popular: "Most applied",
@@ -86,10 +87,33 @@ export const SORTS = {
 } as const;
 export type SortKey = keyof typeof SORTS;
 
-export function sortJobs(jobs: Job[], sort: SortKey): Job[] {
+export type MatchProfile = { job_field?: string; city?: string; topik_level?: number | null; visa_type?: string };
+
+/** How well a job fits a student's profile, and why (shown on the card). */
+export function matchScore(job: Job, p?: MatchProfile | null): { score: number; reasons: string[] } {
+  if (!p) return { score: 0, reasons: [] };
+  let score = 0;
+  const reasons: string[] = [];
+  if (p.job_field && jobCategory(job) === p.job_field) { score += 3; reasons.push(p.job_field); }
+  const city = jobCity(job);
+  if (p.city && (city === p.city || city === "Remote")) { score += 2; reasons.push(city === "Remote" ? "Remote" : p.city); }
+  const hints = job.insights;
+  if (hints?.korean_required && (p.topik_level ?? 0) < 4) score -= 3;      // likely needs more Korean than you have
+  if (hints?.english_ok) score += 1;
+  const visa = (p.visa_type || "").toUpperCase();
+  if (hints?.student_role && (visa.startsWith("D-2") || visa.startsWith("D-4"))) score += 1;
+  if (hints?.visa_support && visa.startsWith("D-10")) { score += 2; reasons.push("Visa support"); }
+  return { score, reasons };
+}
+
+export function sortJobs(jobs: Job[], sort: SortKey, profile?: MatchProfile | null): Job[] {
   const copy = [...jobs];
   const posted = (j: Job) => new Date(j.postedAt).getTime() || 0;
   switch (sort) {
+    case "for-you": {
+      const scores = new Map(copy.map((j) => [j.id, matchScore(j, profile).score]));
+      return copy.sort((a, b) => (scores.get(b.id)! - scores.get(a.id)!) || posted(b) - posted(a));
+    }
     case "closing":
       // Dated deadlines first (soonest first), then rolling ones by newest.
       return copy.sort((a, b) => {

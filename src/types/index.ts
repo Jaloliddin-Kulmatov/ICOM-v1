@@ -58,6 +58,15 @@ export interface Job {
   // AI-detected on Wanted scrapes. Empty string on admin-entered jobs.
   foreignerFriendly?: "yes" | "no" | "unclear" | "";
   foreignerNote?: string;
+  // Hints read from the posting's text (backend/job_insights.py)
+  insights?: JobInsights;
+}
+
+export interface JobInsights {
+  korean_required: boolean;
+  english_ok: boolean;
+  visa_support: boolean;
+  student_role: boolean;
 }
 
 export interface University {

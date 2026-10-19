@@ -55,6 +55,7 @@ interface ChatPost {
   scope: string;
   answer_count: number;
   created_at: string;
+  solved?: boolean;   // the asker accepted an answer
 }
 
 function getToken() {
@@ -380,10 +381,10 @@ export default function ChatPage() {
                       ? "bg-emerald-600 text-white"
                       : "border-2 border-dashed border-border text-muted-foreground"
                   }`}
-                  aria-label={`${p.answer_count} ${p.answer_count === 1 ? "answer" : "answers"}`}
+                  aria-label={`${p.answer_count} ${p.answer_count === 1 ? "answer" : "answers"}${p.solved ? ", solved" : ""}`}
                 >
                   <span className="text-lg font-extrabold leading-none tabular-nums">{p.answer_count}</span>
-                  <span className="text-[10px] font-semibold mt-0.5">{p.answer_count === 1 ? "answer" : "answers"}</span>
+                  <span className="text-[10px] font-semibold mt-0.5">{p.solved ? "solved" : p.answer_count === 1 ? "answer" : "answers"}</span>
                 </div>
 
                 <div className="flex-1 min-w-0">

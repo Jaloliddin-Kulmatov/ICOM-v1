@@ -18,6 +18,15 @@ interface UserProfile {
   country?: string;
   role: string;
   is_verified: boolean;
+  job_alerts_enabled?: boolean;
+  // Career profile (powers job matching and visa reminders)
+  visa_expiry?: string;          // YYYY-MM-DD or ""
+  topik_level?: number | null;   // 0 = none, 1–6
+  job_field?: string;
+  city?: string;
+  alert_field?: string;
+  alert_city?: string;
+  checklist?: string[];          // finished arrival steps
 }
 
 type GoogleMode = "login" | "register";

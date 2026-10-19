@@ -843,7 +843,8 @@ def top_hiring_companies():
 def get_job_alerts():
     user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
-    return jsonify({"enabled": bool(user.job_alerts_enabled)}), 200
+    return jsonify({"enabled": bool(user.job_alerts_enabled),
+                    "field": user.alert_field or "", "city": user.alert_city or ""}), 200
 
 
 def _alert_unsub_token(user_id):
@@ -930,6 +931,17 @@ def toggle_job_alerts():
         user.job_alerts_enabled = bool(data["enabled"])
     else:
         user.job_alerts_enabled = not bool(user.job_alerts_enabled)
+    # Saved search: the field and city filters the student had on when they
+    # turned alerts on ("" = any).
+    from job_insights import FIELDS
+    if "field" in data:
+        f = (data.get("field") or "").strip()
+        user.alert_field = f if f in FIELDS else None
+    if "location" in data or "city" in data:
+        c = (data.get("city") or data.get("location") or "").strip()
+        user.alert_city = None if c.lower() in ("", "all", "all korea", "all locations") else c[:60]
+    if user.job_alerts_enabled and not was_enabled:
+        user.alert_last_sent = _dt.utcnow()   # only postings from now on
     db.session.commit()
     now_enabled = bool(user.job_alerts_enabled)
 

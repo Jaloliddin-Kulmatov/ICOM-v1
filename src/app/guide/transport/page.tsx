@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "T-money Card (버스 & 지하철)",
@@ -157,6 +158,7 @@ export default function TransportPage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">T-money card, Jeonju buses, KTX trains, Seoul subway, and intercity travel — getting around Korea made easy.</p>
+            <GuideUpdated slug="transport" />
           </div>
         </div>
 

@@ -43,6 +43,7 @@ interface JobDetail {
   apply_count?: number;
   isNew?: boolean;
   created_at: string;
+  insights?: { korean_required: boolean; english_ok: boolean; visa_support: boolean; student_role: boolean };
 }
 
 export default function JobDetailPage() {
@@ -209,6 +210,21 @@ export default function JobDetailPage() {
                 </Badge>
               ))}
             </div>
+
+            {/* What this means for an international student (read from the posting) */}
+            {job.insights && (job.insights.student_role || job.insights.korean_required || job.insights.visa_support) && (
+              <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.05] p-5 space-y-2">
+                <h2 className="text-sm font-bold text-foreground">Before you apply</h2>
+                <ul className="text-sm text-foreground/85 space-y-1.5 list-disc pl-5">
+                  {job.insights.student_role && (
+                    <li>On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start. <Link href="/guide/visa" className="text-indigo-700 dark:text-indigo-300 font-semibold hover:underline">How to get it</Link></li>
+                  )}
+                  {job.insights.korean_required && <li>The posting asks for strong Korean (for example business level or TOPIK 4+).</li>}
+                  {job.insights.visa_support && <li>The posting mentions visa sponsorship or E-7 support. Confirm the details with the company.</li>}
+                </ul>
+                <p className="text-xs text-muted-foreground">Read from the posting&apos;s text, so check with the company.</p>
+              </div>
+            )}
 
             {/* Description */}
             <div className="rounded-2xl border border-border bg-card p-6">

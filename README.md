@@ -160,10 +160,11 @@ icom/
 ## Key Features
 
 - 💬 **Community Q&A (Chat)** — Reddit-style questions & answers with image uploads and automatic content moderation (terror / sexual / hate content is blocked). Two scopes: **All Korea** (global) and a **per-university chat** (e.g. "JBNU Chat") — university posts stay private to that university and never leak into the global feed. Local questions surface first by region.
-- 🌍 **Community** — Join clubs and national communities, member-only club chat
+- 🌍 **Community** — Join clubs and national communities, member-only club chat, dated club events with "Add to calendar", and accepted answers in Chat
 - 💼 **Internships** — Live listings scraped twice daily from Wanted.co.kr, **auto-translated to English** (Groq → Google Translate fallback) and **AI-classified for foreigner-friendliness** (Korean-only postings are flagged or skipped). Real apply links, real deadlines (rolling when none is published), apply-click tracking, opt-in job alerts, and live "Top Hiring Companies".
-- 🤖 **AI Assistant** — Powered by Groq, answers visa/housing/banking questions. Reachable from every page via a floating chat widget.
-- 📖 **Support Guides** — Step-by-step guides for visa, banking, housing, insurance, transport, Korean language
+- 🎯 **Matching & alerts** — Students add visa expiry, TOPIK level, field and city. "Best match for me" sorts internships by fit, job cards flag "Korean needed" and "Visa support mentioned", and daily alert emails send new internships matching a saved field and city. Visa expiry reminders go out 90, 60, 30 and 7 days ahead.
+- 🤖 **AI Assistant** — Powered by Groq. Answers from ICOM's own guides first and shows which guide it used. Reachable from every page via a floating chat widget.
+- 📖 **Support Guides** — Step-by-step guides for visa, banking, housing, insurance, transport, Korean language, an arrival checklist that syncs to the account, and an "Updated" date on each guide. After editing a guide page, run `python backend/build_guide_index.py` (a test fails until you do).
 - 🏫 **Universities** — JBNU and Korean university directory + ambassador program
 - 🗺️ **Daily Life** — Nearby restaurants (personalised by nationality), transport tips
 - 📰 **News** — Ambassadors and club owners can post updates

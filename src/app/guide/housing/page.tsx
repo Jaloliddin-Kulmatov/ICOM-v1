@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Home, ChevronDown, ChevronRight, ExternalLink, AlertCircle, ArrowLeft, MapPin, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import GuideUpdated from "@/components/guide/guide-updated";
 const sections = [
   {
     title: "University Dormitories (기숙사)",
@@ -103,6 +104,7 @@ export default function HousingPage() {
               </div>
             </div>
             <p className="text-muted-foreground text-sm mt-2">Dorms, one-rooms, gosiwons, lease contracts, and everything about finding a home near JBNU in Jeonju.</p>
+            <GuideUpdated slug="housing" />
           </div>
         </div>
 

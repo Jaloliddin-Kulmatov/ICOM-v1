@@ -2,9 +2,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import Link from "next/link";
 import { Sparkles, Send, Bot, User, RefreshCw, Loader2 } from "lucide-react";
 
-interface Message { id: string; role: "user" | "assistant"; content: string; }
+type Source = { title: string; url: string };
+interface Message { id: string; role: "user" | "assistant"; content: string; sources?: Source[]; }
 
 const QUICK = [
   "How do I extend my D-2 visa?",
@@ -17,7 +19,7 @@ const QUICK = [
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-async function sendToAI(message: string, history: Message[]): Promise<string> {
+async function sendToAI(message: string, history: Message[]): Promise<{ reply: string; sources: Source[] }> {
   const token = localStorage.getItem("icon_token");
   const res = await fetch(`${API}/ai/chat`, {
     method: "POST",
@@ -25,7 +27,8 @@ async function sendToAI(message: string, history: Message[]): Promise<string> {
     body: JSON.stringify({ message, history: history.map(m => ({ role: m.role, content: m.content })) }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "AI error"); }
-  return (await res.json()).reply;
+  const data = await res.json();
+  return { reply: data.reply, sources: data.sources || [] };
 }
 
 export default function AIPage() {
@@ -48,8 +51,8 @@ export default function AIPage() {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
     try {
-      const reply = await sendToAI(msg, messages);
-      setMessages(prev => [...prev, { id: Date.now() + "r", role: "assistant", content: reply }]);
+      const { reply, sources } = await sendToAI(msg, messages);
+      setMessages(prev => [...prev, { id: Date.now() + "r", role: "assistant", content: reply, sources }]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally { setLoading(false); }
@@ -116,6 +119,17 @@ export default function AIPage() {
               </div>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${m.role === "user" ? "bg-indigo-500 text-white rounded-tr-sm" : "bg-white/5 border border-white/10 text-foreground rounded-tl-sm"}`}>
                 {m.content}
+                {m.role === "assistant" && !!m.sources?.length && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    From ICOM guides:{" "}
+                    {m.sources.map((s, i) => (
+                      <React.Fragment key={s.url}>
+                        {i > 0 && ", "}
+                        <Link href={s.url} className="font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">{s.title}</Link>
+                      </React.Fragment>
+                    ))}
+                  </p>
+                )}
               </div>
             </div>
           ))}

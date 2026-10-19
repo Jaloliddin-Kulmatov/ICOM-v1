@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { MapPin, Bookmark, Globe, ShieldAlert, ArrowUpRight, CalendarClock, Users } from "lucide-react";
+import { MapPin, Bookmark, Globe, ShieldAlert, ArrowUpRight, CalendarClock, Users, Languages, BadgeCheck, Sparkles } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import { jobCategory, jobCity, daysLeft } from "@/lib/job-filters";
@@ -49,9 +49,11 @@ function DeadlineChip({ job }: { job: Job }) {
 interface JobCardProps {
   job: Job;
   featured?: boolean;
+  /** Why this job fits the student (shown when sorting by best match). */
+  match?: string[];
 }
 
-export default function JobCard({ job, featured = false }: JobCardProps) {
+export default function JobCard({ job, featured = false, match }: JobCardProps) {
   const [bookmarked, setBookmarked] = useState(() => Bookmarks.jobs.has(job.id));
   const [applies, setApplies] = useState(job.applyCount ?? job.applications ?? 0);
   const city = jobCity(job);
@@ -108,6 +110,11 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
 
       {/* Key facts, in the order students decide on them */}
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {match && match.length > 0 && (
+          <span className="chip-good" title="Matches the field and city in your profile">
+            <Sparkles size={11} /> Matches you: {match.join(" · ")}
+          </span>
+        )}
         {job.foreignerFriendly === "yes" && (
           <span className="chip-good" title={job.foreignerNote || "Foreign applicants welcome"}>
             <Globe size={11} /> Foreigners welcome
@@ -116,6 +123,16 @@ export default function JobCard({ job, featured = false }: JobCardProps) {
         {job.foreignerFriendly === "no" && (
           <span className="chip-urgent" title={job.foreignerNote || "Korean fluency or local citizenship required"}>
             <ShieldAlert size={11} /> Korean required
+          </span>
+        )}
+        {job.insights?.korean_required && job.foreignerFriendly !== "no" && (
+          <span className="chip-urgent" title="The posting asks for strong Korean (for example business level or TOPIK 4+)">
+            <Languages size={11} /> Korean needed
+          </span>
+        )}
+        {job.insights?.visa_support && (
+          <span className="chip-good" title="The posting mentions visa sponsorship or E-7 support. Confirm with the company.">
+            <BadgeCheck size={11} /> Visa support mentioned
           </span>
         )}
         <DeadlineChip job={job} />

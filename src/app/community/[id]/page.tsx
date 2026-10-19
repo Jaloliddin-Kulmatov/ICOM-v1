@@ -1,5 +1,6 @@
 "use client";
 
+import ClubEvents from "@/components/clubs/club-events";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
@@ -561,6 +562,9 @@ export default function CommunityDetailPage() {
             );
           })()}
 
+          {/* ── Upcoming events (always visible; hidden when there are none) ── */}
+          <ClubEvents clubId={club.id} clubName={club.name} />
+
           {/* ── Tabs ── */}
           <div className="flex gap-0.5 mb-5 border-b border-border overflow-x-auto scrollbar-hide">
             {(
@@ -892,19 +896,21 @@ export default function CommunityDetailPage() {
           {tab === "about" && (
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
               {/* Description — wider */}
-              <div className="md:col-span-3 p-5 rounded-2xl border border-border bg-card">
-                <h3 className="text-sm font-semibold text-foreground mb-3">
-                  About this {isCC ? "community" : "club"}
-                </h3>
-                {club.description ? (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {club.description}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    No description yet.
-                  </p>
-                )}
+              <div className="md:col-span-3 space-y-3 min-w-0">
+                <div className="p-5 rounded-2xl border border-border bg-card">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                    About this {isCC ? "community" : "club"}
+                  </h3>
+                  {club.description ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {club.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No description yet.
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Details sidebar */}

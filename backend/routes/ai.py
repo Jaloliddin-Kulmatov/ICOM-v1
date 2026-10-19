@@ -115,6 +115,63 @@ def _build_db_context(user_id=None) -> str:
     )
 
 
+# ── ICOM guide passages (retrieval) ──────────────────────────────────────────
+# backend/data/guides.json is built from the website's guide pages by
+# build_guide_index.py. For each question we pick the best-matching passages,
+# tell the model to answer from them, and return the guides as sources so
+# students can check visa and paperwork answers themselves.
+
+_GUIDES = None
+_STOP = set("the a an and or to of in on for is are am i my me how what when where which who why can could do does "
+            "did with at by from it be you your we our this that there have has need want get should will would "
+            "about into any some much many more most just also please tell know".split())
+_EXPAND = {
+    "arc": ["alien", "registration", "외국인등록증"], "visa": ["immigration", "d-2", "d-4", "extension"],
+    "extend": ["extension", "renew"], "bank": ["account", "banking"], "money": ["bank", "transfer"],
+    "insurance": ["nhis", "health"], "hospital": ["insurance", "nhis", "clinic"], "doctor": ["hospital", "clinic"],
+    "dorm": ["housing", "dormitory"], "rent": ["housing", "deposit"], "apartment": ["housing", "rent"],
+    "phone": ["sim", "plan", "number"], "bus": ["transport", "t-money"], "subway": ["transport", "t-money"],
+    "work": ["part-time", "permit", "job"], "job": ["part-time", "permit", "work"], "korean": ["topik", "language"],
+}
+
+
+def _guide_data():
+    global _GUIDES
+    if _GUIDES is None:
+        import json
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "guides.json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                _GUIDES = json.load(f)
+        except (OSError, ValueError):
+            _GUIDES = []
+    return _GUIDES
+
+
+def find_guide_passages(question: str, limit: int = 4):
+    """Best-matching guide passages for a question: [(guide, passage), ...]."""
+    import re
+    words = {w for w in re.findall(r"[a-z0-9\-]+|[가-힣]+", question.lower()) if w not in _STOP and len(w) > 1}
+    for w in list(words):
+        words.update(_EXPAND.get(w, []))
+    if not words:
+        return []
+    scored = []
+    for g in _guide_data():
+        title = f"{g['slug']} {g['title']}".lower()
+        for chunk in g["chunks"]:
+            text = chunk.lower()
+            score = sum(1 for w in words if w in text) + sum(2 for w in words if w in title)
+            if score >= 3:
+                scored.append((score, g, chunk))
+    scored.sort(key=lambda s: -s[0])
+    if not scored:
+        return []
+    # Keep only passages close to the best match, so weak matches don't show as sources.
+    best = scored[0][0]
+    return [(g, chunk) for score, g, chunk in scored[:limit] if score >= best * 0.6]
+
+
 @ai_bp.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
@@ -144,7 +201,20 @@ def chat():
     # Give the AI live read-access to ICOM's data (jobs, clubs, the user's own
     # profile) so it answers with real listings instead of generic advice.
     db_context = _build_db_context(current_user_id)
-    system_content = SYSTEM_PROMPT + db_context
+    passages = find_guide_passages(message)
+    guide_context = ""
+    if passages:
+        guide_context = (
+            "\n\n=== ICOM GUIDE EXCERPTS (answer from these first; they are ICOM's checked guides) ===\n"
+            + "\n".join(f"[{g['title']}] {chunk}" for g, chunk in passages)
+            + "\nIf the excerpts don't cover the question, say so and suggest the student confirm with "
+              "their international office or HiKorea (1345). Never invent fees, deadlines or rules."
+        )
+    sources = []
+    for g, _ in passages:
+        if all(s["url"] != g["url"] for s in sources):
+            sources.append({"title": g["title"], "url": g["url"]})
+    system_content = SYSTEM_PROMPT + guide_context + db_context
 
     messages = [{"role": "system", "content": system_content}]
 
@@ -185,7 +255,7 @@ def chat():
     except Exception:
         pass
 
-    return jsonify({"reply": reply}), 200
+    return jsonify({"reply": reply, "sources": sources[:2]}), 200
 
 
 @ai_bp.route("/translate", methods=["POST"])
