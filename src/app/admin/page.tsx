@@ -1,5 +1,6 @@
 "use client";
 
+import { CATEGORIES, categoryInfo, categoryKey } from "@/lib/club-categories";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -79,7 +80,8 @@ interface FeedbackItem {
   rating: number | null; message: string; page_url: string; created_at: string;
 }
 
-const CLUB_CATEGORIES = ["academic", "sports", "culture", "social", "language", "tech", "arts", "volunteer"];
+// Category keys and labels: src/lib/club-categories.ts
+const CLUB_CATEGORIES = CATEGORIES.map((c) => c.key);
 const JOB_TYPES = ["part-time", "internship", "research", "full-time", "volunteer"];
 
 const AVATAR_COLORS = [
@@ -432,7 +434,7 @@ export default function AdminPage() {
   const openEditClub = (club: Club) => {
     setEditingClub(club);
     setEditClubForm({
-      name: club.name, category: club.category, university: club.university,
+      name: club.name, category: categoryKey(club.category, club.club_type), university: club.university,
       description: club.description || "", contact: club.contact || "",
       kakao_link: club.kakao_link || "", meeting_time: club.meeting_time || "",
       location: club.location || "", website: club.website || "",
@@ -1204,7 +1206,7 @@ export default function AdminPage() {
                 <div>
                   <label className="text-[11px] font-medium text-white/50 mb-1 block">Category</label>
                   <select value={editClubForm.category} onChange={e => setEditClubForm(p => ({ ...p, category: e.target.value }))} className={mInputCls}>
-                    {CLUB_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#1a1a2e] text-white">{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                    {CLUB_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#1a1a2e] text-white">{categoryInfo(c).label}</option>)}
                   </select>
                 </div>
                 <div>

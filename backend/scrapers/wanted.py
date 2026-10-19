@@ -269,15 +269,16 @@ def _translate_with_groq(parsed: dict) -> dict:
         try:
             from groq import Groq
             client = Groq(api_key=api_key)
-            resp = client.chat.completions.create(
-                model=os.environ.get("WANTED_TRANSLATE_MODEL", "llama-3.3-70b-versatile"),
-                messages=[
+            from groq_models import complete
+            resp = complete(
+                client,
+                [
                     {"role": "system", "content": _TRANSLATION_PROMPT},
                     {"role": "user", "content": json.dumps(payload_in, ensure_ascii=False)},
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.2,
-                max_tokens=2000,
+                max_tokens=4000,
             )
             raw = resp.choices[0].message.content or "{}"
             data = json.loads(raw)

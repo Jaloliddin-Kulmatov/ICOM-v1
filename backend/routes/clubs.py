@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from models import Club, ClubMembership, User, ClubMessage, ClubEvent
 import response_cache
+from club_categories import normalize as normalize_category
 
 clubs_bp = Blueprint("clubs", __name__)
 
@@ -164,7 +165,7 @@ def create_club():
     club = Club(
         name=name,
         description=(data.get("description") or "").strip(),
-        category=(data.get("category") or "social").strip(),
+        category=normalize_category(data.get("category"), club_type_val),
         university=(data.get("university") or default_uni).strip(),
         kakao_link=(data.get("kakao_link") or "").strip(),
         contact=(data.get("contact") or "").strip(),
@@ -393,6 +394,8 @@ def edit_club(club_id):
     for field in editable:
         if field in data:
             setattr(club, field, (data[field] or "").strip())
+    if "category" in data:
+        club.category = normalize_category(data["category"], club.club_type)
 
     db.session.commit()
     return jsonify({"club": club.to_dict(user_id=user_id)}), 200

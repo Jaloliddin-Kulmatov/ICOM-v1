@@ -154,3 +154,21 @@ def test_ai_answers_cite_guides(client, monkeypatch):
     assert r.get_json()["sources"] == [{"title": "Visa & Immigration", "url": "/guide/visa"}]
     assert "ICOM GUIDE EXCERPTS" in seen["system"]
     assert client.post("/api/ai/chat", json={"message": "hello there"}).get_json()["sources"] == []
+
+
+def test_club_categories_are_normalised(app, alice):
+    from club_categories import normalize
+    assert normalize("Technology") == "tech" and normalize("outdoor") == "sports & outdoor"
+    assert normalize("culture", "community") == "national community" and normalize("culture", "club") == "arts & culture"
+    assert normalize("whatever") == "social"
+    cid = alice.post("/api/clubs", json={"name": "Code Club", "category": "Technology"}).get_json()["club"]["id"]
+    assert alice.patch(f"/api/clubs/{cid}", json={"category": "Health & Wellness"}).get_json()["club"]["category"] == "sports & outdoor"
+    with app.app_context():
+        from models import Club
+        c = db.session.get(Club, cid)
+        c.category = "Arts"   # an old name written directly
+        db.session.commit()
+        import app as app_module
+        app_module._normalize_club_categories()
+        db.session.expire_all()
+        assert db.session.get(Club, cid).category == "arts & culture"

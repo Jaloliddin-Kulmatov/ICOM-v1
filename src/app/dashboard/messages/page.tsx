@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
-import Sidebar from "@/components/layout/sidebar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatRelativeTime } from "@/lib/utils";
@@ -161,6 +160,35 @@ export default function MessagesPage() {
     return q ? convs.filter((c) => `${c.other.name} ${c.other.university} ${c.other.country}`.toLowerCase().includes(q)) : convs;
   }, [convs, filter]);
 
+  // Search everyone on ICOM by name (2+ letters), so you can start a new chat.
+  const [people, setPeople] = useState<Person[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleError, setPeopleError] = useState("");
+  useEffect(() => {
+    const q = filter.trim();
+    if (!user || q.length < 2) { setPeople([]); setPeopleError(""); return; }
+    setPeopleLoading(true);
+    const t = setTimeout(async () => {
+      const { data, error: e } = await api.get<{ users: Person[] }>(`/users/search?q=${encodeURIComponent(q)}`);
+      setPeople(data?.users || []);
+      setPeopleError(e || "");
+      setPeopleLoading(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [filter, user]);
+  const inConvs = new Set(visibleConvs.map((c) => c.other.id));
+  const newPeople = people.filter((p) => !inConvs.has(p.id));
+  const searching = filter.trim().length >= 2;
+
+  const startChat = async (personId: number) => {
+    const { data, error: e } = await api.post<{ conversation: { id: number } }>("/messages/conversations", { user_id: personId });
+    if (e || !data) { setNotice(e || "Couldn't start the chat."); return; }
+    setFilter("");
+    setActiveId(data.conversation.id);
+    setUrl(data.conversation.id);
+    loadConversations();
+  };
+
   // Group messages by day for date separators.
   const grouped = useMemo(() => {
     const out: { day: string; items: Msg[] }[] = [];
@@ -176,8 +204,7 @@ export default function MessagesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <Sidebar />
-      <main className="pt-16 md:pl-60 h-[100dvh]">
+      <main className="pt-16 h-[100dvh]">
         <div className="h-full max-w-6xl mx-auto md:p-6">
           {!user && !authLoading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
@@ -192,22 +219,28 @@ export default function MessagesPage() {
                 <label className="relative block mt-3">
                   <span className="sr-only">Search conversations</span>
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input id="dm-search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search people"
+                  <input id="dm-search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search chats or find people"
                     className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </label>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {listLoading ? (
                   <div className="p-6 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
-                ) : visibleConvs.length === 0 ? (
+                ) : visibleConvs.length === 0 && !(searching && (peopleLoading || newPeople.length > 0)) ? (
                   <div className="p-6 text-center">
                     <div className="mx-auto h-12 w-12 rounded-2xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 flex items-center justify-center mb-3"><MessageSquare size={22} /></div>
-                    <p className="text-sm font-semibold text-foreground">{filter ? "No one matches that name" : "No messages yet"}</p>
+                    <p className="text-sm font-semibold text-foreground">{filter ? "No one on ICOM matches that name" : "No messages yet"}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {filter ? "Try another name." : <>Tap <strong>Message</strong> on someone&apos;s question, answer or club member list to start a chat.</>}
+                      {peopleError ? peopleError
+                        : filter ? (filter.trim().length < 2 ? "Type at least 2 letters of a name." : "Check the spelling, or try their first name only.")
+                        : <>Search for a student above, or tap <strong>Message</strong> on someone&apos;s question, answer or club member list.</>}
                     </p>
                   </div>
                 ) : (
+                  <>
+                  {searching && visibleConvs.length > 0 && (
+                    <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your chats</p>
+                  )}
                   <ul>
                     {visibleConvs.map((c) => (
                       <li key={c.id}>
@@ -233,6 +266,33 @@ export default function MessagesPage() {
                       </li>
                     ))}
                   </ul>
+                  {searching && (peopleLoading || newPeople.length > 0) && (
+                    <section aria-label="People on ICOM">
+                      <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">People on ICOM</p>
+                      {peopleLoading && newPeople.length === 0 ? (
+                        <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" size={18} /></div>
+                      ) : (
+                        <ul>
+                          {newPeople.map((p) => (
+                            <li key={p.id}>
+                              <button onClick={() => startChat(p.id)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:bg-accent">
+                                <Avatar name={p.name} size={40} />
+                                <span className="flex-1 min-w-0">
+                                  <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
+                                  <span className="block truncate text-xs text-muted-foreground">
+                                    {[p.university && p.university.toUpperCase(), p.country, p.visa_type].filter(Boolean).join(" · ") || "ICOM member"}
+                                  </span>
+                                </span>
+                                <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 shrink-0">Message</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  )}
+                  </>
                 )}
               </div>
             </aside>

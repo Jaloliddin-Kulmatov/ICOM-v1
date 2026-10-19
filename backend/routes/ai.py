@@ -7,9 +7,11 @@ from models import User, AISession, Job, Club
 
 ai_bp = Blueprint("ai", __name__)
 
-# Groq model — llama-3.3-70b-versatile is fast, free tier, and high quality.
-# Alternatives: "llama-3.1-8b-instant" (ultra-fast), "mixtral-8x7b-32768" (large context)
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# Which Groq model to use (and what to do when Groq retires one): groq_models.py.
+# Set GROQ_MODEL on the server to choose a different one.
+from groq_models import complete, current_model, AIUnavailable
+
+AI_DOWN = "The AI assistant isn't available right now. Please try again in a few minutes."
 
 SYSTEM_PROMPT = """You are ICOM AI, the official AI assistant for international students living and studying in Korea.
 
@@ -227,15 +229,13 @@ def chat():
     messages.append({"role": "user", "content": message})
 
     try:
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=messages,
-            max_tokens=600,
-            temperature=0.7,
-        )
-        reply = response.choices[0].message.content.strip()
+        response = complete(client, messages, max_tokens=1200, temperature=0.7)
+        reply = (response.choices[0].message.content or "").strip()
+        if not reply:
+            raise AIUnavailable("empty reply")
     except Exception as e:
-        return jsonify({"error": f"Groq error: {str(e)}"}), 502
+        print(f"[ai/chat] {e}")       # details stay in the server log
+        return jsonify({"error": AI_DOWN}), 502
 
     # Optionally save history if user is authenticated
     try:
@@ -275,15 +275,11 @@ def translate():
     prompt = f"Translate the following text to {lang_name}. Return only the translation:\n\n{text}"
 
     try:
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=400,
-            temperature=0.2,
-        )
-        translation = response.choices[0].message.content.strip()
+        response = complete(client, [{"role": "user", "content": prompt}], max_tokens=1000, temperature=0.2)
+        translation = (response.choices[0].message.content or "").strip()
     except Exception as e:
-        return jsonify({"error": str(e)}), 502
+        print(f"[ai/translate] {e}")
+        return jsonify({"error": AI_DOWN}), 502
 
     return jsonify({"translation": translation, "original": text, "target": target}), 200
 
@@ -323,13 +319,8 @@ Rules:
 - Return ONLY the raw JSON. No markdown, no explanation, no extra text."""
 
     try:
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=700,
-            temperature=0.6,
-        )
-        raw = response.choices[0].message.content.strip()
+        response = complete(client, [{"role": "user", "content": prompt}], max_tokens=1500, temperature=0.6)
+        raw = (response.choices[0].message.content or "").strip()
         # Strip markdown code fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]
@@ -338,7 +329,8 @@ Rules:
         import json
         result = json.loads(raw)
     except Exception as e:
-        return jsonify({"error": f"AI error: {str(e)}"}), 502
+        print(f"[ai/restaurants] {e}")
+        return jsonify({"error": AI_DOWN}), 502
 
     return jsonify(result), 200
 
@@ -346,4 +338,4 @@ Rules:
 @ai_bp.route("/health", methods=["GET"])
 def health():
     has_key = bool(os.environ.get("GROQ_API_KEY"))
-    return jsonify({"status": "ok", "ai_configured": has_key, "provider": "groq", "model": GROQ_MODEL}), 200
+    return jsonify({"status": "ok", "ai_configured": has_key, "provider": "groq", "model": current_model()}), 200

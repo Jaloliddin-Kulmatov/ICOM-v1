@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from app import db, bcrypt
 from models import User, Club, Job, ClubMembership
+from club_categories import normalize as normalize_category
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -167,7 +168,7 @@ def create_club():
     club = Club(
         name=name,
         description=(data.get("description") or "").strip(),
-        category=(data.get("category") or "social").strip(),
+        category=normalize_category(data.get("category"), data.get("club_type") or "club"),
         university=(data.get("university") or "JBNU").strip(),
         contact=(data.get("contact") or "").strip(),
         meeting_time=(data.get("meeting_time") or "").strip(),
@@ -193,7 +194,7 @@ def edit_club(club_id):
 
     if "name"         in data: club.name         = (data["name"]         or "").strip()
     if "description"  in data: club.description  = (data["description"]  or "").strip()
-    if "category"     in data: club.category     = (data["category"]     or "").strip()
+    if "category"     in data: club.category     = normalize_category(data["category"], data.get("club_type") or club.club_type)
     if "university"   in data: club.university   = (data["university"]   or "").strip()
     if "meeting_time" in data: club.meeting_time = (data["meeting_time"] or "").strip()
     if "location"     in data: club.location     = (data["location"]     or "").strip()
