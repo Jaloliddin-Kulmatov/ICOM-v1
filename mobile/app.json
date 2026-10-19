@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "ICOM",
+    "slug": "icom",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kr.ai.icom.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "kr.ai.icom.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#00994a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#00994a"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#00994a",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0b1220"
+          }
+        }
+      ]
+    ],
+    "scheme": "icom",
+    "description": "Internships, visa guides and a community for international students in Korea.",
+    "extra": {
+      "apiUrl": "https://icom-v1.onrender.com/api"
+    }
+  }
+}

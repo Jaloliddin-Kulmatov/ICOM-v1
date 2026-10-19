@@ -1,0 +1,59 @@
+"""The phone app registers itself for push notifications, and asks which
+app versions are still supported.
+
+POST   /api/devices {push_token, platform, app_version}
+DELETE /api/devices {push_token}           (on sign-out)
+GET    /api/app/config                      -> {min_version, latest_version, message}
+"""
+import os
+import re
+from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+from app import db
+from models import Device
+
+devices_bp = Blueprint("devices", __name__)
+app_config_bp = Blueprint("app_config", __name__)
+
+_TOKEN = re.compile(r"^Expo(nent)?PushToken\[[\w\-]+\]$")
+
+
+@devices_bp.route("", methods=["POST"])
+@jwt_required()
+def register_device():
+    data = request.get_json(silent=True) or {}
+    token = (data.get("push_token") or "").strip()
+    if not _TOKEN.match(token):
+        return jsonify({"error": "Invalid push token."}), 400
+    me = int(get_jwt_identity())
+    device = Device.query.filter_by(push_token=token).first()
+    if device is None:
+        device = Device(push_token=token)
+        db.session.add(device)
+    device.user_id = me          # a phone moves to whoever signed in last
+    device.platform = (data.get("platform") or "")[:10]
+    device.app_version = (data.get("app_version") or "")[:20]
+    device.last_seen = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"registered": True}), 200
+
+
+@devices_bp.route("", methods=["DELETE"])
+@jwt_required()
+def unregister_device():
+    token = ((request.get_json(silent=True) or {}).get("push_token") or "").strip()
+    Device.query.filter_by(push_token=token, user_id=int(get_jwt_identity())).delete()
+    db.session.commit()
+    return jsonify({"registered": False}), 200
+
+
+@app_config_bp.route("/config", methods=["GET"])
+def app_config():
+    return jsonify({
+        "min_version": os.environ.get("APP_MIN_VERSION", "1.0.0"),
+        "latest_version": os.environ.get("APP_LATEST_VERSION", "1.0.0"),
+        "message": os.environ.get("APP_MESSAGE", ""),
+    }), 200
