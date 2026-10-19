@@ -93,6 +93,8 @@ def create_app():
             return resp
 
     db.init_app(app)
+    import response_cache
+    response_cache.install(db)
     jwt.init_app(app)
     bcrypt.init_app(app)
 
@@ -134,6 +136,19 @@ def create_app():
     @app.route("/api/health")
     def health():
         return jsonify({"status": "ok"}), 200
+
+    @app.route("/api/health/db")
+    def health_db():
+        """How long one database round trip takes from this server, in ms.
+        Under ~10 ms means the server and database are in the same region."""
+        import time
+        from sqlalchemy import text
+        times = []
+        for _ in range(3):
+            t = time.perf_counter()
+            db.session.execute(text("SELECT 1"))
+            times.append(round((time.perf_counter() - t) * 1000, 1))
+        return jsonify({"db_round_trip_ms": min(times), "samples_ms": times}), 200
 
     with app.app_context():
         db.create_all()
@@ -905,7 +920,9 @@ def _cleanup_expired_jobs(flask_app):
         try:
             from job_lifecycle import sweep
             from routes.admin import _cache_bust
+            from routes.news import sweep_news
             result = sweep()
+            result.update(sweep_news())
             _cache_bust("jobs_list")
             print(f"[cleanup] {result}")
         except Exception as e:

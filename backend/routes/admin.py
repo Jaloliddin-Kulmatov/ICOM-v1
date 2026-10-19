@@ -356,6 +356,43 @@ def reset_jobs():
         return jsonify({"error": f"Could not reset jobs: {e}"}), 500
 
 
+_verify_running = {"on": False}
+
+
+@admin_bp.route("/jobs/verify-now", methods=["POST"])
+@jwt_required()
+def verify_jobs_now():
+    """Admin: remove expired internships now, then ask Wanted about every
+    listed one in the background (same as the nightly check)."""
+    user, err = _require_admin()
+    if err:
+        return err
+    from job_lifecycle import sweep
+    from routes.news import sweep_news
+    result = sweep()
+    result.update(sweep_news())
+    _cache_bust("jobs_list")
+    if _verify_running["on"]:
+        return jsonify({**result, "message": "A check is already running. Closed internships disappear when it finishes."}), 200
+    from flask import current_app
+    flask_app = current_app._get_current_object()
+
+    def run():
+        _verify_running["on"] = True
+        try:
+            from app import _verify_jobs_on_wanted
+            _verify_jobs_on_wanted(flask_app)
+        finally:
+            _verify_running["on"] = False
+
+    _threading.Thread(target=run, daemon=True, name="verify-now").start()
+    listed = Job.query.filter_by(is_active=True).count()
+    return jsonify({**result, "message": (
+        f"Removed {result['expired'] + result['stale']} past-deadline internship(s) and "
+        f"{result['news_hidden']} old news item(s). Now checking {listed} internships on Wanted; "
+        "closed ones disappear within about 10 minutes.")}), 202
+
+
 @admin_bp.route("/jobs/fix-deadlines", methods=["POST"])
 @jwt_required()
 def fix_job_deadlines():

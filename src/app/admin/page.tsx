@@ -356,6 +356,23 @@ export default function AdminPage() {
     }
   };
 
+  // Remove expired internships now and re-check every listing on Wanted
+  // (the same check that runs every night at 00:10 KST).
+  const [verifying, setVerifying] = useState(false);
+  const handleVerifyJobs = async () => {
+    if (verifying) return;
+    setVerifying(true);
+    try {
+      const data = await apiCall("POST", "/admin/jobs/verify-now");
+      flash(data.message || "Checking internships on Wanted.");
+      loadData();
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : "Could not start the check.", true);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // Re-translate any active job rows whose title/description/requirements
   // still contain Korean (or are missing the foreigner-friendly flag).
   const [translating, setTranslating] = useState(false);
@@ -634,7 +651,21 @@ export default function AdminPage() {
                     Pulls the latest Korean internships. Runs automatically twice a day.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleVerifyJobs}
+                    disabled={verifying}
+                    variant="outline"
+                    className="gap-2"
+                    title="Remove internships that are past their deadline or closed on Wanted"
+                  >
+                    {verifying ? (
+                      <><Loader2 size={14} className="animate-spin" /> Checking…</>
+                    ) : (
+                      <>Remove closed</>
+                    )}
+                  </Button>
                   <Button
                     type="button"
                     onClick={handleTranslateJobs}

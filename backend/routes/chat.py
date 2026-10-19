@@ -22,6 +22,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from app import db
+import response_cache
 from models import ChatPost, ChatAnswer, User
 
 chat_bp = Blueprint("chat", __name__)
@@ -106,40 +107,34 @@ def list_posts():
     # must NOT hand those rows to anyone outside that university — the client
     # used to receive every scoped post and merely hide them, which leaked
     # other campuses' content to any caller. Filter server-side instead.
-    viewer_uni = ""
+    from routes.clubs import _uni_matches, _user_university  # shared helpers
     try:
         verify_jwt_in_request(optional=True)
         ident = get_jwt_identity()
-        if ident:
-            u = User.query.get(int(ident))
-            if u:
-                viewer_uni = (u.university or "").strip()
+        viewer_uni = _user_university(int(ident)) if ident else ""
     except Exception:
         viewer_uni = ""
 
-    posts = (
-        ChatPost.query.options(joinedload(ChatPost.author))
-        .filter_by(is_active=True)
-        .order_by(ChatPost.created_at.desc())
-        .limit(100)
-        .all()
-    )
+    def build():
+        posts = (
+            ChatPost.query.options(joinedload(ChatPost.author))
+            .filter_by(is_active=True)
+            .order_by(ChatPost.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        counts = dict(
+            db.session.query(ChatAnswer.post_id, func.count(ChatAnswer.id))
+            .filter(ChatAnswer.post_id.in_([p.id for p in posts]), ChatAnswer.is_active.is_(True))
+            .group_by(ChatAnswer.post_id).all()
+        ) if posts else {}
+        return [p.to_dict(answer_count=counts.get(p.id, 0)) for p in posts]
 
-    from routes.clubs import _uni_matches  # shared university alias matcher
-    visible = []
-    for p in posts:
-        scope = (p.scope or "").strip()
-        if not scope:
-            visible.append(p)  # global ("All Korea") — everyone sees it
-        elif viewer_uni and _uni_matches(viewer_uni, scope):
-            visible.append(p)  # scoped to the viewer's own university
-
-    counts = dict(
-        db.session.query(ChatAnswer.post_id, func.count(ChatAnswer.id))
-        .filter(ChatAnswer.post_id.in_([p.id for p in visible]), ChatAnswer.is_active.is_(True))
-        .group_by(ChatAnswer.post_id).all()
-    ) if visible else {}
-    return jsonify({"posts": [p.to_dict(answer_count=counts.get(p.id, 0)) for p in visible]}), 200
+    feed = response_cache.cached("chat:feed", 60, build)
+    visible = [p for p in feed
+               if not (p.get("scope") or "").strip()                     # all Korea
+               or (viewer_uni and _uni_matches(viewer_uni, p["scope"]))]  # my campus
+    return jsonify({"posts": visible}), 200
 
 
 def _viewer() -> User | None:
