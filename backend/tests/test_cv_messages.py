@@ -183,3 +183,22 @@ def test_delete_account_with_chat_and_replies(client, bob):
     assert client.get(f"/api/chat/posts/{pid}").status_code == 404
     assert client.get(f"/api/chat/posts/{other}").get_json()["post"]["answer_count"] == 0
     assert client.post("/api/auth/login", json={"email": "carol@example.com", "password": "secret123"}).status_code == 401
+
+
+def test_search_people_to_message(client, alice, bob):
+    from conftest import User
+    assert client.get("/api/users/search?q=bob").status_code == 401           # signed in only
+    r = alice.get("/api/users/search?q=bo")
+    assert r.status_code == 200
+    found = r.get_json()["users"]
+    assert any(u["id"] == bob.id for u in found)
+    assert all("email" not in u for u in found)                                # never exposes email
+    assert alice.get("/api/users/search?q=b").get_json()["users"] == []       # too short
+    assert all(u["id"] != alice.id for u in alice.get("/api/users/search?q=alice").get_json()["users"])  # not yourself
+    assert alice.get("/api/users/search?q=bob@example.com").get_json()["users"] == []   # no email search
+    assert alice.get("/api/users/search?q=%25").get_json()["users"] == []     # "%" isn't a wildcard
+    zed = User(client, "Zed Block", "zed.block@example.com")
+    zed.post(f"/api/users/{alice.id}/block")
+    assert all(u["id"] != zed.id for u in alice.get("/api/users/search?q=zed").get_json()["users"])
+    zed.delete(f"/api/users/{alice.id}/block")
+    assert any(u["id"] == zed.id for u in alice.get("/api/users/search?q=zed").get_json()["users"])

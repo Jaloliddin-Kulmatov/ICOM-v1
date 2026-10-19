@@ -1,6 +1,8 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import ClubEvents from "@/components/clubs/club-events";
+import { categoryInfo, categoryKey } from "@/lib/club-categories";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
@@ -55,14 +57,14 @@ function getClubCoverUrl(club: { id: number; name: string; category: string; clu
     if (regex.test(name)) return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
   }
   const catKw: Record<string, string> = {
-    sports: "sports,stadium", academic: "university,studying",
-    culture: "culture,art", social: "people,friends",
+    "sports & outdoor": "sports,stadium", academic: "university,studying",
+    "arts & culture": "art,culture", social: "people,friends",
     language: "language,study", tech: "technology,computer",
-    arts: "art,creative", volunteer: "volunteer,community",
+    business: "business,office", volunteer: "volunteer,community",
     "national community": club.country ? `${club.country.toLowerCase().split(" ")[0]},culture` : "international,flag",
     "religion & culture": "culture,tradition", "support & community": "community,people",
   };
-  const kw = catKw[club.category?.toLowerCase()] || "students,university,korea";
+  const kw = catKw[categoryKey(club.category, club.club_type)] || "students,university,korea";
   return `https://loremflickr.com/600/200/${kw}?lock=${club.id}`;
 }
 
@@ -143,19 +145,7 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  academic:            "text-indigo-500 bg-indigo-500/10 border-indigo-500/25",
-  sports:              "text-emerald-500 bg-emerald-500/10 border-emerald-500/25",
-  culture:             "text-violet-500 bg-violet-500/10 border-violet-500/25",
-  social:              "text-cyan-500 bg-cyan-500/10 border-cyan-500/25",
-  language:            "text-amber-500 bg-amber-500/10 border-amber-500/25",
-  tech:                "text-blue-500 bg-blue-500/10 border-blue-500/25",
-  arts:                "text-pink-500 bg-pink-500/10 border-pink-500/25",
-  volunteer:           "text-orange-500 bg-orange-500/10 border-orange-500/25",
-  "national community":"text-violet-500 bg-violet-500/10 border-violet-500/25",
-  "religion & culture":"text-amber-500 bg-amber-500/10 border-amber-500/25",
-  "support & community":"text-emerald-500 bg-emerald-500/10 border-emerald-500/25",
-};
+// Category colours and labels: src/lib/club-categories.ts
 
 // ── Manage Requests Modal ─────────────────────────────────────
 function ManageModal({
@@ -437,7 +427,7 @@ export default function CommunityDetailPage() {
   const isApproved = club.my_status === "approved" || club.is_creator;
   const isPending = club.my_status === "pending";
   const isCC = club.club_type === "community";
-  const colorCls = CATEGORY_COLORS[club.category] || CATEGORY_COLORS.social;
+  const colorCls = categoryInfo(club.category, club.club_type).color;
   const locationDisplay = isCC
     ? club.country || club.location || "South Korea"
     : club.university;
@@ -527,8 +517,8 @@ export default function CommunityDetailPage() {
                   {/* Title + meta overlaid at bottom of cover */}
                   <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-8">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize backdrop-blur-sm ${colorCls}`}>
-                        {club.category}
+                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full border font-semibold backdrop-blur-sm", colorCls, "bg-background/90")}>
+                        {categoryInfo(club.category, club.club_type).label}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold backdrop-blur-sm ${
                         isCC

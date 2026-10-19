@@ -177,3 +177,10 @@
 .animate-float      { animation: floatY 5s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
 .animate-spin-slow  { animation: spin 3s linear infinite; }
+
+/* ─── Left sidebar (computers): pages make room for it ─── */
+@media (min-width: 768px) {
+  html[data-has-sidebar="1"] .app-main { padding-left: 15rem; transition: padding-left .3s ease; }
+  html[data-has-sidebar="1"][data-sidebar="collapsed"] .app-main { padding-left: 4rem; }
+}
+

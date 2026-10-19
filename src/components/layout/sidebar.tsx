@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { useSidebarCollapsed } from "@/lib/sidebar-state";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -71,7 +72,7 @@ const sidebarSections = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const { user, logout } = useAuth();
   const notifCount = useNotifCount(user?.id);
 
@@ -98,7 +99,10 @@ export default function Sidebar() {
     >
       {/* Toggle */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={toggleCollapsed}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!collapsed}
         className="absolute -right-3 top-8 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 dark:border-white/15 bg-blue-50 dark:bg-[#0a0a12] text-muted-foreground hover:text-foreground transition-colors shadow-lg"
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}

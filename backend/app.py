@@ -416,7 +416,30 @@ def _run_lightweight_migrations():
         except Exception as e:
             print(f"[migration] club_messages.{col_name} failed (probably already done): {e}")
 
+    _normalize_club_categories()
     _lock_supabase_data_api()
+
+
+def _normalize_club_categories():
+    """Map old/duplicate club categories ("technology", "arts", "outdoor", …)
+    onto the one list in club_categories.py. Safe to run on every start."""
+    from sqlalchemy import text
+    from club_categories import CATEGORIES, normalize
+    try:
+        with db.engine.begin() as conn:
+            rows = conn.execute(text("SELECT DISTINCT category, club_type FROM clubs")).all()
+            changed = 0
+            for category, club_type in rows:
+                new = normalize(category, club_type or "club")
+                if category != new:
+                    changed += conn.execute(text(
+                        "UPDATE clubs SET category = :new WHERE category IS NOT DISTINCT FROM :old "
+                        "AND club_type IS NOT DISTINCT FROM :type"),
+                        {"new": new, "old": category, "type": club_type}).rowcount
+        if changed:
+            print(f"[migration] normalised {changed} club categor{'y' if changed == 1 else 'ies'}")
+    except Exception as e:
+        print(f"[migration] club categories step failed: {e}")
 
 
 def _lock_supabase_data_api():

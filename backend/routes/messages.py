@@ -219,6 +219,39 @@ def unread_count():
 
 # ── People: profile, block, report ────────────────────────────────────────────
 
+SEARCH_LIMIT = 30         # searches
+SEARCH_WINDOW = 60        # seconds
+_recent_searches: dict[int, deque] = defaultdict(deque)
+
+
+@users_bp.route("/search", methods=["GET"])
+@jwt_required()
+def search_users():
+    """Find students by name to message them. Signed-in only, name only (never
+    email), at least 2 characters, no one you've blocked or who blocked you."""
+    me = _me()
+    q = " ".join((request.args.get("q") or "").split())[:60]
+    if len(q) < 2:
+        return jsonify({"users": []}), 200
+    now = time.time()
+    hits = _recent_searches[me]
+    while hits and now - hits[0] > SEARCH_WINDOW:
+        hits.popleft()
+    if len(hits) >= SEARCH_LIMIT:
+        return jsonify({"error": "Too many searches. Wait a minute and try again."}), 429
+    hits.append(now)
+
+    blocked = {b.blocked_id for b in UserBlock.query.filter_by(blocker_id=me).all()} | \
+              {b.blocker_id for b in UserBlock.query.filter_by(blocked_id=me).all()}
+    pattern = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    rows = (User.query.filter(User.name.ilike(pattern, escape="\\"), User.id != me)
+            .order_by(User.name.asc()).limit(40).all())
+    # Names that start with the query first, then the rest.
+    low = q.lower()
+    rows.sort(key=lambda u: (not (u.name or "").lower().startswith(low), (u.name or "").lower()))
+    return jsonify({"users": [_public_profile(u) for u in rows if u.id not in blocked][:20]}), 200
+
+
 @users_bp.route("/<int:user_id>", methods=["GET"])
 @jwt_required()
 def public_profile(user_id):

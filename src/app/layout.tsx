@@ -3,6 +3,8 @@ import { Gothic_A1 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
+import AppSidebar from "@/components/layout/app-sidebar";
+import { SIDEBAR_BOOT_SCRIPT } from "@/lib/sidebar-config";
 import FeedbackWidget from "@/components/feedback/feedback-widget";
 import ChatWidget from "@/components/ai/chat-widget";
 import VisitTracker from "@/components/analytics/visit-tracker";
@@ -96,7 +98,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <AuthProvider>
         <VisitTracker />
-        {children}
+        <AppSidebar />
+        <div className="app-main">{children}</div>
         <MobileBottomNav />
         <InstallPrompt />
         <FeedbackWidget />
@@ -136,6 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={gothic.variable} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOT_SCRIPT }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
