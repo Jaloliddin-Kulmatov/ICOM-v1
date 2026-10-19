@@ -300,6 +300,10 @@ class Job(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Last time the source site confirmed the posting is still open, and when
+    # we stopped listing it (rows are deleted 30 days after closing).
+    checked_at = db.Column(db.DateTime)
+    closed_at = db.Column(db.DateTime)
 
     def to_dict(self, list_view=False):
         # list_view trims the heavy description/requirements text so the list

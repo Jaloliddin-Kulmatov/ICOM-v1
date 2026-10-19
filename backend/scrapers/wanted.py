@@ -18,6 +18,7 @@ Environment variables (all optional):
 
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import os
 import time
@@ -499,6 +500,8 @@ def run_scraper(app) -> dict:
         }
 
         max_inserts = _max_per_run()
+        now = datetime.utcnow()
+        seen_open: list[str] = []   # already listed and still on Wanted → confirmed open
         inserted_links: list[str] = []
         reactivated_links: list[str] = []
 
@@ -513,7 +516,8 @@ def run_scraper(app) -> dict:
 
             candidate_link = PUBLIC_URL.format(id=job_id)
             if candidate_link in active_links:
-                # Already live in our DB — nothing to do.
+                # Already live in our DB; being in Wanted's listing confirms it's open.
+                seen_open.append(candidate_link)
                 summary["skipped_existing"] += 1
                 continue
 
@@ -570,6 +574,8 @@ def run_scraper(app) -> dict:
                     existing.foreigner_friendly = parsed.get("foreigner_friendly", "")
                     existing.foreigner_note     = parsed.get("foreigner_note", "")
                     existing.is_active          = True
+                    existing.checked_at         = now
+                    existing.closed_at          = None
                     db.session.commit()
                     active_links.add(parsed["apply_link"])
                     reactivated_links.append(parsed["apply_link"])
@@ -592,6 +598,7 @@ def run_scraper(app) -> dict:
                     foreigner_friendly=parsed.get("foreigner_friendly", ""),
                     foreigner_note=parsed.get("foreigner_note", ""),
                     is_active=True,
+                    checked_at=now,
                 )
                 db.session.add(job)
                 db.session.commit()
@@ -602,6 +609,15 @@ def run_scraper(app) -> dict:
                 db.session.rollback()
                 summary["errors"] += 1
                 print(f"[wanted] write failed for {parsed['apply_link']}: {e}")
+
+        if seen_open:
+            try:
+                Job.query.filter(Job.apply_link.in_(seen_open)).update(
+                    {Job.checked_at: now}, synchronize_session=False)
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"[wanted] couldn't record checked_at: {e}")
 
         print(
             f"[wanted] done — fetched={summary['fetched']} "

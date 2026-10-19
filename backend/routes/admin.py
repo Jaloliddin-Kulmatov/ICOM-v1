@@ -333,8 +333,9 @@ def reset_jobs():
         # live on Wanted.
         active_jobs = Job.query.filter_by(is_active=True).all()
         deactivated = len(active_jobs)
+        from job_lifecycle import close
         for j in active_jobs:
-            j.is_active = False
+            close(j)
         db.session.commit()
 
         flask_app = current_app._get_current_object()
@@ -526,21 +527,33 @@ _SYNC_LIMITS = {"title": 200, "company": 150, "location": 150, "salary": 100,
 
 @admin_bp.route("/jobs/sync", methods=["POST"])
 def jobs_sync():
-    """Scraper-only. Apply a sync plan in one transaction:
-      upsert: job dicts keyed by apply_link (insert new, refresh + reopen existing)
-      close:  apply_links that closed on the source site
-    Then hide anything past its deadline and refresh the cached list."""
+    """Scraper-only. Apply a sync plan (see apply_sync_plan)."""
     if not _scraper_authorized():
         return jsonify({"error": "Unauthorized"}), 401
-    data = request.get_json(silent=True) or {}
+    result = apply_sync_plan(request.get_json(silent=True) or {})
+    print(f"[sync] {result}")
+    return jsonify(result), 200
+
+
+def apply_sync_plan(data: dict) -> dict:
+    """Apply a sync plan in one transaction:
+      upsert: job dicts keyed by apply_link (insert new, refresh + reopen existing)
+      close:  apply_links that closed or disappeared on the source site
+      seen:   apply_links the source confirmed are still open
+      deadlines: {apply_link: "YYYY-MM-DD"} deadlines set or changed at the source
+    Then hide expired/stale jobs, delete long-closed ones and refresh the cache.
+    Used by POST /jobs/sync (GitHub Actions) and the backend's daily check."""
+    from job_lifecycle import close, sweep
+    now = _dt.utcnow()
     upserts = [d for d in (data.get("upsert") or []) if isinstance(d, dict)]
     closes = {str(l).strip() for l in (data.get("close") or []) if str(l).strip()}
+    seen = {str(l).strip() for l in (data.get("seen") or []) if str(l).strip()} - closes
 
     links = {(d.get("apply_link") or "").strip() for d in upserts} | closes
     links.discard("")
     existing = {j.apply_link: j for j in Job.query.filter(Job.apply_link.in_(links)).all()} if links else {}
 
-    result = {"inserted": 0, "updated": 0, "closed": 0, "expired": 0, "skipped": 0}
+    result = {"inserted": 0, "updated": 0, "closed": 0, "confirmed": 0, "skipped": 0}
     for d in upserts:
         link = (d.get("apply_link") or "").strip()
         title = (d.get("title") or "").strip()
@@ -550,8 +563,7 @@ def jobs_sync():
             continue
         if (d.get("foreigner_friendly") or "").lower() == "no":
             # Explicitly closed to foreign applicants: never list it.
-            if link in existing and existing[link].is_active:
-                existing[link].is_active = False
+            if link in existing and close(existing[link], now):
                 result["closed"] += 1
             result["skipped"] += 1
             continue
@@ -571,34 +583,36 @@ def jobs_sync():
         if not job.visa_compatible:
             job.visa_compatible = "D-2, D-4"
         job.is_active = True
+        job.checked_at = now
+        job.closed_at = None
 
     for link in closes:
         job = existing.get(link)
-        if job is not None and job.is_active:
-            job.is_active = False
+        if job is not None and close(job, now):
             result["closed"] += 1
 
-    for job in Job.query.filter_by(is_active=True).all():
-        if _deadline_passed(job.deadline):
-            job.is_active = False
-            result["expired"] += 1
+    if seen:
+        result["confirmed"] = (Job.query.filter(Job.apply_link.in_(seen), Job.is_active.is_(True))
+                               .update({Job.checked_at: now}, synchronize_session=False))
+
+    deadlines = {str(k).strip(): str(v).strip()[:10] for k, v in (data.get("deadlines") or {}).items()
+                 if isinstance(data.get("deadlines"), dict) and str(k).strip() and str(v).strip()}
+    if deadlines:
+        result["deadlines_updated"] = 0
+        for job in Job.query.filter(Job.apply_link.in_(list(deadlines))).all():
+            if job.deadline != deadlines[job.apply_link]:
+                job.deadline = deadlines[job.apply_link]
+                result["deadlines_updated"] += 1
 
     db.session.commit()
+    result.update(sweep())
     _cache_bust("jobs_list")
-    print(f"[sync] {result}")
-    return jsonify(result), 200
+    return result
 
 
 def _deadline_passed(deadline) -> bool:
-    """True for ISO deadlines (YYYY-MM-DD…) strictly before today (UTC).
-    Free-text or empty deadlines ("Rolling") are never treated as expired."""
-    raw = (deadline or "").strip()[:10]
-    if len(raw) != 10:
-        return False
-    try:
-        return _date.fromisoformat(raw) < _dt.utcnow().date()
-    except ValueError:
-        return False
+    from job_lifecycle import deadline_passed
+    return deadline_passed(deadline)
 
 
 @admin_bp.route("/jobs", methods=["GET"])
@@ -611,10 +625,8 @@ def list_jobs():
             return _json_response(cached)
     # Hide postings past their deadline even if the nightly cleanup hasn't run
     # yet (free instances sleep, so scheduled jobs can be missed).
-    jobs = [
-        j for j in Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all()
-        if not _deadline_passed(j.deadline)
-    ]
+    from job_lifecycle import is_listed
+    jobs = [j for j in Job.query.filter_by(is_active=True).order_by(Job.created_at.desc()).all() if is_listed(j)]
     payload = {"jobs": [j.to_dict(list_view=not full) for j in jobs]}
     if full:
         return jsonify(payload), 200
@@ -666,8 +678,9 @@ def create_job():
 
 @admin_bp.route("/jobs/<int:job_id>", methods=["GET"])
 def get_job(job_id):
+    from job_lifecycle import is_listed
     job = Job.query.filter_by(id=job_id, is_active=True).first_or_404()
-    if _deadline_passed(job.deadline):
+    if not is_listed(job):
         return jsonify({"error": "This internship has closed."}), 404
     return jsonify({"job": job.to_dict()}), 200
 
@@ -707,8 +720,9 @@ def delete_job(job_id):
     if err:
         return err
 
+    from job_lifecycle import close
     job = Job.query.get_or_404(job_id)
-    job.is_active = False
+    close(job)
     db.session.commit()
     _cache_bust("jobs_list")
     return jsonify({"message": "Job removed."}), 200

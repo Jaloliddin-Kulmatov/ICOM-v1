@@ -5,7 +5,11 @@ so it does the slow parts (Wanted API calls, translation) and then sends one
 batch to POST /api/admin/jobs/sync, which applies it to the database.
 
     plan = build_plan(known, ...)
-    -> {"upsert": [job dicts], "close": [apply_links], "stats": {...}}
+    -> {"upsert": [job dicts], "close": [apply_links], "seen": [apply_links],
+        "deadlines": {apply_link: "YYYY-MM-DD"}, "stats": {...}}
+
+"seen" lists live postings Wanted confirmed are still open, so the backend can
+tell them apart from postings nobody has checked for a long time.
 
 `known` maps apply_link -> {"active": bool, "korean": bool} for every Wanted
 job the backend already has (from GET /api/admin/jobs/sync-state).
@@ -14,15 +18,18 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Callable, Optional
 
 import requests
 
 from scrapers.wanted import (
-    HEADERS, LIST_URL, PUBLIC_URL,
+    DETAIL_URL, HEADERS, LIST_URL, PUBLIC_URL,
     _fetch_detail, _parse_job, _translate_with_groq, _looks_korean,
 )
+
+KST = timezone(timedelta(hours=9))
+MISSING = object()  # Wanted no longer has the posting at all
 
 
 def _env_int(name: str, default: int) -> int:
@@ -69,13 +76,44 @@ def _is_open(detail: dict) -> bool:
 
 
 def _past_deadline(deadline: str) -> bool:
+    """Before today in Korea (the runner's clock is UTC)."""
     raw = (deadline or "").strip()[:10]
     if len(raw) != 10:
         return False
     try:
-        return date.fromisoformat(raw) < date.today()
+        return date.fromisoformat(raw) < datetime.now(KST).date()
     except ValueError:
         return False
+
+
+def _due_date(detail: dict) -> str:
+    """Wanted's application deadline as YYYY-MM-DD, or "" when it's rolling."""
+    raw = str(detail.get("due_time") or "").strip()[:10]
+    try:
+        date.fromisoformat(raw)
+        return raw
+    except ValueError:
+        return ""
+
+
+def _check_detail(job_id):
+    """Like _fetch_detail, but tells a deleted posting (MISSING) apart from a
+    network hiccup (None), so deleted postings get closed instead of skipped."""
+    try:
+        res = requests.get(DETAIL_URL.format(id=job_id), headers=HEADERS, timeout=15)
+    except requests.RequestException:
+        return None
+    if res.status_code in (404, 410):
+        return MISSING
+    if res.status_code != 200:
+        return None
+    try:
+        payload = res.json()
+    except ValueError:
+        return None
+    if isinstance(payload, dict):
+        return payload.get("job") if isinstance(payload.get("job"), dict) else payload
+    return None
 
 
 def build_plan(
@@ -93,6 +131,8 @@ def build_plan(
              "skipped_no_foreigners": 0, "translated": 0, "deferred": 0, "errors": 0}
     upsert: list[dict] = []
     close: list[str] = []
+    seen: list[str] = []
+    deadlines: dict[str, str] = {}   # deadlines the employer set or changed since we listed it
     translations_left = translate_limit
 
     DEFER = object()  # still Korean: try again next run instead of listing it
@@ -167,15 +207,19 @@ def build_plan(
         jid = _link_id(link)
         if not jid:
             continue
-        detail = _fetch_detail(jid)
+        detail = _check_detail(jid)
         time.sleep(0.25)
         if detail is None:
             stats["errors"] += 1
             continue
-        if not _is_open(detail):
+        due = "" if detail is MISSING else _due_date(detail)
+        if detail is MISSING or not _is_open(detail) or _past_deadline(due):
             close.append(link)
             stats["closed"] += 1
             continue
+        seen.append(link)
+        if due and due != (info.get("deadline") or "")[:10]:
+            deadlines[link] = due
         if info.get("korean") and translations_left > 0:
             parsed = prepare(detail)
             if parsed is DEFER:
@@ -188,4 +232,5 @@ def build_plan(
                 stats["refreshed"] += 1
 
     log(f"[sync] plan: {stats}")
-    return {"upsert": upsert, "close": close, "stats": stats}
+    stats["confirmed_open"] = len(seen)
+    return {"upsert": upsert, "close": close, "seen": seen, "deadlines": deadlines, "stats": stats}
