@@ -9,7 +9,7 @@ import { Loading } from "@/components/ui";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
-// Five tabs, as in the master plan: Home, Jobs, Guide, Chat, Clubs.
+// Five tabs: Home, Jobs, Clubs, Chat, Guide.
 // Messages and Profile live in the header.
 export default function TabsLayout() {
   const { user, loading } = useAuth();
@@ -47,9 +47,9 @@ export default function TabsLayout() {
     }}>
       <Tabs.Screen name="index" options={{ title: "Home", headerTitle: "ICOM", tabBarIcon: icon("home-outline") }} />
       <Tabs.Screen name="jobs" options={{ title: "Jobs", tabBarIcon: icon("briefcase-outline") }} />
-      <Tabs.Screen name="guide" options={{ title: "Guide", tabBarIcon: icon("compass-outline") }} />
-      <Tabs.Screen name="chat" options={{ title: "Chat", tabBarIcon: icon("chatbox-ellipses-outline") }} />
       <Tabs.Screen name="clubs" options={{ title: "Clubs", tabBarIcon: icon("people-outline") }} />
+      <Tabs.Screen name="chat" options={{ title: "Chat", tabBarIcon: icon("chatbox-ellipses-outline") }} />
+      <Tabs.Screen name="guide" options={{ title: "Guide", tabBarIcon: icon("compass-outline") }} />
     </Tabs>
   );
 }
