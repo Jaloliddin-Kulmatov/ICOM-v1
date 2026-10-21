@@ -58,6 +58,7 @@ export default function QuestionScreen() {
       <Screen>
         <Text variant="title">{post.title}</Text>
         <Text variant="small">{post.author_name}{post.author_university ? ` · ${post.author_university.toUpperCase()}` : ""} · {timeAgo(post.created_at)}</Text>
+        <Chip label={post.scope ? `${post.scope.toUpperCase()} students only` : "All students"} icon={post.scope ? "school-outline" : "earth-outline"} />
         <Text>{post.content}</Text>
         {guide && (
           <Pressable onPress={() => router.push(`/guide/${guide[1]}`)} accessibilityRole="link">

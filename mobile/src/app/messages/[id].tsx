@@ -31,8 +31,14 @@ export default function Conversation() {
     if (!data) { if (!incremental) setError(e || "Couldn't load this chat."); return; }
     setThread(data.conversation);
     if (data.messages.length) {
-      lastId.current = data.messages[data.messages.length - 1].id;
-      setMessages((m) => incremental ? [...m, ...data.messages] : data.messages);
+      lastId.current = Math.max(lastId.current, data.messages[data.messages.length - 1].id);
+      // A poll and a send can fetch the same new message at once; add each id only once.
+      setMessages((m) => {
+        if (!incremental) return data.messages;
+        const seen = new Set(m.map((x) => x.id));
+        const fresh = data.messages.filter((x) => !seen.has(x.id));
+        return fresh.length ? [...m, ...fresh] : m;
+      });
     }
   }, [id]);
 
