@@ -137,10 +137,3 @@ export const SUPPORT_CATEGORIES = [
   { id: "transport", title: "Transportation", icon: "Train", description: "T-money, subway, KTX discounts" },
   { id: "language", title: "Korean Language", icon: "BookOpen", description: "TOPIK resources, language programs" },
 ];
-
-export const PLATFORM_STATS = [
-  { label: "International Students", value: "28,000+", suffix: "" },
-  { label: "Partner Universities", value: "47", suffix: "" },
-  { label: "Job Listings", value: "1,200+", suffix: "" },
-  { label: "Countries Represented", value: "89", suffix: "" },
-];

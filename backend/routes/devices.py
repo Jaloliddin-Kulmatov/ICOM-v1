@@ -56,6 +56,9 @@ def app_config():
         "min_version": os.environ.get("APP_MIN_VERSION", "1.0.0"),
         "latest_version": os.environ.get("APP_LATEST_VERSION", "1.0.0"),
         "message": os.environ.get("APP_MESSAGE", ""),
+        # Where "Update" sends people. Set once the apps are in the stores.
+        "ios_url": os.environ.get("APP_IOS_URL", "https://icom.ai.kr"),
+        "android_url": os.environ.get("APP_ANDROID_URL", "https://icom.ai.kr"),
     }), 200
 
 

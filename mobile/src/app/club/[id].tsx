@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Linking } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
+import { confirmReport } from "@/lib/report";
 import { useApi } from "@/hooks/use-api";
 import { CLUB_CATEGORIES } from "@/lib/options";
 import { space } from "@/lib/theme";
@@ -86,6 +87,9 @@ export default function ClubScreen() {
           <Button title="Add to Google Calendar" variant="ghost" icon="calendar-outline" onPress={() => Linking.openURL(googleCalendarLink(e, club.name))} />
         </Card>
       ))}
+      {!club.is_creator && (
+        <Button title="Report this club" variant="ghost" icon="flag-outline" onPress={() => confirmReport("club", club.id)} style={{ marginTop: space.lg }} />
+      )}
     </Screen>
   );
 }

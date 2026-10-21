@@ -15,20 +15,20 @@ export default function UniversitiesSection() {
               University Network
             </Badge>
             <h2 className="text-4xl font-bold text-foreground mb-4 leading-tight">
-              47 universities,
+              Every university,
               <br />
               <span className="gradient-text">one platform</span>
             </h2>
             <p className="text-muted-foreground mb-6 leading-relaxed">
-              Every major Korean university has an ICOM community hub with verified ambassadors,
-              official announcements, and dedicated student channels.
+              Students from any university in Korea can join. Each university has its own clubs
+              and a private Q&amp;A space that only its students can see.
             </p>
             <div className="space-y-3 mb-8">
               {[
-                "Verified university ambassadors",
-                "Official scholarship alerts",
-                "Emergency notification system",
-                "Campus-specific events and guides",
+                "University clubs and their events",
+                "Questions only your university can see",
+                "JBNU notices translated to English",
+                "Student ambassador program",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2.5 text-sm text-muted-foreground">
                   <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />

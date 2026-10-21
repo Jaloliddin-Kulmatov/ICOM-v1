@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
+import { confirmReport } from "@/lib/report";
 import { useApi } from "@/hooks/use-api";
 import { useAuth } from "@/lib/auth";
 import { timeAgo } from "@/lib/options";
@@ -43,15 +44,6 @@ export default function QuestionScreen() {
     const { error: e } = await api.post(`/chat/answers/${answerId}/accept`);
     if (!e) load();
   };
-  const report = (answerId: number) => {
-    Alert.alert("Report this answer?", "An ICOM admin will review it.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Report", style: "destructive", onPress: async () => {
-        await api.post("/users/reports", { target_type: "chat_answer", target_id: answerId, reason: "Reported from the app" });
-        Alert.alert("Thanks", "An admin will review this report.");
-      } },
-    ]);
-  };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
@@ -60,6 +52,11 @@ export default function QuestionScreen() {
         <Text variant="small">{post.author_name}{post.author_university ? ` · ${post.author_university.toUpperCase()}` : ""} · {timeAgo(post.created_at)}</Text>
         <Chip label={post.scope ? `${post.scope.toUpperCase()} students only` : "All students"} icon={post.scope ? "school-outline" : "earth-outline"} />
         <Text>{post.content}</Text>
+        {!isAsker && (
+          <Pressable onPress={() => confirmReport("chat_post", post.id)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: "flex-start" }}>
+            <Text variant="small">Report question</Text>
+          </Pressable>
+        )}
         {guide && (
           <Pressable onPress={() => router.push(`/guide/${guide[1]}`)} accessibilityRole="link">
             <Chip label={`Related: ${guide[2]}`} tone="good" icon="book-outline" />
@@ -86,7 +83,7 @@ export default function QuestionScreen() {
                 </Pressable>
               )}
               {a.user_id !== user?.id && (
-                <Pressable onPress={() => report(a.id)} hitSlop={8} accessibilityRole="button">
+                <Pressable onPress={() => confirmReport("chat_answer", a.id)} hitSlop={8} accessibilityRole="button">
                   <Text variant="small">Report</Text>
                 </Pressable>
               )}

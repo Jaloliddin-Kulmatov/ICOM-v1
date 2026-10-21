@@ -95,7 +95,7 @@ export default function Footer() {
               The Operating System for International Students in Korea. Connect, grow, and thrive.
             </p>
             <p className="text-xs text-muted-foreground/60">
-              Currently supporting students across 89 countries in 47+ Korean universities.
+              Open to international students at every university in Korea.
             </p>
             {/* ICOM community channels */}
             <div className="mt-5">

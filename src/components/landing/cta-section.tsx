@@ -30,7 +30,7 @@ export default function CtaSection() {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-xs font-medium text-indigo-300 mb-6">
               <Sparkles size={11} />
-              Join 28,000+ students
+              Free for every student
             </div>
 
             <h2 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-4 tracking-tight">

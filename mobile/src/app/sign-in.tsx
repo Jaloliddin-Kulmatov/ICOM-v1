@@ -35,6 +35,7 @@ export default function SignIn() {
           textContentType="password" placeholder="Your password" onSubmitEditing={submit} />
         {error ? <Text color="coral" variant="small">{error}</Text> : null}
         <Button title="Sign in" onPress={submit} loading={busy} disabled={!email || !password} />
+        <Link href="/forgot-password" style={{ color: c.accent, fontWeight: "700", textAlign: "center" }}>Forgot password?</Link>
         <Text variant="small" style={{ textAlign: "center", marginTop: space.md }}>
           New to ICOM? <Link href="/register" style={{ color: c.accent, fontWeight: "700" }}>Create an account</Link>
         </Text>

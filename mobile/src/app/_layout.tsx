@@ -1,10 +1,58 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Platform, useColorScheme } from "react-native";
+import { Linking, Platform, View, useColorScheme } from "react-native";
 import * as Notifications from "expo-notifications";
 import { AuthProvider } from "@/lib/auth";
-import { useColors } from "@/lib/theme";
+import { space, useColors } from "@/lib/theme";
+import { APP_VERSION } from "@/lib/config";
+import { type AppConfig, fetchAppConfig, installCrashReporter, isOlder, reportError } from "@/lib/app-health";
+import { Button, Text } from "@/components/ui";
+import { Logo } from "@/components/logo";
+
+installCrashReporter();
+
+/** Shown instead of a white screen when a screen crashes. The crash is sent to the server log. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  const c = useColors();
+  useEffect(() => { reportError(error, { fatal: false }); }, [error]);
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: space.xl, gap: space.md }}>
+      <Logo size={56} />
+      <Text variant="title" style={{ textAlign: "center" }}>Something went wrong</Text>
+      <Text color="muted" style={{ textAlign: "center" }}>We&apos;ve been told about it. Try again, or go back to Home.</Text>
+      <Button title="Try again" onPress={retry} style={{ alignSelf: "stretch" }} />
+      <Button title="Go to Home" variant="ghost" onPress={() => router.replace("/")} style={{ alignSelf: "stretch" }} />
+    </View>
+  );
+}
+
+/** Blocks the app when this version is below the server's minimum (APP_MIN_VERSION on Render). */
+function useRequiredUpdate(): AppConfig | null {
+  const [cfg, setCfg] = useState<AppConfig | null>(null);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let live = true;
+    fetchAppConfig().then((c) => { if (live && c && isOlder(APP_VERSION, c.min_version)) setCfg(c); });
+    return () => { live = false; };
+  }, []);
+  return cfg;
+}
+
+function UpdateRequired({ cfg }: { cfg: AppConfig }) {
+  const c = useColors();
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: space.xl, gap: space.md }}>
+      <Logo size={56} />
+      <Text variant="title" style={{ textAlign: "center" }}>Please update ICOM</Text>
+      <Text color="muted" style={{ textAlign: "center" }}>
+        {cfg.message || `This version (${APP_VERSION}) is no longer supported. The new version has fixes you need.`}
+      </Text>
+      <Button title="Update" icon="download-outline" style={{ alignSelf: "stretch" }}
+        onPress={() => Linking.openURL(Platform.OS === "ios" ? cfg.ios_url : cfg.android_url)} />
+    </View>
+  );
+}
 
 // Tapping a notification opens the right screen.
 function useNotificationTaps() {
@@ -26,6 +74,8 @@ export default function RootLayout() {
   const c = useColors();
   const scheme = useColorScheme();
   useNotificationTaps();
+  const update = useRequiredUpdate();
+  if (update) return <UpdateRequired cfg={update} />;
   return (
     <AuthProvider>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
@@ -37,6 +87,7 @@ export default function RootLayout() {
         <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="sign-in" options={{ title: "Sign in", headerShown: false }} />
         <Stack.Screen name="register" options={{ title: "Create account" }} />
+        <Stack.Screen name="forgot-password" options={{ title: "Forgot password" }} />
         <Stack.Screen name="job/[id]" options={{ title: "Internship" }} />
         <Stack.Screen name="chat/[id]" options={{ title: "Question" }} />
         <Stack.Screen name="chat/new" options={{ title: "Ask a question", presentation: "modal" }} />
