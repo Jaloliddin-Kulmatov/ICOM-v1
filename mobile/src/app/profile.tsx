@@ -7,7 +7,7 @@ import * as WebBrowser from "expo-web-browser";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { APP_VERSION, WEB_URL } from "@/lib/config";
-import { CITIES, JOB_FIELDS, TOPIK_LEVELS, daysUntil } from "@/lib/options";
+import { CITIES, JOB_FIELDS, TOPIK_LEVELS, VISAS, daysUntil } from "@/lib/options";
 import { scheduleVisaReminders } from "@/lib/notifications";
 import { space, useColors } from "@/lib/theme";
 import { Button, Card, Chip, ChipRow, Row, Screen, Text } from "@/components/ui";
@@ -19,7 +19,7 @@ export default function Profile() {
   const { user, refresh, signOut, deleteAccount } = useAuth();
   const c = useColors();
   const [form, setForm] = useState(() => ({
-    visa_expiry: user?.visa_expiry || "", topik_level: user?.topik_level ?? null, job_field: user?.job_field || "", city: user?.city || "",
+    visa_type: user?.visa_type || "", visa_expiry: user?.visa_expiry || "", topik_level: user?.topik_level ?? null, job_field: user?.job_field || "", city: user?.city || "",
   }));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -38,7 +38,7 @@ export default function Profile() {
     const { error: e } = await api.patch("/auth/me", form);
     setSaving(false);
     if (e) { setError(e); return; }
-    const n = await scheduleVisaReminders(form.visa_expiry || undefined, user.visa_type);
+    const n = await scheduleVisaReminders(form.visa_expiry || undefined, form.visa_type);
     await refresh();
     const left = daysUntil(form.visa_expiry);
     setMessage(
@@ -89,6 +89,10 @@ export default function Profile() {
       <Card>
         <Text variant="heading">Career & visa</Text>
         <Text variant="small">Used to match internships to you and to remind you before your visa expires. Only you see this.</Text>
+        <Text variant="small" style={{ fontWeight: "600", color: c.ink }}>Visa type</Text>
+        <ChipRow>
+          {VISAS.map((v) => <Chip key={v} label={v} selected={form.visa_type === v} onPress={() => setForm((f) => ({ ...f, visa_type: v }))} />)}
+        </ChipRow>
         <DateField label="Visa expiry date" value={form.visa_expiry} onChange={(v) => setForm((f) => ({ ...f, visa_expiry: v }))}
           placeholder="Not set" />
         <Text variant="small" style={{ fontWeight: "600", color: c.ink }}>Korean level</Text>

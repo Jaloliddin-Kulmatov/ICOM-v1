@@ -15,7 +15,8 @@ export default function AskQuestion() {
   const uni = (user?.university || "").toUpperCase();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [campus, setCampus] = useState(to === "campus" && !!uni);
+  const [picked, setCampus] = useState<boolean | null>(null);   // null = follow the tab I came from
+  const campus = (picked ?? to === "campus") && !!uni;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 

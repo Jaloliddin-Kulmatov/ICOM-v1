@@ -61,12 +61,12 @@ export default function ClubScreen() {
         {club.university ? <Chip label={club.university.toUpperCase()} /> : null}
       </Row>
       {club.description ? <Text>{club.description}</Text> : null}
-      {(club.meeting_time || club.location) && (
+      {club.meeting_time || club.location ? (
         <Card>
           {club.meeting_time ? <Row><Icon name="time-outline" /><Text variant="small" color="ink">{club.meeting_time}</Text></Row> : null}
           {club.location ? <Row><Icon name="location-outline" /><Text variant="small" color="ink">{club.location}</Text></Row> : null}
         </Card>
-      )}
+      ) : null}
 
       {!club.is_creator && (
         <Button title={member ? "Leave" : club.my_status === "pending" ? "Cancel request" : "Join"} variant={member ? "secondary" : "primary"}

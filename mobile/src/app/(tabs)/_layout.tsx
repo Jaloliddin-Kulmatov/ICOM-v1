@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { useColors } from "@/lib/theme";
 import { registerPush, scheduleVisaReminders } from "@/lib/notifications";
-import { getItem, welcomeKey } from "@/lib/storage";
+import { getItem } from "@/lib/storage";
+import { WELCOME_SEEN, applyPendingWelcomeAnswers } from "@/lib/welcome";
 import { Loading } from "@/components/ui";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -13,16 +14,20 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"];
 // Five tabs: Home, Jobs, Clubs, Chat, Guide.
 // Messages and Profile live in the header.
 export default function TabsLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const c = useColors();
-  // First open after sign-in: show the setup unless it was done on this phone or the profile is already filled in.
-  const [welcomeFor, setWelcomeFor] = useState<{ id: number; show: boolean } | null>(null);
+  // The welcome runs once per phone, before sign-up.
+  const [welcomeSeen, setWelcomeSeen] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    getItem(WELCOME_SEEN).then((v) => { if (live) setWelcomeSeen(!!v); });
+    return () => { live = false; };
+  }, []);
 
+  // Answers given in the welcome before the account existed go to the profile now.
   useEffect(() => {
     if (!user) return;
-    let live = true;
-    getItem(welcomeKey(user.id)).then((v) => { if (live) setWelcomeFor({ id: user.id, show: !v && !user.job_field }); });
-    return () => { live = false; };
+    applyPendingWelcomeAnswers().then((saved) => { if (saved) refresh(); });
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -32,9 +37,10 @@ export default function TabsLayout() {
   }, [user?.id, user?.visa_expiry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <View style={{ flex: 1, backgroundColor: c.bg }}><Loading /></View>;
-  if (!user) return <Redirect href="/sign-in" />;
-  if (welcomeFor?.id !== user.id) return <View style={{ flex: 1, backgroundColor: c.bg }}><Loading /></View>;
-  if (welcomeFor.show) return <Redirect href="/welcome" />;
+  if (!user) {
+    if (welcomeSeen === null) return <View style={{ flex: 1, backgroundColor: c.bg }}><Loading /></View>;
+    return <Redirect href={welcomeSeen ? "/sign-in" : "/welcome"} />;
+  }
 
   const icon = (name: IconName) => function TabBarIcon({ color, size }: { color: ColorValue; size: number }) {
     return <Ionicons name={name} size={size} color={color as string} />;
