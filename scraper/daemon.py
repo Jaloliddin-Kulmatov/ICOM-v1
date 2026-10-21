@@ -33,16 +33,19 @@ def fail(msg: str):
     raise SystemExit(1)
 
 
-API_URL = os.environ.get("ICOM_API_URL", "").strip().rstrip("/")
+# The live backend unless the ICOM_API_URL secret says otherwise.
+API_URL = (os.environ.get("ICOM_API_URL", "").strip() or "https://icom-v1.onrender.com/api").rstrip("/")
 SECRET = os.environ.get("SCRAPER_SECRET", "").strip()
-if not API_URL:
-    fail("GitHub secret ICOM_API_URL is missing or empty. Set it to https://icom-v1.onrender.com/api")
 if not API_URL.startswith(("http://", "https://")):
     fail("GitHub secret ICOM_API_URL must start with https:// (e.g. https://icom-v1.onrender.com/api)")
 if not API_URL.endswith("/api"):
     fail("GitHub secret ICOM_API_URL must end with /api (e.g. https://icom-v1.onrender.com/api)")
 if not SECRET:
-    fail("GitHub secret SCRAPER_SECRET is missing or empty. Use the same value as SCRAPER_SECRET on Render")
+    # This sync is a backup: the backend also collects internships itself. Until
+    # SCRAPER_SECRET is set (here and on Render), skip instead of failing every run.
+    print("::warning title=Sync internships skipped::Set the GitHub secret SCRAPER_SECRET "
+          "(same value as SCRAPER_SECRET on Render) to turn this backup sync on.")
+    raise SystemExit(0)
 HEADERS = {"X-Scraper-Key": SECRET}
 
 
