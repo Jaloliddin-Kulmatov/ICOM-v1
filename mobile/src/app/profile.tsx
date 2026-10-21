@@ -128,6 +128,7 @@ export default function Profile() {
       </Card>
 
       <Card>
+        <Button title="Set up my matches again" variant="ghost" icon="sparkles-outline" onPress={() => router.push("/welcome")} />
         <Button title="Privacy policy" variant="ghost" onPress={() => WebBrowser.openBrowserAsync(`${WEB_URL}/privacy`)} />
         <Button title="Terms and community rules" variant="ghost" onPress={() => WebBrowser.openBrowserAsync(`${WEB_URL}/terms`)} />
         <Button title="Sign out" variant="secondary" icon="log-out-outline" onPress={async () => { await signOut(); router.replace("/sign-in"); }} />
