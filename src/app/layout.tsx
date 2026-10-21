@@ -118,7 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "alternateName": "ICOM Korea",
     "url": "https://icom.ai.kr",
     "logo": "https://icom.ai.kr/icon-512.png",
-    "description": "ICOM is the leading platform for international students in Korea — connecting students across 47 universities with clubs, internships, visa guides, and AI support.",
+    "description": "ICOM helps international students in Korea with clubs, internships, visa guides and AI support. Built by international students.",
     "foundingDate": "2024",
     "areaServed": "Korea",
     "audience": {
