@@ -599,7 +599,7 @@ class Report(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    target_type = db.Column(db.String(30), nullable=False)   # message | user | chat_post | chat_answer
+    target_type = db.Column(db.String(30), nullable=False)   # message | user | chat_post | chat_answer | club
     target_id = db.Column(db.Integer, nullable=False)
     reason = db.Column(db.String(500), default="")
     status = db.Column(db.String(20), default="open")        # open | resolved

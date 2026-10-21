@@ -447,3 +447,115 @@ def delete_me():
         }), 500
 
     return jsonify({"message": "Your account and all related data have been deleted."}), 200
+
+
+# ── Password reset ────────────────────────────────────────────────────────────
+# The email holds a signed link that is valid for an hour. The token carries the
+# end of the current password hash, so it stops working once the password has
+# changed (one use only). No table needed.
+
+RESET_MAX_AGE = 3600
+RESET_PER_EMAIL = 3          # requests per email per hour
+RESET_PER_IP = 10            # requests per IP per hour
+_reset_hits: dict = {}
+
+
+def _reset_serializer():
+    from flask import current_app
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="password-reset")
+
+
+def make_reset_token(user) -> str:
+    return _reset_serializer().dumps({"uid": user.id, "ph": user.password_hash[-16:]})
+
+
+def read_reset_token(token: str):
+    """The user the token belongs to, or None if it is bad, expired or already used."""
+    from itsdangerous import BadSignature
+    try:
+        data = _reset_serializer().loads(token or "", max_age=RESET_MAX_AGE)
+        user = db.session.get(User, int(data.get("uid", 0)))
+    except (BadSignature, TypeError, ValueError, AttributeError):
+        return None
+    if not user or user.password_hash[-16:] != data.get("ph"):
+        return None
+    return user
+
+
+def _reset_throttled(key: str, limit: int) -> bool:
+    import time
+    now = time.time()
+    hits = [t for t in _reset_hits.get(key, []) if now - t < 3600]
+    limited = len(hits) >= limit
+    if not limited:
+        hits.append(now)
+    _reset_hits[key] = hits
+    return limited
+
+
+def _send_reset_email(to_email: str, name: str, link: str) -> None:
+    import html as _html
+    from routes.ambassador import _send_email
+    first = _html.escape((name or "there").split(" ")[0])
+    html = (
+        '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#16213a">'
+        '<h2 style="color:#00994a;margin-bottom:4px">ICOM</h2>'
+        f"<p>Hi {first},</p>"
+        "<p>Someone asked to reset the password for your ICOM account. If it was you, "
+        "choose a new password with this button. The link works for one hour, one time.</p>"
+        f'<p><a href="{_html.escape(link)}" style="display:inline-block;background:#00994a;color:#fff;'
+        'padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Choose a new password</a></p>'
+        "<p style=\"color:#667\">If you didn't ask for this, ignore this email. Your password stays the same.</p>"
+        "</div>"
+    )
+    text = (f"Hi {first},\n\nReset your ICOM password (link works for one hour, one time):\n{link}\n\n"
+            "If you didn't ask for this, ignore this email.")
+    _send_email(to_email, "Reset your ICOM password", html, text)
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    """Always answers the same way, so it never reveals whether an email has an account."""
+    from flask import current_app
+    from routes.ambassador import _email_configured
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if "@" not in email or len(email) > 254:
+        return jsonify({"error": "Enter the email you signed up with."}), 400
+    if not _email_configured():
+        print("[auth] password reset asked but no email provider is configured (RESEND_API_KEY)")
+        return jsonify({"error": "Password reset by email isn't available right now. "
+                                 "Please contact us from the Contact page."}), 503
+
+    sent_msg = {"message": "If an account uses that email, we've sent a link to reset the password. "
+                           "Check your inbox and spam folder."}
+    ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
+    if _reset_throttled(f"ip:{ip}", RESET_PER_IP) or _reset_throttled(f"email:{email}", RESET_PER_EMAIL):
+        return jsonify(sent_msg), 200
+
+    user = User.query.filter_by(email=email).first()
+    if user:
+        from daily_emails import _site
+        link = f"{_site()}/reset-password?token={make_reset_token(user)}"
+        if current_app.testing:
+            _send_reset_email(user.email, user.name, link)
+        else:
+            import threading
+            threading.Thread(target=_send_reset_email, args=(user.email, user.name, link), daemon=True).start()
+    return jsonify(sent_msg), 200
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    if len(password) < 6:
+        return jsonify({"error": "Use at least 6 characters."}), 400
+    user = read_reset_token(data.get("token") or "")
+    if not user:
+        return jsonify({"error": "This link has expired or was already used. Ask for a new one."}), 400
+    user.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+    db.session.commit()
+    return jsonify({"message": "Password changed. You can sign in now."}), 200
