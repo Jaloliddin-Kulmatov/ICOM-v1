@@ -3,11 +3,11 @@ import { Animated, Easing, Pressable, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { CITIES, JOB_FIELDS, TOPIK_LEVELS, VISAS } from "@/lib/options";
 import { jobCategory, jobCity } from "@/lib/jobs";
-import { setItem, welcomeKey } from "@/lib/storage";
+import { setItem } from "@/lib/storage";
+import { WELCOME_SEEN, saveAnswersToProfile, saveWelcomeAnswers, type WelcomeAnswers } from "@/lib/welcome";
 import { radius, space, useColors } from "@/lib/theme";
 import { useJobs } from "@/hooks/use-jobs";
 import { Button, Chip, Row, Screen, Text } from "@/components/ui";
@@ -25,8 +25,8 @@ const GOALS: { id: string; label: string; icon: IconName }[] = [
 const STEPS = 4;
 
 function visaNote(visa: string): string {
-  if (visa === "D-2" || visa === "D-4") return "You need a part-time work permit before any part-time job or internship. The Guide tab shows how to get one.";
-  if (visa === "D-10") return "We show internships that offer visa support first.";
+  if (visa === "D-2" || visa === "D-4") return "You need a work permit first. See the Guide.";
+  if (visa === "D-10") return "Visa-support jobs shown first.";
   return "";
 }
 
@@ -43,7 +43,8 @@ function Dot({ active, done }: { active: boolean; done: boolean }) {
   return <Animated.View style={{ width: w, height: 8, borderRadius: 4, backgroundColor: active || done ? c.accent : c.rule }} />;
 }
 
-/** First-run setup: how ICOM helps, then a few questions that tune internship matches. */
+/** First open, before sign-up: how ICOM helps, then a few questions that tune internship matches.
+ *  Signed out, answers wait on the phone until the account exists; from Profile they save at once. */
 export default function Welcome() {
   const { user, refresh } = useAuth();
   const c = useColors();
@@ -68,23 +69,30 @@ export default function Welcome() {
     inCity: city ? jobs.filter((j) => { const jc = jobCity(j); return jc === city || jc === "Remote"; }).length : 0,
   }), [jobs, field, city]);
 
-  if (!user) return null;
   const go = (to: number) => setNav({ step: to, dir: to > step ? 1 : -1 });
 
-  const leave = async () => {
-    await setItem(welcomeKey(user.id), "1");
-    router.replace("/");
+  const answers = (): WelcomeAnswers => ({ goals, job_field: field, city, topik_level: topik, visa_type: visa, alerts });
+
+  const skip = async () => {
+    await setItem(WELCOME_SEEN, "1");
+    router.replace(user ? "/" : "/sign-in");
   };
 
-  const finish = async () => {
+  // Signed out: keep the answers and go make an account (or sign in).
+  const toAccount = async (to: "/register" | "/sign-in") => {
+    await saveWelcomeAnswers(answers());
+    await setItem(WELCOME_SEEN, "1");
+    router.replace(to);
+  };
+
+  // Signed in (opened from Profile): save straight to the profile.
+  const saveNow = async () => {
     setBusy(true); setError("");
-    const { error: e } = await api.patch("/auth/me", { job_field: field, city, topik_level: topik, ...(visa ? { visa_type: visa } : {}) });
+    const e = await saveAnswersToProfile(answers());
     if (e) { setBusy(false); setError(e); return; }
-    if (alerts) await api.post("/admin/jobs/alerts", { enabled: true, field, city });
-    await setItem(`goals_${user.id}`, JSON.stringify(goals));
     await refresh();
     setBusy(false);
-    await leave();
+    await skip();
   };
 
   const toggleGoal = (id: string) => setGoals((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]));
@@ -100,13 +108,12 @@ export default function Welcome() {
     </Pressable>
   );
 
-  const fact = (icon: IconName, text: string) => (
-    <Row style={{ alignItems: "flex-start" }} gap={space.md}>
-      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name={icon} size={18} color={c.accent} />
-      </View>
-      <Text style={{ flex: 1 }}>{text}</Text>
-    </Row>
+  const tile = (icon: IconName, big: string, small: string) => (
+    <View style={{ width: "48%", gap: 4, padding: space.md, borderRadius: radius.card, backgroundColor: c.card, borderWidth: 1, borderColor: c.rule }}>
+      <Ionicons name={icon} size={20} color={c.accent} />
+      <Text variant="heading">{big}</Text>
+      <Text variant="small">{small}</Text>
+    </View>
   );
 
   const wrap = (children: React.ReactNode) => <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>{children}</View>;
@@ -117,14 +124,14 @@ export default function Welcome() {
     // 0 · How ICOM helps
     [
       <Pop key="logo" style={{ alignSelf: "flex-start" }}><Logo size={64} /></Pop>,
-      <Text key="t" variant="display">Welcome to ICOM, {user.name.split(" ")[0]}.</Text>,
-      <Text key="s" color="muted">Finding work in Korea as an international student is hard. Most job sites are in Korean and don&apos;t say who can hire foreigners. ICOM does that work for you.</Text>,
-      fact("briefcase-outline", market.open
-        ? `${market.open} internships open right now, checked every day. Closed ones are removed automatically.`
-        : "Internships checked every day. Closed ones are removed automatically."),
-      market.open ? fact("language-outline", `${market.english} of them say English is fine or welcome foreigners. We mark which ones need Korean.`) : null,
-      fact("shield-checkmark-outline", "Visa reminders before your visa ends, plus step-by-step guides for ARC, banking, insurance and housing."),
-      fact("people-outline", "Ask students at your university or across Korea, and join clubs and communities."),
+      <Text key="t" variant="display">{user ? `Welcome, ${user.name.split(" ")[0]}.` : "Welcome to ICOM."}</Text>,
+      <Text key="s" color="muted">Jobs, visa help and friends in Korea, in one app.</Text>,
+      <View key="g" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm }}>
+        {tile("briefcase-outline", market.open ? `${market.open} internships` : "Internships", "Checked every day")}
+        {tile("language-outline", market.open ? `${market.english} foreigner-friendly` : "Foreigner-friendly", "Marked for you")}
+        {tile("shield-checkmark-outline", "Visa reminders", "Before it expires")}
+        {tile("people-outline", "Students & clubs", "Ask and join")}
+      </View>,
     ],
     // 1 · Goal
     [
@@ -135,7 +142,7 @@ export default function Welcome() {
     // 2 · Field and city
     [
       <Text key="t" variant="title">Which field and city?</Text>,
-      <Text key="s" color="muted">We put matching internships first on your Home screen.</Text>,
+      <Text key="s" color="muted">We&apos;ll show matches first.</Text>,
       <View key="f" style={{ gap: space.sm }}>
         {label("Field")}
         {wrap(JOB_FIELDS.map((v) => <Chip key={v} label={v} selected={field === v} onPress={() => setField(field === v ? "" : v)} />))}
@@ -154,7 +161,7 @@ export default function Welcome() {
     [
       <Text key="t" variant="title">Korean and visa</Text>,
       <Text key="s" color="muted">
-        {market.korean ? `${market.korean} of ${market.open} open internships ask for Korean. Your level and visa help us show the ones you can apply to.` : "Your Korean level and visa help us show internships you can apply to."}
+        {market.korean ? `${market.korean} of ${market.open} internships need Korean.` : "So we show jobs you can apply to."}
       </Text>,
       <View key="k" style={{ gap: space.sm }}>
         {label("Korean level")}
@@ -170,7 +177,7 @@ export default function Welcome() {
       <Row key="a" style={{ justifyContent: "space-between", marginTop: space.sm }}>
         <View style={{ flex: 1, paddingRight: space.md }}>
           <Text variant="heading">Email me new internships</Text>
-          <Text variant="small">One email a day at most, only when there are new matches. Turn it off any time in Profile.</Text>
+          <Text variant="small">Max one a day. Turn off any time.</Text>
         </View>
         <Switch value={alerts} onValueChange={setAlerts} trackColor={{ true: c.accent, false: c.rule }} accessibilityLabel="Email me new internships" />
       </Row>,
@@ -190,7 +197,7 @@ export default function Welcome() {
         <Row gap={6}>
           {Array.from({ length: STEPS }, (_, i) => <Dot key={i} active={i === step} done={i < step} />)}
         </Row>
-        <Pressable onPress={leave} hitSlop={10} accessibilityRole="button">
+        <Pressable onPress={skip} hitSlop={10} accessibilityRole="button">
           <Text variant="small" style={{ fontWeight: "700" }}>Skip</Text>
         </Pressable>
       </Row>
@@ -200,9 +207,17 @@ export default function Welcome() {
           {pages[step].filter(Boolean).map((part, i) => <Rise key={i} order={i}>{part}</Rise>)}
         </Screen>
       </SlideIn>
-      <Rise order={step === 0 ? 7 : 0} style={{ padding: space.lg, paddingTop: space.sm }}>
-        <Button title={last ? "Start using ICOM" : step === 0 ? "Get started" : "Next"} loading={busy}
-          onPress={last ? finish : () => go(step + 1)} />
+      <Rise order={step === 0 ? 5 : 0} style={{ padding: space.lg, paddingTop: space.sm, gap: space.xs }}>
+        {!last ? (
+          <Button title={step === 0 ? "Get started" : "Next"} onPress={() => go(step + 1)} />
+        ) : user ? (
+          <Button title="Save" loading={busy} onPress={saveNow} />
+        ) : (
+          <>
+            <Button title="Create account" onPress={() => toAccount("/register")} />
+            <Button title="I already have an account" variant="ghost" onPress={() => toAccount("/sign-in")} />
+          </>
+        )}
       </Rise>
     </SafeAreaView>
   );

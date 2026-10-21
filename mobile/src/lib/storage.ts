@@ -19,6 +19,3 @@ export async function removeItem(key: string): Promise<void> {
   if (web) { try { localStorage.removeItem(key); } catch { /* storage off */ } return; }
   await SecureStore.deleteItemAsync(key);
 }
-
-/** Set once a user has finished or skipped the first-run setup on this phone. */
-export const welcomeKey = (userId: number) => `onboarded_${userId}`;

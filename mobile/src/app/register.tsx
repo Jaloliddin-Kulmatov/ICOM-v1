@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Link, router } from "expo-router";
 import { useAuth } from "@/lib/auth";
-import { space } from "@/lib/theme";
+import { space, useColors } from "@/lib/theme";
+import { loadWelcomeAnswers } from "@/lib/welcome";
 import { COUNTRIES, UNIVERSITIES, VISAS } from "@/lib/options";
 import { Button, Chip, ChipRow, Input, Screen, Text } from "@/components/ui";
 
@@ -11,6 +12,12 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const c = useColors();
+
+  // The visa picked in the welcome is already chosen here.
+  useEffect(() => {
+    loadWelcomeAnswers().then((a) => { if (a?.visa_type) setForm((f) => ({ ...f, visa_type: a.visa_type })); });
+  }, []);
 
   const submit = async () => {
     setBusy(true); setError("");
@@ -32,6 +39,9 @@ export default function Register() {
       <ChipRow>{COUNTRIES.map((v) => <Chip key={v} label={v} selected={form.country === v} onPress={() => set("country")(v)} />)}</ChipRow>
       {error ? <Text color="coral" variant="small">{error}</Text> : null}
       <Button title="Create account" onPress={submit} loading={busy} disabled={!form.name || !form.email || form.password.length < 6} style={{ marginTop: space.sm }} />
+      <Text variant="small" style={{ textAlign: "center" }}>
+        Already have an account? <Link href="/sign-in" replace style={{ color: c.accent, fontWeight: "700" }}>Sign in</Link>
+      </Text>
       <Text variant="small" style={{ textAlign: "center" }}>By creating an account you agree to ICOM&apos;s Terms and Privacy Policy, including the community rules for Chat and Messages.</Text>
     </Screen>
   );
