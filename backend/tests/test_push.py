@@ -61,4 +61,4 @@ def test_message_and_answer_push(app, client, sent):
 
 def test_app_config(client):
     body = client.get("/api/app/config").get_json()
-    assert set(body) == {"min_version", "latest_version", "message"}
+    assert set(body) == {"min_version", "latest_version", "message", "ios_url", "android_url"}

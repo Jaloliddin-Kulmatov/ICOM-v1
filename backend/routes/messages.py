@@ -288,7 +288,7 @@ def unblock_user(user_id):
     return jsonify({"blocked": False}), 200
 
 
-REPORT_TYPES = {"message", "user", "chat_post", "chat_answer"}
+REPORT_TYPES = {"message", "user", "chat_post", "chat_answer", "club"}
 
 
 @users_bp.route("/reports", methods=["POST"])

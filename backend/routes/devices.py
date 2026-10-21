@@ -56,4 +56,29 @@ def app_config():
         "min_version": os.environ.get("APP_MIN_VERSION", "1.0.0"),
         "latest_version": os.environ.get("APP_LATEST_VERSION", "1.0.0"),
         "message": os.environ.get("APP_MESSAGE", ""),
+        # Where "Update" sends people. Set once the apps are in the stores.
+        "ios_url": os.environ.get("APP_IOS_URL", "https://icom.ai.kr"),
+        "android_url": os.environ.get("APP_ANDROID_URL", "https://icom.ai.kr"),
     }), 200
+
+
+# Crash reports from the phone app. They go to the server log (Render → Logs,
+# search "[app-error]"), so no outside service is needed. Throttled per IP.
+_error_hits: dict = {}
+
+
+@app_config_bp.route("/errors", methods=["POST"])
+def app_error():
+    import time
+    ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
+    now = time.time()
+    hits = [t for t in _error_hits.get(ip, []) if now - t < 600]
+    if len(hits) >= 20:
+        return jsonify({"ok": False}), 429
+    _error_hits[ip] = hits + [now]
+
+    data = request.get_json(silent=True) or {}
+    clip = lambda k, n: re.sub(r"\s+", " ", str(data.get(k) or ""))[:n]   # noqa: E731
+    print(f"[app-error] v{clip('version', 20)} {clip('platform', 10)} screen={clip('screen', 80)} "
+          f"fatal={bool(data.get('fatal'))} msg={clip('message', 300)} stack={clip('stack', 1200)}")
+    return jsonify({"ok": True}), 200

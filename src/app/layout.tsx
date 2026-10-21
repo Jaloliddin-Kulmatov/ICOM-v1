@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     template: "%s | ICOM Korea",
   },
   description:
-    "ICOM is the #1 platform for international students in Korea. Find internships, join student clubs, get visa help, and connect with 28,000+ students across 47 Korean universities.",
+    "ICOM helps international students in Korea find internships, join student clubs, get visa help and ask other students. Free, and built by international students.",
   keywords: [
     "international students Korea", "ICOM Korea", "study in Korea",
     "Korea university community", "international student visa Korea",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "ICOM — International Community of Students in Korea",
-    description: "Community, internships, visa guides, and AI support for international students in Korea. Join 28,000+ students.",
+    description: "Community, internships, visa guides, and AI support for international students in Korea.",
     type: "website",
     url: "https://icom.ai.kr",
     siteName: "ICOM Korea",

@@ -87,8 +87,8 @@ export default function ContactPage() {
             </p>
             <p className="text-xs text-muted-foreground">
               Business inquiries:{" "}
-              <a href="mailto:partners@konect.kr" className="text-indigo-500 hover:underline">
-                partners@konect.kr
+              <a href="mailto:202522916@jbnu.ac.kr" className="text-indigo-500 hover:underline">
+                202522916@jbnu.ac.kr
               </a>
             </p>
           </div>

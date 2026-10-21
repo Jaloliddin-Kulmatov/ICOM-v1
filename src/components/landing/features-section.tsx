@@ -20,7 +20,7 @@ const features = [
     badge: "Community",
     title: "Student Community Platform",
     description:
-      "Connect with fellow international students across 47 Korean universities. Share experiences, ask questions, and build your network.",
+      "Connect with fellow international students at universities across Korea. Share experiences, ask questions, and build your network.",
     highlights: ["University-based channels", "Real-time group chats", "Student networking events", "Discussion feeds"],
     href: "/community",
   },
@@ -41,7 +41,7 @@ const features = [
     title: "Jobs & Internship Platform",
     description:
       "AI-powered job matching for international students. Filter by visa compatibility, salary, location, and student hours.",
-    highlights: ["D-2/D-4 visa filtering", "AI job matching", "1,200+ active listings", "Research opportunities"],
+    highlights: ["D-2/D-4 visa filtering", "AI job matching", "Checked every day", "Research opportunities"],
     href: "/internships",
   },
   {
