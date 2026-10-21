@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import React from "react";
 import Navbar from "@/components/layout/navbar";
 import Link from "next/link";
@@ -7,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 const team = [
   { name: "Kulmatov Jaloliddin", role: "Founder & CEO", country: "🇺🇿 Uzbekistan", bio: "International student at JBNU. Built ICOM because navigating life in Korea was harder than it needed to be." },
 ];
+
+export const metadata: Metadata = {
+  title: "About",
+  description: "ICOM is built by international students in Korea, for international students.",
+};
 
 export default function AboutPage() {
   return (

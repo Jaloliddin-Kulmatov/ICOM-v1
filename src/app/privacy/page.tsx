@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import React from "react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -34,6 +35,11 @@ const sections = [
     body: `You can request a copy of your data, update your profile at any time in Settings, or delete your account by contacting us at privacy@konect.kr. We will process deletion requests within 7 business days.`,
   },
 ];
+
+export const metadata: Metadata = {
+  title: "Privacy policy",
+  description: "How ICOM collects, uses and protects your data.",
+};
 
 export default function PrivacyPage() {
   return (
