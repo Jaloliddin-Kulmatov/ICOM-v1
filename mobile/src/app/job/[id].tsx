@@ -3,6 +3,7 @@ import { Share, View } from "react-native";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { WEB_URL } from "@/lib/config";
 import { daysLeft } from "@/lib/jobs";
 import { space, useColors } from "@/lib/theme";
@@ -11,6 +12,9 @@ import { Button, Card, Chip, Empty, Loading, Row, Screen, Text } from "@/compone
 
 export default function JobDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const visa = (user?.visa_type || "").toUpperCase();
+  const needsPermit = !visa || visa.startsWith("D-2") || visa.startsWith("D-4");
   const c = useColors();
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
@@ -48,10 +52,12 @@ export default function JobDetail() {
         {job.salary ? <Chip label={job.salary} /> : null}
       </Row>
 
-      {job.insights && (job.insights.student_role || job.insights.korean_required || job.insights.visa_support) && (
+      {job.insights && ((job.insights.student_role && needsPermit) || job.insights.korean_required || job.insights.visa_support) && (
         <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
           <Text variant="heading">Before you apply</Text>
-          {job.insights.student_role && <Text variant="small" color="ink">• On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.</Text>}
+          {job.insights.student_role && needsPermit && (
+            <Text variant="small" color="ink">• {visa ? `On a ${visa} visa you` : "On a D-2 or D-4 visa you"} need a part-time work permit (시간제취업허가) before you start.</Text>
+          )}
           {job.insights.korean_required && <Text variant="small" color="ink">• The posting asks for strong Korean (for example business level or TOPIK 4+).</Text>}
           {job.insights.visa_support && <Text variant="small" color="ink">• The posting mentions visa sponsorship or E-7 support. Confirm with the company.</Text>}
           <Text variant="small">Read from the posting&apos;s text, so check with the company.</Text>
