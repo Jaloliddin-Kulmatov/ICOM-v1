@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import React from "react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -36,6 +37,11 @@ const sections = [
     body: `We may update these terms. We will notify you by email or in-app notification for significant changes. Continued use after changes means you accept the updated terms.`,
   },
 ];
+
+export const metadata: Metadata = {
+  title: "Terms and community rules",
+  description: "The terms of use and community rules for ICOM.",
+};
 
 export default function TermsPage() {
   return (

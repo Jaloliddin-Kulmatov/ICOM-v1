@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import React from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/navbar";
@@ -42,6 +43,11 @@ const channels = [
     bg: "bg-emerald-500/10",
   },
 ];
+
+export const metadata: Metadata = {
+  title: "Contact",
+  description: "Get in touch with the ICOM team.",
+};
 
 export default function ContactPage() {
   return (
