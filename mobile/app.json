@@ -57,7 +57,12 @@
     "scheme": "icom",
     "description": "Internships, visa guides and a community for international students in Korea.",
     "extra": {
-      "apiUrl": "https://icom-v1.onrender.com/api"
-    }
+      "apiUrl": "https://icom-v1.onrender.com/api",
+      "router": {},
+      "eas": {
+        "projectId": "cc08cf43-f0f3-4fe1-b266-9d4771312e3a"
+      }
+    },
+    "owner": "jaloliddin08"
   }
 }
