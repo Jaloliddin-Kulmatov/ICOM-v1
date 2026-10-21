@@ -34,6 +34,7 @@ export default function RootLayout() {
         contentStyle: { backgroundColor: c.bg }, headerBackButtonDisplayMode: "minimal",
       }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="sign-in" options={{ title: "Sign in", headerShown: false }} />
         <Stack.Screen name="register" options={{ title: "Create account" }} />
         <Stack.Screen name="job/[id]" options={{ title: "Internship" }} />
