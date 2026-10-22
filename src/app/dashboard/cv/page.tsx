@@ -7,6 +7,7 @@ import { api, uploadFile, downloadFile } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 import { useAuth } from "@/lib/auth";
+import CVTranslator from "@/components/cv/cv-translator";
 import { formatRelativeTime } from "@/lib/utils";
 import { FileText, Download, Upload, Trash2, Check, Loader2, UserRound, ShieldCheck, AlertTriangle, RotateCw } from "lucide-react";
 
@@ -132,7 +133,7 @@ export default function CVPage() {
     <DashboardLayout>
       <div className="max-w-2xl">
         <h1 className="text-2xl font-extrabold text-foreground tracking-tight">My CV</h1>
-        <p className="text-sm text-muted-foreground mt-1">Upload your CV and add the three things employers look for first.</p>
+        <p className="text-sm text-muted-foreground mt-1">Upload your CV, turn it into a Korean 이력서, and add the three things employers look for first.</p>
 
         {load === "failed" && (
           <div role="alert" className="mt-5 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/[0.06] p-4">
@@ -195,6 +196,8 @@ export default function CVPage() {
           )}
           {error && <p className="mt-3 text-xs text-red-600" role="alert">{error}</p>}
         </section>
+
+        {load === "ready" && <CVTranslator hasFile={!!file} />}
 
         {/* Basics */}
         <section className="mt-5 rounded-2xl border border-border bg-card p-5 sm:p-6">

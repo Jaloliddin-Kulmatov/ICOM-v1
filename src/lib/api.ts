@@ -83,11 +83,14 @@ export async function uploadFile<T>(path: string, field: string, file: File): Pr
   }
 }
 
-/** Download an authenticated file and hand it to the browser as a save. */
-export async function downloadFile(path: string, fallbackName: string): Promise<string | null> {
+/** Download an authenticated file and hand it to the browser as a save. With `body`, it's a JSON POST. */
+export async function downloadFile(path: string, fallbackName: string, body?: unknown): Promise<string | null> {
   const token = getToken();
   try {
-    const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    const res = await fetch(`${BASE}${path}`, body === undefined ? { headers }
+      : { method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) return (await res.json().catch(() => ({}))).error || "Download failed";
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

@@ -33,6 +33,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResu
   }
 }
 
+/** POST JSON and get a file back (e.g. a Word CV) as bytes. */
+async function postForFile(path: string, body: unknown): Promise<{ bytes: Uint8Array | null; error: string | null }> {
+  const token = await getItem(TOKEN_KEY);
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "POST", body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      return { bytes: null, error: json.error || "Something went wrong. Please try again." };
+    }
+    return { bytes: new Uint8Array(await res.arrayBuffer()), error: null };
+  } catch {
+    return { bytes: null, error: "Can't reach ICOM. Check your internet connection and try again." };
+  }
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
@@ -40,4 +58,5 @@ export const api = {
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string, body?: unknown) => request<T>(path, { method: "DELETE", body: body === undefined ? undefined : JSON.stringify(body) }),
   upload: <T>(path: string, form: FormData) => request<T>(path, { method: "POST", body: form }),
+  postForFile,
 };

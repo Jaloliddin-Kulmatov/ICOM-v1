@@ -138,6 +138,7 @@ export default function Profile() {
         <Text variant="heading">{t("My CV")}</Text>
         <Text variant="small">{cv ? `${cv.filename} · ${Math.max(1, Math.round(cv.size / 1024))} KB` : t("PDF or Word (.docx), up to 2 MB. Only you can see it.")}</Text>
         <Button title={cv ? t("Replace CV") : t("Upload CV")} variant="secondary" icon="document-attach-outline" onPress={pickCv} loading={cvBusy} />
+        <Button title={t("Make a Korean CV (이력서)")} icon="language-outline" onPress={() => router.push("/cv-translate")} />
       </Card>
 
       <Card>

@@ -53,7 +53,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-localization"
+      "expo-localization",
+      "expo-sharing"
     ],
     "scheme": "icom",
     "description": "Internships, visa guides and a community for international students in Korea.",

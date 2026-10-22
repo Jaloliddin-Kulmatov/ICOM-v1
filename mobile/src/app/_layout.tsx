@@ -105,6 +105,7 @@ function App() {
         <Stack.Screen name="messages/index" options={{ title: t("Messages") }} />
         <Stack.Screen name="messages/[id]" options={{ title: "" }} />
         <Stack.Screen name="profile" options={{ title: t("Profile") }} />
+        <Stack.Screen name="cv-translate" options={{ title: t("Korean CV maker") }} />
       </Stack>
     </AuthProvider>
   );

@@ -5,8 +5,11 @@ PUT    /api/cv/me          -> save the CV maker sections
 POST   /api/cv/me/file     -> upload a PDF or Word CV (multipart field "file", max 2 MB)
 GET    /api/cv/me/file     -> download your uploaded CV
 DELETE /api/cv/me/file     -> remove it
+POST   /api/cv/me/translate -> {target: "ko"|"en", source: "file"|"text", text?} -> {"cv": {...}}
+POST   /api/cv/me/export    -> {cv, lang} -> Word file
 """
 import io
+import time
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, send_file
@@ -142,3 +145,65 @@ def delete_cv_file():
     db.session.delete(f)
     db.session.commit()
     return jsonify({"message": "CV file removed."}), 200
+
+
+# ── CV translator ────────────────────────────────────────────────────────────
+TRANSLATIONS_PER_DAY = 10
+_translate_hits: dict = {}
+
+
+def _translate_limited(uid: int) -> bool:
+    now = time.time()
+    hits = [t for t in _translate_hits.get(uid, []) if now - t < 86400]
+    limited = len(hits) >= TRANSLATIONS_PER_DAY
+    if not limited:
+        hits.append(now)
+    _translate_hits[uid] = hits
+    return limited
+
+
+@cv_bp.route("/me/translate", methods=["POST"])
+@jwt_required()
+def translate_my_cv():
+    """Turn my uploaded CV (or pasted text) into a Korean 이력서 or an English CV."""
+    from cv_tools import CVError, read_cv_file, translate_cv
+    from groq_models import AIUnavailable
+    from routes.ai import _get_client
+    uid = int(get_jwt_identity())
+    body = request.get_json(silent=True) or {}
+    target = (body.get("target") or "ko").strip()
+    try:
+        if body.get("source") == "file":
+            f = ResumeFile.query.filter_by(user_id=uid).first()
+            if f is None:
+                return jsonify({"error": "Upload your CV first, or paste the text instead."}), 400
+            text = read_cv_file(f.content, f.mime)
+        else:
+            text = str(body.get("text") or "")
+        client = _get_client()
+        if client is None:
+            return jsonify({"error": "The CV translator isn't available right now."}), 503
+        if _translate_limited(uid):
+            return jsonify({"error": f"You can translate {TRANSLATIONS_PER_DAY} CVs a day. Please try again tomorrow."}), 429
+        raw = translate_cv(client, text, target)
+    except CVError as e:
+        return jsonify({"error": str(e)}), 400
+    except AIUnavailable as e:
+        print(f"[cv] translate failed: {e}")
+        return jsonify({"error": "The translator is busy. Please try again in a minute."}), 503
+    return jsonify({"cv": _clean_cv(raw), "target": target}), 200
+
+
+@cv_bp.route("/me/export", methods=["POST"])
+@jwt_required()
+def export_my_cv():
+    """Download CV sections (usually a translation) as a Word file."""
+    from cv_tools import build_docx
+    body = request.get_json(silent=True) or {}
+    lang = "ko" if body.get("lang") == "ko" else "en"
+    cv = _clean_cv(body.get("cv") or {})
+    data = build_docx(cv, lang)
+    name = "".join(ch for ch in (cv.get("full_name") or "ICOM").replace(" ", "_") if ch.isalnum() or ch in "_-") or "ICOM"
+    return send_file(io.BytesIO(data), as_attachment=True,
+                     download_name=f"{name}_{'이력서' if lang == 'ko' else 'CV'}.docx",
+                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")

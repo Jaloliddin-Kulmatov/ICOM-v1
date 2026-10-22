@@ -29,7 +29,7 @@ const sections = [
   {
     id: "providers",
     title: "Services that process data for us",
-    body: `Render runs our server, Supabase stores our database (in Singapore), and Vercel serves the website. Groq processes messages you send to the AI assistant to write its answers. Resend sends our emails. Expo, Apple and Google deliver push notifications to your phone. If you sign in with Google on the website, Google confirms your email to us. Some of these companies process data outside Korea, for example in Singapore or the United States.`,
+    body: `Render runs our server, Supabase stores our database (in Singapore), and Vercel serves the website. Groq processes messages you send to the AI assistant to write its answers, and the text of your CV when you use the Korean CV maker (we don't store the translation; you download it). Resend sends our emails. Expo, Apple and Google deliver push notifications to your phone. If you sign in with Google on the website, Google confirms your email to us. Some of these companies process data outside Korea, for example in Singapore or the United States.`,
   },
   {
     id: "storage",
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16">
           <div className="mb-10">
             <h1 className="text-3xl font-extrabold text-foreground mb-2">Privacy Policy</h1>
-            <p className="text-xs text-muted-foreground">Last updated: 21 October 2026 · ICOM</p>
+            <p className="text-xs text-muted-foreground">Last updated: 22 October 2026 · ICOM</p>
           </div>
 
           <div className="space-y-8">
