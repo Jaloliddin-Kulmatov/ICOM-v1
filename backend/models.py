@@ -322,6 +322,8 @@ class Job(db.Model):
     # we stopped listing it (rows are deleted 30 days after closing).
     checked_at = db.Column(db.DateTime)
     closed_at = db.Column(db.DateTime)
+    # Part-time jobs shared by students wait for an admin: pending | approved | rejected.
+    review_status = db.Column(db.String(20), default="approved")
 
     def to_dict(self, list_view=False):
         # list_view trims the heavy description/requirements text so the list

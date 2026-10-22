@@ -1,4 +1,5 @@
 import sys, os
+import re
 from collections import defaultdict
 import json
 from flask import Blueprint, request, jsonify, Response
@@ -698,7 +699,7 @@ def create_job():
         title=title,
         company=company,
         location=(data.get("location") or "").strip(),
-        job_type=(data.get("type") or "part-time").strip(),
+        job_type=(data.get("type") or "part-time").strip().lower().replace("_", "-"),
         salary=(data.get("salary") or "").strip(),
         description=(data.get("description") or "").strip(),
         requirements=(data.get("requirements") or "").strip(),
@@ -1386,3 +1387,95 @@ def get_analytics():
         "this_week":   total_week,
         "this_month":  total_month,
     }), 200
+
+
+# ── Part-time jobs shared by students ────────────────────────────────────────
+# Signed-in students can share a part-time job (알바) they know about. It stays
+# hidden (is_active=False, review_status="pending") until an admin approves it.
+
+PART_TIME = "part-time"
+_SUBMIT_LIMITS = {"title": 120, "company": 100, "location": 60, "pay": 60, "schedule": 120,
+                  "korean": 40, "contact": 300, "description": 2000}
+MAX_PENDING_PER_USER = 3
+
+
+@admin_bp.route("/jobs/submit", methods=["POST"])
+@jwt_required()
+def submit_part_time_job():
+    from routes.chat import _is_safe
+    user = User.query.get_or_404(int(get_jwt_identity()))
+    data = request.get_json(silent=True) or {}
+    f = {k: re.sub(r"[ \t]+", " ", str(data.get(k) or "")).strip()[:n] for k, n in _SUBMIT_LIMITS.items()}
+
+    missing = [label for key, label in (("title", "job title"), ("company", "place"), ("location", "city"),
+                                       ("pay", "pay"), ("contact", "how to apply")) if not f[key]]
+    if missing:
+        return jsonify({"error": f"Please fill in: {', '.join(missing)}."}), 400
+    ok, _ = _is_safe(*f.values())
+    if not ok:
+        return jsonify({"error": "This post can't be shared because it breaks the community rules."}), 400
+    pending = Job.query.filter_by(created_by=user.id, review_status="pending").count()
+    if pending >= MAX_PENDING_PER_USER:
+        return jsonify({"error": "You already have 3 jobs waiting for review. Please wait for an admin to check them."}), 429
+
+    contact = f["contact"]
+    is_link = contact.startswith(("http://", "https://"))
+    facts = [f"Schedule: {f['schedule']}" if f["schedule"] else "",
+             f"Korean needed: {f['korean']}" if f["korean"] else "",
+             "" if is_link else f"How to apply: {contact}"]
+    description = "\n".join(x for x in facts if x)
+    if f["description"]:
+        description = f"{description}\n\n{f['description']}".strip()
+    job = Job(
+        title=f["title"], company=f["company"], location=f["location"], job_type=PART_TIME,
+        salary=f["pay"], description=description,
+        visa_compatible="D-2, D-4", apply_link=contact if is_link else "",
+        tags="Part-time", created_by=user.id,
+        is_active=False, review_status="pending",
+    )
+    db.session.add(job)
+    db.session.commit()
+    return jsonify({"job": {"id": job.id, "review_status": "pending"},
+                    "message": "Thanks! An admin will check it, usually within a day."}), 201
+
+
+@admin_bp.route("/jobs/pending", methods=["GET"])
+@jwt_required()
+def pending_jobs():
+    user, err = _require_admin()
+    if err:
+        return err
+    rows = Job.query.filter_by(review_status="pending").order_by(Job.created_at.asc()).all()
+    submitters = {u.id: u for u in User.query.filter(User.id.in_([j.created_by for j in rows if j.created_by])).all()} if rows else {}
+    out = []
+    for j in rows:
+        s = submitters.get(j.created_by)
+        out.append({**j.to_dict(), "submitted_by": {"id": s.id, "name": s.name, "email": s.email} if s else None})
+    return jsonify({"jobs": out}), 200
+
+
+@admin_bp.route("/jobs/<int:job_id>/review", methods=["POST"])
+@jwt_required()
+def review_job(job_id):
+    user, err = _require_admin()
+    if err:
+        return err
+    job = Job.query.get_or_404(job_id)
+    action = ((request.get_json(silent=True) or {}).get("action") or "").strip()
+    if action not in ("approve", "reject"):
+        return jsonify({"error": "action must be approve or reject."}), 400
+    now = _dt.utcnow()
+    if action == "approve":
+        job.review_status, job.is_active, job.checked_at, job.closed_at = "approved", True, now, None
+    else:
+        job.review_status, job.is_active, job.closed_at = "rejected", False, now   # deleted after 30 days
+    db.session.commit()
+    _cache_bust("jobs_list")
+    if action == "approve" and job.created_by and job.created_by != user.id:
+        try:
+            from push import notify_user
+            notify_user(job.created_by, "Your part-time job is live",
+                        f"{job.title} is now on ICOM. Thanks for sharing!", {"url": f"/job/{job.id}"})
+        except Exception as e:   # never fail the review because of push
+            print(f"[push] review notify failed: {e}")
+    return jsonify({"job": job.to_dict()}), 200

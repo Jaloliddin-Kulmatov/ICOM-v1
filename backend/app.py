@@ -272,6 +272,7 @@ def _run_lightweight_migrations():
         ("foreigner_friendly", "VARCHAR(20) DEFAULT ''"),
         ("foreigner_note",     "VARCHAR(300) DEFAULT ''"),
         ("apply_count",        "INTEGER DEFAULT 0"),
+        ("review_status",      "VARCHAR(20) DEFAULT 'approved'"),
     ]:
         try:
             if "jobs" in insp.get_table_names():
