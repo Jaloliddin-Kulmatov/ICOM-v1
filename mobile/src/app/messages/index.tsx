@@ -8,6 +8,7 @@ import { timeAgo } from "@/lib/options";
 import { space, useColors } from "@/lib/theme";
 import type { Person } from "@/lib/types";
 import { Empty, ErrorBox, Input, Loading, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 type Msg = { id: number; sender_id: number; content: string; created_at: string };
 type Conv = { id: number; other: Person; last_message: Msg | null; unread: number; blocked_by_me: boolean };
@@ -24,12 +25,13 @@ function Avatar({ name }: { name: string }) {
 
 export default function Inbox() {
   const c = useColors();
+  const { t } = useT();
   const { to } = useLocalSearchParams<{ to?: string }>();
   const inbox = useApi<{ conversations: Conv[] }>("/messages/conversations");
   const convs = inbox.data?.conversations || [];
   const loading = inbox.loading;
   const [openError, setOpenError] = useState("");
-  const error = openError || inbox.error;
+  const error = t(openError) || inbox.error;   // translated here so the hooks below don't depend on t
   const load = inbox.reload;
   const [q, setQ] = useState("");
   const [found, setFound] = useState<{ term: string; users: Person[] }>({ term: "", users: [] });
@@ -73,12 +75,12 @@ export default function Inbox() {
         contentContainerStyle={{ padding: space.lg, gap: space.xs, paddingBottom: space.xxl }}
         ListHeaderComponent={
           <View style={{ gap: space.sm, marginBottom: space.sm }}>
-            <Input value={q} onChangeText={setQ} placeholder="Search chats or find people" accessibilityLabel="Search people" autoCapitalize="words" />
+            <Input value={q} onChangeText={setQ} placeholder={t("Search chats or find people")} accessibilityLabel={t("Search chats or find people")} autoCapitalize="words" />
             {error ? <ErrorBox message={error} onRetry={load} /> : null}
           </View>
         }
         ListEmptyComponent={loading ? <Loading /> : term ? undefined : (
-          <Empty icon="chatbubbles-outline" title="No messages yet" body="Search for a student above, or tap Message on someone's answer." />
+          <Empty icon="chatbubbles-outline" title={t("No messages yet")} body={t("Search for a student above, or tap Message on someone's answer.")} />
         )}
         renderItem={({ item: x }) => (
           <Pressable onPress={() => router.push(`/messages/${x.id}`)} accessibilityRole="button" accessibilityLabel={`Chat with ${x.other.name}`}
@@ -87,11 +89,11 @@ export default function Inbox() {
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: x.unread ? "800" : "600" }} numberOfLines={1}>{x.other.name}</Text>
               <Text variant="small" numberOfLines={1} color={x.unread ? "ink" : "muted"}>
-                {x.blocked_by_me ? "Blocked" : x.last_message ? x.last_message.content : "Say hello"}
+                {x.blocked_by_me ? t("Blocked") : x.last_message ? x.last_message.content : t("Say hello")}
               </Text>
             </View>
             <View style={{ alignItems: "flex-end", gap: 4 }}>
-              {x.last_message && <Text variant="small">{timeAgo(x.last_message.created_at)}</Text>}
+              {x.last_message && <Text variant="small">{timeAgo(x.last_message.created_at, t)}</Text>}
               {x.unread > 0 && (
                 <View style={{ minWidth: 20, height: 20, borderRadius: 10, backgroundColor: c.accent, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
                   <Text variant="small" color="onAccent" style={{ fontWeight: "800" }}>{x.unread}</Text>
@@ -102,21 +104,21 @@ export default function Inbox() {
         )}
         ListFooterComponent={newPeople.length > 0 ? (
           <View style={{ gap: space.xs, marginTop: space.md }}>
-            <Text variant="label">People on ICOM</Text>
+            <Text variant="label">{t("People on ICOM")}</Text>
             {newPeople.map((p) => (
               <Pressable key={p.id} onPress={() => open(p.id)} accessibilityRole="button" accessibilityLabel={`Message ${p.name}`}
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.sm, opacity: pressed ? 0.7 : 1 })}>
                 <Avatar name={p.name} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: "600" }}>{p.name}</Text>
-                  <Text variant="small">{[p.university?.toUpperCase(), p.country, p.visa_type].filter(Boolean).join(" · ") || "ICOM member"}</Text>
+                  <Text variant="small">{[p.university?.toUpperCase(), p.country, p.visa_type].filter(Boolean).join(" · ") || t("ICOM member")}</Text>
                 </View>
-                <Text variant="small" color="accent" style={{ fontWeight: "700" }}>Message</Text>
+                <Text variant="small" color="accent" style={{ fontWeight: "700" }}>{t("Message")}</Text>
               </Pressable>
             ))}
           </View>
         ) : term.length >= 2 && shown.length === 0 && !loading ? (
-          <Empty icon="search-outline" title="No one on ICOM matches that name" body="Check the spelling, or try their first name only." />
+          <Empty icon="search-outline" title={t("No one on ICOM matches that name")} body={t("Check the spelling, or try their first name only.")} />
         ) : undefined}
       />
     </SafeAreaView>

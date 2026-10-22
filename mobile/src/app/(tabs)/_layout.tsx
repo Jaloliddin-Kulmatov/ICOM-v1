@@ -8,6 +8,7 @@ import { registerPush, scheduleVisaReminders } from "@/lib/notifications";
 import { getItem } from "@/lib/storage";
 import { WELCOME_SEEN, applyPendingWelcomeAnswers } from "@/lib/welcome";
 import { Loading } from "@/components/ui";
+import { useT } from "@/i18n";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -16,6 +17,7 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"];
 export default function TabsLayout() {
   const { user, loading, refresh } = useAuth();
   const c = useColors();
+  const { t } = useT();
   // The welcome runs once per phone, before sign-up.
   const [welcomeSeen, setWelcomeSeen] = useState<boolean | null>(null);
   useEffect(() => {
@@ -47,10 +49,10 @@ export default function TabsLayout() {
   };
   const headerRight = () => (
     <View style={{ flexDirection: "row", gap: 18, marginRight: 16 }}>
-      <Pressable onPress={() => router.push("/messages")} accessibilityLabel="Messages" hitSlop={8}>
+      <Pressable onPress={() => router.push("/messages")} accessibilityLabel={t("Messages")} hitSlop={8}>
         <Ionicons name="chatbubbles-outline" size={22} color={c.ink} />
       </Pressable>
-      <Pressable onPress={() => router.push("/profile")} accessibilityLabel="Profile" hitSlop={8}>
+      <Pressable onPress={() => router.push("/profile")} accessibilityLabel={t("Profile")} hitSlop={8}>
         <Ionicons name="person-circle-outline" size={24} color={c.ink} />
       </Pressable>
     </View>
@@ -63,11 +65,11 @@ export default function TabsLayout() {
       headerStyle: { backgroundColor: c.card }, headerTintColor: c.ink, headerTitleStyle: { fontWeight: "800" },
       headerShadowVisible: false, headerRight,
     }}>
-      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: "ICOM", tabBarIcon: icon("home-outline") }} />
-      <Tabs.Screen name="jobs" options={{ title: "Jobs", tabBarIcon: icon("briefcase-outline") }} />
-      <Tabs.Screen name="clubs" options={{ title: "Clubs", tabBarIcon: icon("people-outline") }} />
-      <Tabs.Screen name="chat" options={{ title: "Chat", tabBarIcon: icon("chatbox-ellipses-outline") }} />
-      <Tabs.Screen name="guide" options={{ title: "Guide", tabBarIcon: icon("compass-outline") }} />
+      <Tabs.Screen name="index" options={{ title: t("Home"), headerTitle: "ICOM", tabBarIcon: icon("home-outline") }} />
+      <Tabs.Screen name="jobs" options={{ title: t("Jobs"), tabBarIcon: icon("briefcase-outline") }} />
+      <Tabs.Screen name="clubs" options={{ title: t("Clubs"), tabBarIcon: icon("people-outline") }} />
+      <Tabs.Screen name="chat" options={{ title: t("Chat"), tabBarIcon: icon("chatbox-ellipses-outline") }} />
+      <Tabs.Screen name="guide" options={{ title: t("Guide"), tabBarIcon: icon("compass-outline") }} />
     </Tabs>
   );
 }

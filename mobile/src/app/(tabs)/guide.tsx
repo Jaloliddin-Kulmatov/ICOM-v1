@@ -8,10 +8,12 @@ import { ARRIVAL_STEPS, daysUntil } from "@/lib/options";
 import { GUIDE_ICONS, sortedGuides } from "@/lib/guides";
 import { space, useColors } from "@/lib/theme";
 import { Card, Icon, Row, Screen, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 export default function GuideTab() {
   const { user, refresh } = useAuth();
   const c = useColors();
+  const { t, tn } = useT();
   const [done, setDone] = useState<string[]>(user?.checklist || []);
   const days = daysUntil(user?.visa_expiry);
 
@@ -27,7 +29,7 @@ export default function GuideTab() {
     <Screen>
       <Card>
         <Row style={{ justifyContent: "space-between" }}>
-          <Text variant="heading">Arrival checklist</Text>
+          <Text variant="heading">{t("Arrival checklist")}</Text>
           <Text variant="small" color="accent" style={{ fontWeight: "800" }}>{done.length}/{ARRIVAL_STEPS.length}</Text>
         </Row>
         {ARRIVAL_STEPS.map((s) => {
@@ -41,8 +43,8 @@ export default function GuideTab() {
                 {isDone && <Ionicons name="checkmark" size={16} color={c.onAccent} />}
               </Pressable>
               <Pressable style={{ flex: 1 }} onPress={() => router.push(`/guide/${s.guide}`)}>
-                <Text style={{ fontWeight: "600", textDecorationLine: isDone ? "line-through" : "none", color: isDone ? c.muted : c.ink }}>{s.title}</Text>
-                <Text variant="small">{s.note}</Text>
+                <Text style={{ fontWeight: "600", textDecorationLine: isDone ? "line-through" : "none", color: isDone ? c.muted : c.ink }}>{t(s.title)}</Text>
+                <Text variant="small">{t(s.note)}</Text>
               </Pressable>
             </View>
           );
@@ -50,22 +52,22 @@ export default function GuideTab() {
       </Card>
 
       <Card onPress={() => router.push("/profile")}>
-        <Row><Icon name="notifications-outline" /><Text variant="heading">Visa reminders</Text></Row>
+        <Row><Icon name="notifications-outline" /><Text variant="heading">{t("Visa reminders")}</Text></Row>
         <Text variant="small">
-          {days == null ? "Add your visa expiry date in your profile. Your phone will remind you 90, 60, 30 and 7 days before, even offline."
-            : days < 0 ? `Your visa expired on ${user?.visa_expiry}. Update the date in your profile.`
-            : `On. ${days} days until ${user?.visa_expiry}. Reminders at 90, 60, 30 and 7 days.`}
+          {days == null ? t("Add your visa expiry date in your profile. Your phone will remind you 90, 60, 30 and 7 days before, even offline.")
+            : days < 0 ? t("Your visa expired on {date}. Update the date in your profile.", { date: user?.visa_expiry || "" })
+            : t("On. {days} until {date}. Reminders at 90, 60, 30 and 7 days.", { days: tn("days", days), date: user?.visa_expiry || "" })}
         </Text>
       </Card>
 
-      <Text variant="label" style={{ marginTop: space.sm }}>Guides (work offline)</Text>
+      <Text variant="label" style={{ marginTop: space.sm }}>{t("Guides (work offline)")}</Text>
       {sortedGuides().map((g) => (
         <Card key={g.slug} onPress={() => router.push(`/guide/${g.slug}`)} accessibilityLabel={g.title}>
           <Row>
             <Icon name={(GUIDE_ICONS[g.slug] || "book-outline") as never} size={20} />
             <View style={{ flex: 1 }}>
               <Text variant="heading">{g.title}</Text>
-              <Text variant="small">Updated {g.updated}</Text>
+              <Text variant="small">{t("Updated {date}", { date: g.updated })}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={c.muted} />
           </Row>

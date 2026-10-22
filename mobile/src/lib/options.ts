@@ -34,12 +34,16 @@ export function daysUntil(iso?: string | null): number | null {
   return Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000);
 }
 
-export function timeAgo(iso: string): string {
-  const t = new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime();
-  const s = Math.max(0, (Date.now() - t) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
-  if (s < 86400 * 7) return `${Math.floor(s / 86400)} d ago`;
-  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+type TFn = (text: string, vars?: Record<string, string | number>) => string;
+const plain: TFn = (text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (m, k) => String(vars[k] ?? m)) : text);
+
+/** "5 min ago"; pass useT()'s t to get it in the app's language. */
+export function timeAgo(iso: string, t: TFn = plain): string {
+  const at = new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime();
+  const s = Math.max(0, (Date.now() - at) / 1000);
+  if (s < 60) return t("just now");
+  if (s < 3600) return t("{n} min ago", { n: Math.floor(s / 60) });
+  if (s < 86400) return t("{n} h ago", { n: Math.floor(s / 3600) });
+  if (s < 86400 * 7) return t("{n} d ago", { n: Math.floor(s / 86400) });
+  return new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }

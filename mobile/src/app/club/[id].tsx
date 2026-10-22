@@ -8,15 +8,14 @@ import { CLUB_CATEGORIES } from "@/lib/options";
 import { space } from "@/lib/theme";
 import type { Club, ClubEvent } from "@/lib/types";
 import { Button, Card, Chip, Empty, Icon, Loading, Row, Screen, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// Event times are Korea time ("2026-10-25T14:00").
-function formatKst(local: string) {
-  const [d, t = "00:00"] = local.split("T");
+// Event times are Korea time ("2026-10-25T14:00"), shown in the app's language.
+function formatKst(local: string, lang: string) {
+  const [d, time = "00:00"] = local.split("T");
   const [y, m, day] = d.split("-").map(Number);
-  return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, day)).getUTCDay()]} ${day} ${MONTHS[m - 1]} · ${t.slice(0, 5)}`;
+  const date = new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return `${date} · ${time.slice(0, 5)}`;
 }
 
 function googleCalendarLink(e: ClubEvent, clubName: string) {
@@ -33,6 +32,7 @@ function googleCalendarLink(e: ClubEvent, clubName: string) {
 
 export default function ClubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t, tn, lang } = useT();
   const clubReq = useApi<{ club: Club }>(`/clubs/${id}`);
   const eventsReq = useApi<{ events: ClubEvent[] }>(`/clubs/${id}/events`);
   const club = clubReq.data?.club || null;
@@ -41,7 +41,7 @@ export default function ClubScreen() {
   const [busy, setBusy] = useState(false);
   const load = () => { clubReq.reload(); eventsReq.reload(); };
 
-  if (error) return <Screen><Empty icon="people-outline" title="Not available" body={error} /></Screen>;
+  if (error) return <Screen><Empty icon="people-outline" title={t("Not available")} body={error} /></Screen>;
   if (!club) return <Screen><Loading /></Screen>;
   const member = club.is_creator || club.my_status === "approved";
 
@@ -54,11 +54,11 @@ export default function ClubScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: club.club_type === "community" ? "Community" : "Club" }} />
+      <Stack.Screen options={{ title: club.club_type === "community" ? t("Community") : t("Club") }} />
       <Text variant="title">{club.name}</Text>
       <Row style={{ flexWrap: "wrap" }} gap={6}>
-        <Chip label={CLUB_CATEGORIES[club.category] || club.category} />
-        <Chip label={`${club.member_count} member${club.member_count === 1 ? "" : "s"}`} icon="people-outline" />
+        <Chip label={t(CLUB_CATEGORIES[club.category] || club.category)} />
+        <Chip label={tn("members", club.member_count)} icon="people-outline" />
         {club.university ? <Chip label={club.university.toUpperCase()} /> : null}
       </Row>
       {club.description ? <Text>{club.description}</Text> : null}
@@ -70,25 +70,25 @@ export default function ClubScreen() {
       ) : null}
 
       {!club.is_creator && (
-        <Button title={member ? "Leave" : club.my_status === "pending" ? "Cancel request" : "Join"} variant={member ? "secondary" : "primary"}
+        <Button title={member ? t("Leave") : club.my_status === "pending" ? t("Cancel request") : t("Join")} variant={member ? "secondary" : "primary"}
           icon={member ? "exit-outline" : "add-circle-outline"} onPress={joinOrLeave} loading={busy} />
       )}
       {member && club.kakao_link ? (
-        <Button title="Open the KakaoTalk group" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => Linking.openURL(club.kakao_link!)} />
+        <Button title={t("Open the KakaoTalk group")} variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => Linking.openURL(club.kakao_link!)} />
       ) : null}
 
-      <Text variant="label" style={{ marginTop: space.md }}>Upcoming events</Text>
-      {events.length === 0 ? <Text variant="small">No upcoming events.</Text> : events.map((e) => (
+      <Text variant="label" style={{ marginTop: space.md }}>{t("Upcoming events")}</Text>
+      {events.length === 0 ? <Text variant="small">{t("No upcoming events.")}</Text> : events.map((e) => (
         <Card key={e.id}>
           <Text variant="heading">{e.title}</Text>
-          <Text variant="small">{formatKst(e.starts_at)} (Korea time)</Text>
+          <Text variant="small">{formatKst(e.starts_at, lang)} ({t("Korea time")})</Text>
           {e.location ? <Row><Icon name="location-outline" size={14} /><Text variant="small">{e.location}</Text></Row> : null}
           {e.description ? <Text variant="small" color="ink">{e.description}</Text> : null}
-          <Button title="Add to Google Calendar" variant="ghost" icon="calendar-outline" onPress={() => Linking.openURL(googleCalendarLink(e, club.name))} />
+          <Button title={t("Add to Google Calendar")} variant="ghost" icon="calendar-outline" onPress={() => Linking.openURL(googleCalendarLink(e, club.name))} />
         </Card>
       ))}
       {!club.is_creator && (
-        <Button title="Report this club" variant="ghost" icon="flag-outline" onPress={() => confirmReport("club", club.id)} style={{ marginTop: space.lg }} />
+        <Button title={t("Report this club")} variant="ghost" icon="flag-outline" onPress={() => confirmReport("club", club.id, t)} style={{ marginTop: space.lg }} />
       )}
     </Screen>
   );

@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { font, radius, space, useColors } from "@/lib/theme";
+import { useT } from "@/i18n";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -151,10 +152,11 @@ export function Empty({ icon, title, body, action }: { icon: IconName; title: st
 
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
   const c = useColors();
+  const { t } = useT();
   return (
     <View style={[styles.card, { backgroundColor: c.coralSoft, borderColor: c.coralSoft, gap: space.sm }]} accessibilityRole="alert">
       <Text color="coral">{message}</Text>
-      {onRetry && <Button title="Try again" variant="secondary" icon="refresh" onPress={onRetry} />}
+      {onRetry && <Button title={t("Try again")} variant="secondary" icon="refresh" onPress={onRetry} />}
     </View>
   );
 }

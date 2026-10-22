@@ -5,6 +5,7 @@ import { space, useColors } from "@/lib/theme";
 import { loadWelcomeAnswers } from "@/lib/welcome";
 import { COUNTRIES, UNIVERSITIES, VISAS } from "@/lib/options";
 import { Button, Chip, ChipRow, Input, Screen, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 export default function Register() {
   const { register } = useAuth();
@@ -13,6 +14,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const c = useColors();
+  const { t } = useT();
 
   // The visa picked in the welcome is already chosen here.
   useEffect(() => {
@@ -28,21 +30,21 @@ export default function Register() {
 
   return (
     <Screen>
-      <Input label="Full name" value={form.name} onChangeText={set("name")} autoComplete="name" textContentType="name" placeholder="Linh Tran" />
-      <Input label="Email" value={form.email} onChangeText={set("email")} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="you@university.ac.kr" />
-      <Input label="Password" value={form.password} onChangeText={set("password")} secureTextEntry autoComplete="new-password" textContentType="newPassword" placeholder="At least 6 characters" />
-      <Text variant="small" style={{ fontWeight: "600" }}>University</Text>
+      <Input label={t("Full name")} value={form.name} onChangeText={set("name")} autoComplete="name" textContentType="name" placeholder="Linh Tran" />
+      <Input label={t("Email")} value={form.email} onChangeText={set("email")} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="you@university.ac.kr" />
+      <Input label={t("Password")} value={form.password} onChangeText={set("password")} secureTextEntry autoComplete="new-password" textContentType="newPassword" placeholder={t("At least 6 characters")} />
+      <Text variant="small" style={{ fontWeight: "600" }}>{t("University")}</Text>
       <ChipRow>{UNIVERSITIES.map((u) => <Chip key={u.id} label={u.name} selected={form.university === u.id} onPress={() => set("university")(u.id)} />)}</ChipRow>
-      <Text variant="small" style={{ fontWeight: "600" }}>Visa</Text>
+      <Text variant="small" style={{ fontWeight: "600" }}>{t("Visa")}</Text>
       <ChipRow>{VISAS.map((v) => <Chip key={v} label={v} selected={form.visa_type === v} onPress={() => set("visa_type")(v)} />)}</ChipRow>
-      <Text variant="small" style={{ fontWeight: "600" }}>Home country</Text>
+      <Text variant="small" style={{ fontWeight: "600" }}>{t("Home country")}</Text>
       <ChipRow>{COUNTRIES.map((v) => <Chip key={v} label={v} selected={form.country === v} onPress={() => set("country")(v)} />)}</ChipRow>
       {error ? <Text color="coral" variant="small">{error}</Text> : null}
-      <Button title="Create account" onPress={submit} loading={busy} disabled={!form.name || !form.email || form.password.length < 6} style={{ marginTop: space.sm }} />
+      <Button title={t("Create account")} onPress={submit} loading={busy} disabled={!form.name || !form.email || form.password.length < 6} style={{ marginTop: space.sm }} />
       <Text variant="small" style={{ textAlign: "center" }}>
-        Already have an account? <Link href="/sign-in" replace style={{ color: c.accent, fontWeight: "700" }}>Sign in</Link>
+        {t("Already have an account?")} <Link href="/sign-in" replace style={{ color: c.accent, fontWeight: "700" }}>{t("Sign in")}</Link>
       </Text>
-      <Text variant="small" style={{ textAlign: "center" }}>By creating an account you agree to ICOM&apos;s Terms and Privacy Policy, including the community rules for Chat and Messages.</Text>
+      <Text variant="small" style={{ textAlign: "center" }}>{t("By creating an account you agree to ICOM's Terms and Privacy Policy, including the community rules for Chat and Messages.")}</Text>
     </Screen>
   );
 }

@@ -9,20 +9,22 @@ import { APP_VERSION } from "@/lib/config";
 import { type AppConfig, fetchAppConfig, installCrashReporter, isOlder, reportError } from "@/lib/app-health";
 import { Button, Text } from "@/components/ui";
 import { Logo } from "@/components/logo";
+import { LanguageProvider, useT } from "@/i18n";
 
 installCrashReporter();
 
 /** Shown instead of a white screen when a screen crashes. The crash is sent to the server log. */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
   const c = useColors();
+  const { t } = useT();
   useEffect(() => { reportError(error, { fatal: false }); }, [error]);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: space.xl, gap: space.md }}>
       <Logo size={56} />
-      <Text variant="title" style={{ textAlign: "center" }}>Something went wrong</Text>
-      <Text color="muted" style={{ textAlign: "center" }}>We&apos;ve been told about it. Try again, or go back to Home.</Text>
-      <Button title="Try again" onPress={retry} style={{ alignSelf: "stretch" }} />
-      <Button title="Go to Home" variant="ghost" onPress={() => router.replace("/")} style={{ alignSelf: "stretch" }} />
+      <Text variant="title" style={{ textAlign: "center" }}>{t("Something went wrong")}</Text>
+      <Text color="muted" style={{ textAlign: "center" }}>{t("We've been told about it. Try again, or go back to Home.")}</Text>
+      <Button title={t("Try again")} onPress={retry} style={{ alignSelf: "stretch" }} />
+      <Button title={t("Go to Home")} variant="ghost" onPress={() => router.replace("/")} style={{ alignSelf: "stretch" }} />
     </View>
   );
 }
@@ -41,14 +43,15 @@ function useRequiredUpdate(): AppConfig | null {
 
 function UpdateRequired({ cfg }: { cfg: AppConfig }) {
   const c = useColors();
+  const { t } = useT();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: space.xl, gap: space.md }}>
       <Logo size={56} />
-      <Text variant="title" style={{ textAlign: "center" }}>Please update ICOM</Text>
+      <Text variant="title" style={{ textAlign: "center" }}>{t("Please update ICOM")}</Text>
       <Text color="muted" style={{ textAlign: "center" }}>
-        {cfg.message || `This version (${APP_VERSION}) is no longer supported. The new version has fixes you need.`}
+        {cfg.message || t("This version ({version}) is no longer supported. The new version has fixes you need.", { version: APP_VERSION })}
       </Text>
-      <Button title="Update" icon="download-outline" style={{ alignSelf: "stretch" }}
+      <Button title={t("Update")} icon="download-outline" style={{ alignSelf: "stretch" }}
         onPress={() => Linking.openURL(Platform.OS === "ios" ? cfg.ios_url : cfg.android_url)} />
     </View>
   );
@@ -71,7 +74,12 @@ function useNotificationTaps() {
 }
 
 export default function RootLayout() {
+  return <LanguageProvider><App /></LanguageProvider>;
+}
+
+function App() {
   const c = useColors();
+  const { t } = useT();
   const scheme = useColorScheme();
   useNotificationTaps();
   const update = useRequiredUpdate();
@@ -85,18 +93,18 @@ export default function RootLayout() {
       }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="sign-in" options={{ title: "Sign in", headerShown: false }} />
-        <Stack.Screen name="register" options={{ title: "Create account" }} />
-        <Stack.Screen name="forgot-password" options={{ title: "Forgot password" }} />
-        <Stack.Screen name="job/[id]" options={{ title: "Job" }} />
-        <Stack.Screen name="share-job" options={{ title: "Share a part-time job", presentation: "modal" }} />
-        <Stack.Screen name="chat/[id]" options={{ title: "Question" }} />
-        <Stack.Screen name="chat/new" options={{ title: "Ask a question", presentation: "modal" }} />
-        <Stack.Screen name="club/[id]" options={{ title: "Club" }} />
-        <Stack.Screen name="guide/[slug]" options={{ title: "Guide" }} />
-        <Stack.Screen name="messages/index" options={{ title: "Messages" }} />
+        <Stack.Screen name="sign-in" options={{ title: t("Sign in"), headerShown: false }} />
+        <Stack.Screen name="register" options={{ title: t("Create account") }} />
+        <Stack.Screen name="forgot-password" options={{ title: t("Forgot password") }} />
+        <Stack.Screen name="job/[id]" options={{ title: t("Job") }} />
+        <Stack.Screen name="share-job" options={{ title: t("Share a part-time job"), presentation: "modal" }} />
+        <Stack.Screen name="chat/[id]" options={{ title: t("Question") }} />
+        <Stack.Screen name="chat/new" options={{ title: t("Ask a question"), presentation: "modal" }} />
+        <Stack.Screen name="club/[id]" options={{ title: t("Club") }} />
+        <Stack.Screen name="guide/[slug]" options={{ title: t("Guide") }} />
+        <Stack.Screen name="messages/index" options={{ title: t("Messages") }} />
         <Stack.Screen name="messages/[id]" options={{ title: "" }} />
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
+        <Stack.Screen name="profile" options={{ title: t("Profile") }} />
       </Stack>
     </AuthProvider>
   );

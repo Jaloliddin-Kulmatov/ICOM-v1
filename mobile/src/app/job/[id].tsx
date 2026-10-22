@@ -9,6 +9,7 @@ import { daysLeft } from "@/lib/jobs";
 import { space, useColors } from "@/lib/theme";
 import type { Job } from "@/lib/types";
 import { Button, Card, Chip, Empty, Loading, Row, Screen, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 export default function JobDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function JobDetail() {
   const visa = (user?.visa_type || "").toUpperCase();
   const needsPermit = !visa || visa.startsWith("D-2") || visa.startsWith("D-4");
   const c = useColors();
+  const { t, tn } = useT();
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
 
@@ -28,8 +30,8 @@ export default function JobDetail() {
   if (error) {
     return (
       <Screen>
-        <Empty icon="briefcase-outline" title="Not available" body={error}
-          action={<Button title="Back to internships" variant="secondary" onPress={() => router.back()} />} />
+        <Empty icon="briefcase-outline" title={t("Not available")} body={error}
+          action={<Button title={t("Back")} variant="secondary" onPress={() => router.back()} />} />
       </Screen>
     );
   }
@@ -48,32 +50,32 @@ export default function JobDetail() {
     <Screen>
       <Stack.Screen options={{ title: job.company }} />
       <Text variant="title">{job.title}</Text>
-      <Text color="muted">{job.company} · {job.location || "Korea"}</Text>
+      <Text color="muted">{job.company} · {job.location || t("Korea")}</Text>
       <Row style={{ flexWrap: "wrap" }} gap={6}>
-        {job.foreigner_friendly === "yes" && <Chip label="Foreigners welcome" tone="good" icon="globe-outline" />}
-        {d === null ? <Chip label="Rolling deadline" /> : <Chip label={`Deadline ${job.deadline} (${Math.max(d, 0)} days)`} tone={d <= 7 ? "urgent" : "muted"} />}
+        {job.foreigner_friendly === "yes" && <Chip label={t("Foreigners welcome")} tone="good" icon="globe-outline" />}
+        {d === null ? <Chip label={t("Rolling deadline")} /> : <Chip label={t("Deadline {date} ({days})", { date: job.deadline, days: tn("days", Math.max(d, 0)) })} tone={d <= 7 ? "urgent" : "muted"} />}
         {job.salary ? <Chip label={job.salary} /> : null}
       </Row>
 
       {(isPartTime || permitNote || job.insights?.korean_required || job.insights?.visa_support) && (
         <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
-          <Text variant="heading">Before you apply</Text>
+          <Text variant="heading">{t("Before you apply")}</Text>
           {permitNote && (
-            <Text variant="small" color="ink">• {visa ? `On a ${visa} visa you` : "On a D-2 or D-4 visa you"} need a part-time work permit (시간제취업허가) before you start.</Text>
+            <Text variant="small" color="ink">• {visa ? t("On a {visa} visa you need a part-time work permit (시간제취업허가) before you start.", { visa }) : t("On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.")}</Text>
           )}
-          {job.insights?.korean_required && <Text variant="small" color="ink">• The posting asks for strong Korean (for example business level or TOPIK 4+).</Text>}
-          {job.insights?.visa_support && <Text variant="small" color="ink">• The posting mentions visa sponsorship or E-7 support. Confirm with the company.</Text>}
-          <Text variant="small">{isPartTime ? "Shared by a student and checked by the ICOM team. Confirm details with the employer." : "Read from the posting\u2019s text, so check with the company."}</Text>
+          {job.insights?.korean_required && <Text variant="small" color="ink">• {t("The posting asks for strong Korean (for example business level or TOPIK 4+).")}</Text>}
+          {job.insights?.visa_support && <Text variant="small" color="ink">• {t("The posting mentions visa sponsorship or E-7 support. Confirm with the company.")}</Text>}
+          <Text variant="small">{isPartTime ? t("Shared by a student and checked by the ICOM team. Confirm details with the employer.") : t("Read from the posting's text, so check with the company.")}</Text>
         </Card>
       )}
 
       <Card>
-        <Text variant="heading">About the role</Text>
+        <Text variant="heading">{t("About the role")}</Text>
         <Text>{job.description}</Text>
       </Card>
       {job.requirements.length > 0 && (
         <Card>
-          <Text variant="heading">Requirements</Text>
+          <Text variant="heading">{t("Requirements")}</Text>
           {job.requirements.map((r, i) => <Text key={i} variant="small" color="ink">• {r}</Text>)}
         </Card>
       )}
@@ -81,9 +83,9 @@ export default function JobDetail() {
 
       <View style={{ gap: space.sm, marginTop: space.sm }}>
         <Button icon="open-outline" onPress={apply} disabled={!job.apply_link}
-          title={isPartTime ? (job.apply_link ? "Apply" : "How to apply is in the details above") : "Apply on the company site"} />
-        <Button title="Share" variant="secondary" icon="share-outline"
-          onPress={() => Share.share({ message: `${job.title} at ${job.company}: ${WEB_URL}/internships/${job.id}` })} />
+          title={isPartTime ? (job.apply_link ? t("Apply") : t("How to apply is in the details above")) : t("Apply on the company site")} />
+        <Button title={t("Share")} variant="secondary" icon="share-outline"
+          onPress={() => Share.share({ message: `${t("{title} at {company}", { title: job.title, company: job.company })}: ${WEB_URL}/internships/${job.id}` })} />
       </View>
     </Screen>
   );

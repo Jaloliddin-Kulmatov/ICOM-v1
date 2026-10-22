@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { radius, space, useColors } from "@/lib/theme";
 import type { Person } from "@/lib/types";
 import { Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 type Msg = { id: number; sender_id: number; content: string; created_at: string };
 type Thread = { id: number; other: Person | null; blocked: boolean; blocked_by_me: boolean; other_read_up_to: number };
@@ -18,6 +19,7 @@ export default function Conversation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const c = useColors();
+  const { t } = useT();
   const [thread, setThread] = useState<Thread | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -28,7 +30,7 @@ export default function Conversation() {
   const load = useCallback(async (incremental: boolean) => {
     const { data, error: e } = await api.get<{ conversation: Thread; messages: Msg[] }>(
       `/messages/conversations/${id}?after=${incremental ? lastId.current : 0}`);
-    if (!data) { if (!incremental) setError(e || "Couldn't load this chat."); return; }
+    if (!data) { if (!incremental) setError(e || t("Couldn't load this chat.")); return; }
     setThread(data.conversation);
     if (data.messages.length) {
       lastId.current = Math.max(lastId.current, data.messages[data.messages.length - 1].id);
@@ -40,7 +42,7 @@ export default function Conversation() {
         return fresh.length ? [...m, ...fresh] : m;
       });
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     load(false);
@@ -60,15 +62,15 @@ export default function Conversation() {
     if (!thread?.other) return;
     const other = thread.other;
     Alert.alert(other.name, undefined, [
-      { text: thread.blocked_by_me ? "Unblock" : "Block", style: "destructive", onPress: async () => {
+      { text: thread.blocked_by_me ? t("Unblock") : t("Block"), style: "destructive", onPress: async () => {
         await (thread.blocked_by_me ? api.delete(`/users/${other.id}/block`) : api.post(`/users/${other.id}/block`));
         load(false);
       } },
-      { text: "Report", onPress: async () => {
+      { text: t("Report"), onPress: async () => {
         await api.post("/users/reports", { target_type: "user", target_id: other.id, reason: "Reported from the app" });
-        Alert.alert("Thanks", "An admin will review this report.");
+        Alert.alert(t("Thanks"), t("An admin will review this report."));
       } },
-      { text: "Cancel", style: "cancel" },
+      { text: t("Cancel"), style: "cancel" },
     ]);
   };
 
@@ -79,7 +81,7 @@ export default function Conversation() {
       <Stack.Screen options={{
         title: thread?.other?.name || "",
         headerRight: () => (
-          <Pressable onPress={menu} accessibilityLabel="Block or report" hitSlop={10}>
+          <Pressable onPress={menu} accessibilityLabel={t("Block or report")} hitSlop={10}>
             <Ionicons name="ellipsis-horizontal" size={22} color={c.ink} />
           </Pressable>
         ),
@@ -100,7 +102,7 @@ export default function Conversation() {
                   <Text style={{ color: mine ? c.onAccent : c.ink }}>{m.content}</Text>
                 </View>
                 {mine && lastMine?.id === m.id && (
-                  <Text variant="small" style={{ marginTop: 2 }}>{(thread?.other_read_up_to || 0) >= m.id ? "Seen" : "Sent"}</Text>
+                  <Text variant="small" style={{ marginTop: 2 }}>{(thread?.other_read_up_to || 0) >= m.id ? t("Seen") : t("Sent")}</Text>
                 )}
               </View>
             );
@@ -109,15 +111,15 @@ export default function Conversation() {
         {error ? <Text color="coral" variant="small" style={{ paddingHorizontal: space.lg }}>{error}</Text> : null}
         {thread?.blocked ? (
           <Text variant="small" style={{ padding: space.lg, textAlign: "center" }}>
-            {thread.blocked_by_me ? "You blocked this person. Unblock them from the ⋯ menu to message again." : "You can't message this person."}
+            {thread.blocked_by_me ? t("You blocked this person. Unblock them from the ⋯ menu to message again.") : t("You can't message this person.")}
           </Text>
         ) : (
           <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderTopWidth: 1, borderTopColor: c.rule, backgroundColor: c.card }}>
-            <TextInput value={text} onChangeText={setText} placeholder={`Message ${thread?.other?.name.split(" ")[0] || ""}`}
-              placeholderTextColor={c.muted} multiline maxLength={2000} accessibilityLabel="Message"
+            <TextInput value={text} onChangeText={setText} placeholder={t("Message {name}", { name: thread?.other?.name.split(" ")[0] || "" })}
+              placeholderTextColor={c.muted} multiline maxLength={2000} accessibilityLabel={t("Message")}
               style={{ flex: 1, minHeight: 44, maxHeight: 120, borderWidth: 1, borderColor: c.rule, borderRadius: radius.input,
                 paddingHorizontal: 14, paddingVertical: 10, color: c.ink, backgroundColor: c.inputBg, fontSize: 16 }} />
-            <Pressable onPress={send} disabled={!text.trim()} accessibilityRole="button" accessibilityLabel="Send"
+            <Pressable onPress={send} disabled={!text.trim()} accessibilityRole="button" accessibilityLabel={t("Send")}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() ? c.accent : c.rule, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" }}>
               <Ionicons name="send" size={18} color={c.onAccent} />
             </Pressable>

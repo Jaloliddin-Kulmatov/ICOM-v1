@@ -13,6 +13,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { Button, Chip, Row, Screen, Text } from "@/components/ui";
 import { Logo } from "@/components/logo";
 import { Pop, Rise, SlideIn, useReduceMotion } from "@/components/motion";
+import { LANGUAGES, useT } from "@/i18n";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -47,6 +48,7 @@ function Dot({ active, done }: { active: boolean; done: boolean }) {
  *  Signed out, answers wait on the phone until the account exists; from Profile they save at once. */
 export default function Welcome() {
   const { user, refresh } = useAuth();
+  const { t, tn, lang, setLang } = useT();
   const c = useColors();
   const { internships: jobs } = useJobs();
   const [nav, setNav] = useState<{ step: number; dir: 1 | -1 }>({ step: 0, dir: 1 });
@@ -123,63 +125,66 @@ export default function Welcome() {
   const pages = [
     // 0 · How ICOM helps
     [
+      <View key="lang" style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+        {LANGUAGES.map((l) => <Chip key={l.code} label={l.name} selected={lang === l.code} onPress={() => setLang(l.code)} />)}
+      </View>,
       <Pop key="logo" style={{ alignSelf: "flex-start" }}><Logo size={64} /></Pop>,
-      <Text key="t" variant="display">{user ? `Welcome, ${user.name.split(" ")[0]}.` : "Welcome to ICOM."}</Text>,
-      <Text key="s" color="muted">Jobs, visa help and friends in Korea, in one app.</Text>,
+      <Text key="t" variant="display">{user ? t("Welcome, {name}.", { name: user.name.split(" ")[0] }) : t("Welcome to ICOM.")}</Text>,
+      <Text key="s" color="muted">{t("Jobs, visa help and friends in Korea, in one app.")}</Text>,
       <View key="g" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm }}>
-        {tile("briefcase-outline", market.open ? `${market.open} internships` : "Internships", "Checked every day")}
-        {tile("language-outline", market.open ? `${market.english} foreigner-friendly` : "Foreigner-friendly", "Marked for you")}
-        {tile("shield-checkmark-outline", "Visa reminders", "Before it expires")}
-        {tile("people-outline", "Students & clubs", "Ask and join")}
+        {tile("briefcase-outline", market.open ? tn("internships", market.open) : t("Internships"), t("Checked every day"))}
+        {tile("language-outline", market.open ? t("{n} foreigner-friendly", { n: market.english }) : t("Foreigner-friendly"), t("Marked for you"))}
+        {tile("shield-checkmark-outline", t("Visa reminders"), t("Before it expires"))}
+        {tile("people-outline", t("Students & clubs"), t("Ask and join"))}
       </View>,
     ],
     // 1 · Goal
     [
-      <Text key="t" variant="title">What are you looking for?</Text>,
-      <Text key="s" color="muted">Pick all that fit.</Text>,
-      ...GOALS.map((g) => <React.Fragment key={g.id}>{choice(goals.includes(g.id), () => toggleGoal(g.id), g.icon, g.label)}</React.Fragment>),
+      <Text key="t" variant="title">{t("What are you looking for?")}</Text>,
+      <Text key="s" color="muted">{t("Pick all that fit.")}</Text>,
+      ...GOALS.map((g) => <React.Fragment key={g.id}>{choice(goals.includes(g.id), () => toggleGoal(g.id), g.icon, t(g.label))}</React.Fragment>),
     ],
     // 2 · Field and city
     [
-      <Text key="t" variant="title">Which field and city?</Text>,
-      <Text key="s" color="muted">We&apos;ll show matches first.</Text>,
+      <Text key="t" variant="title">{t("Which field and city?")}</Text>,
+      <Text key="s" color="muted">{t("We'll show matches first.")}</Text>,
       <View key="f" style={{ gap: space.sm }}>
-        {label("Field")}
-        {wrap(JOB_FIELDS.map((v) => <Chip key={v} label={v} selected={field === v} onPress={() => setField(field === v ? "" : v)} />))}
+        {label(t("Field"))}
+        {wrap(JOB_FIELDS.map((v) => <Chip key={v} label={t(v)} selected={field === v} onPress={() => setField(field === v ? "" : v)} />))}
       </View>,
       <View key="c" style={{ gap: space.sm }}>
-        {label("City")}
+        {label(t("City"))}
         {wrap(CITIES.map((v) => <Chip key={v} label={v} selected={city === v} onPress={() => setCity(city === v ? "" : v)} />))}
       </View>,
       field || city ? (
         <Text key="n" variant="small" color="accent">
-          {[field && `${market.inField} open in ${field}`, city && `${market.inCity} in ${city} or remote`].filter(Boolean).join(" · ")}
+          {[field && t("{n} open in {field}", { n: market.inField, field: t(field) }), city && t("{n} in {city} or remote", { n: market.inCity, city })].filter(Boolean).join(" · ")}
         </Text>
       ) : null,
     ],
     // 3 · Korean, visa type, alerts
     [
-      <Text key="t" variant="title">Korean and visa</Text>,
+      <Text key="t" variant="title">{t("Korean and visa")}</Text>,
       <Text key="s" color="muted">
-        {market.korean ? `${market.korean} of ${market.open} internships need Korean.` : "So we show jobs you can apply to."}
+        {market.korean ? t("{n} of {total} internships need Korean.", { n: market.korean, total: market.open }) : t("So we show jobs you can apply to.")}
       </Text>,
       <View key="k" style={{ gap: space.sm }}>
-        {label("Korean level")}
+        {label(t("Korean level"))}
         {wrap(TOPIK_LEVELS.map((l) => (
-          <Chip key={l} label={l === 0 ? "No TOPIK" : `TOPIK ${l}`} selected={topik === l} onPress={() => setTopik(topik === l ? null : l)} />
+          <Chip key={l} label={l === 0 ? t("No TOPIK") : `TOPIK ${l}`} selected={topik === l} onPress={() => setTopik(topik === l ? null : l)} />
         )))}
       </View>,
       <View key="v" style={{ gap: space.sm }}>
-        {label("Visa type")}
+        {label(t("Visa type"))}
         {wrap(VISAS.map((v) => <Chip key={v} label={v} selected={visa === v} onPress={() => setVisa(v)} />))}
-        {visaNote(visa) ? <Text variant="small" color="accent">{visaNote(visa)}</Text> : null}
+        {visaNote(visa) ? <Text variant="small" color="accent">{t(visaNote(visa))}</Text> : null}
       </View>,
       <Row key="a" style={{ justifyContent: "space-between", marginTop: space.sm }}>
         <View style={{ flex: 1, paddingRight: space.md }}>
-          <Text variant="heading">Email me new internships</Text>
-          <Text variant="small">Max one a day. Turn off any time.</Text>
+          <Text variant="heading">{t("Email me new internships")}</Text>
+          <Text variant="small">{t("Max one a day. Turn off any time.")}</Text>
         </View>
-        <Switch value={alerts} onValueChange={setAlerts} trackColor={{ true: c.accent, false: c.rule }} accessibilityLabel="Email me new internships" />
+        <Switch value={alerts} onValueChange={setAlerts} trackColor={{ true: c.accent, false: c.rule }} accessibilityLabel={t("Email me new internships")} />
       </Row>,
       error ? <Text key="e" color="coral" variant="small">{error}</Text> : null,
     ],
@@ -190,7 +195,7 @@ export default function Welcome() {
     <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: c.bg }}>
       <Row style={{ paddingHorizontal: space.lg, paddingTop: space.sm, justifyContent: "space-between" }}>
         {step > 0 ? (
-          <Pressable onPress={() => go(step - 1)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
+          <Pressable onPress={() => go(step - 1)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("Back")}>
             <Ionicons name="chevron-back" size={24} color={c.ink} />
           </Pressable>
         ) : <View style={{ width: 24 }} />}
@@ -198,7 +203,7 @@ export default function Welcome() {
           {Array.from({ length: STEPS }, (_, i) => <Dot key={i} active={i === step} done={i < step} />)}
         </Row>
         <Pressable onPress={skip} hitSlop={10} accessibilityRole="button">
-          <Text variant="small" style={{ fontWeight: "700" }}>Skip</Text>
+          <Text variant="small" style={{ fontWeight: "700" }}>{t("Skip")}</Text>
         </Pressable>
       </Row>
       {/* key = step, so each page mounts fresh and plays its entrance */}
@@ -207,15 +212,15 @@ export default function Welcome() {
           {pages[step].filter(Boolean).map((part, i) => <Rise key={i} order={i}>{part}</Rise>)}
         </Screen>
       </SlideIn>
-      <Rise order={step === 0 ? 5 : 0} style={{ padding: space.lg, paddingTop: space.sm, gap: space.xs }}>
+      <Rise order={step === 0 ? 6 : 0} style={{ padding: space.lg, paddingTop: space.sm, gap: space.xs }}>
         {!last ? (
-          <Button title={step === 0 ? "Get started" : "Next"} onPress={() => go(step + 1)} />
+          <Button title={step === 0 ? t("Get started") : t("Next")} onPress={() => go(step + 1)} />
         ) : user ? (
-          <Button title="Save" loading={busy} onPress={saveNow} />
+          <Button title={t("Save")} loading={busy} onPress={saveNow} />
         ) : (
           <>
-            <Button title="Create account" onPress={() => toAccount("/register")} />
-            <Button title="I already have an account" variant="ghost" onPress={() => toAccount("/sign-in")} />
+            <Button title={t("Create account")} onPress={() => toAccount("/register")} />
+            <Button title={t("I already have an account")} variant="ghost" onPress={() => toAccount("/sign-in")} />
           </>
         )}
       </Rise>

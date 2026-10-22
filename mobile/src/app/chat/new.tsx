@@ -7,10 +7,12 @@ import { useAuth } from "@/lib/auth";
 import { radius, space, useColors } from "@/lib/theme";
 import type { ChatPost } from "@/lib/types";
 import { Button, Input, Screen, Text } from "@/components/ui";
+import { useT } from "@/i18n";
 
 export default function AskQuestion() {
   const { user } = useAuth();
   const c = useColors();
+  const { t } = useT();
   const { to } = useLocalSearchParams<{ to?: string }>();
   const uni = (user?.university || "").toUpperCase();
   const [title, setTitle] = useState("");
@@ -26,7 +28,7 @@ export default function AskQuestion() {
       title, content, scope: campus ? "university" : "",   // the server fills in my university
     });
     setBusy(false);
-    if (data) router.replace(`/chat/${data.post.id}`); else setError(e || "Couldn't post your question.");
+    if (data) router.replace(`/chat/${data.post.id}`); else setError(e || t("Couldn't post your question."));
   };
 
   const option = (on: boolean, onPress: () => void, icon: React.ComponentProps<typeof Ionicons>["name"], label: string, hint: string) => (
@@ -44,15 +46,15 @@ export default function AskQuestion() {
 
   return (
     <Screen>
-      <Text variant="small" style={{ fontWeight: "600", color: c.ink }}>Who do you want to ask?</Text>
-      {option(!campus, () => setCampus(false), "earth-outline", "All students", "Every international student in Korea can see and answer.")}
-      {uni ? option(campus, () => setCampus(true), "school-outline", `${uni} students only`, `Only students at ${uni} can see and answer.`) : null}
-      <Input label="Question" value={title} onChangeText={setTitle} placeholder="e.g. Where can I get ARC photos near campus?" maxLength={200} />
-      <Input label="Details" value={content} onChangeText={setContent} placeholder="Add what you've tried or where you are" multiline
+      <Text variant="small" style={{ fontWeight: "600", color: c.ink }}>{t("Who do you want to ask?")}</Text>
+      {option(!campus, () => setCampus(false), "earth-outline", t("All students"), t("Every international student in Korea can see and answer."))}
+      {uni ? option(campus, () => setCampus(true), "school-outline", t("{uni} students only", { uni }), t("Only students at {uni} can see and answer.", { uni })) : null}
+      <Input label={t("Question")} value={title} onChangeText={setTitle} placeholder={t("e.g. Where can I get ARC photos near campus?")} maxLength={200} />
+      <Input label={t("Details")} value={content} onChangeText={setContent} placeholder={t("Add what you've tried or where you are")} multiline
         style={{ minHeight: 120, textAlignVertical: "top", paddingTop: 12 }} maxLength={3000} />
       {error ? <Text color="coral" variant="small">{error}</Text> : null}
-      <Button title={campus ? `Ask ${uni} students` : "Ask all students"} onPress={submit} loading={busy} disabled={!title.trim() || !content.trim()} />
-      <Text variant="small">Be kind. Posts that break the community rules are blocked automatically, and you can report anything that slips through.</Text>
+      <Button title={campus ? t("Ask {uni} students", { uni }) : t("Ask all students")} onPress={submit} loading={busy} disabled={!title.trim() || !content.trim()} />
+      <Text variant="small">{t("Be kind. Posts that break the community rules are blocked automatically, and you can report anything that slips through.")}</Text>
     </Screen>
   );
 }

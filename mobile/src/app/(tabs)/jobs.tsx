@@ -10,6 +10,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { Button, Card, Chip, ChipRow, Empty, ErrorBox, Input, Loading, Row, Segmented, Text } from "@/components/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { JobCard } from "@/components/job-card";
+import { useT } from "@/i18n";
 
 type Sort = "match" | "newest";
 type Kind = "internship" | "part-time";
@@ -17,6 +18,7 @@ type Kind = "internship" | "part-time";
 export default function Jobs() {
   const { user } = useAuth();
   const c = useColors();
+  const { t, tn } = useT();
   const { jobs, loading, refreshing, error, reload, pull } = useJobs();
   const [q, setQ] = useState("");
   const [field, setField] = useState("All");
@@ -28,7 +30,7 @@ export default function Jobs() {
   const kind: Kind = picked ?? (params.kind === "part-time" ? "part-time" : "internship");
   const partTime = kind === "part-time";
   const ofKind = useMemo(() => jobs.filter((j) => (j.type === "part-time") === partTime), [jobs, partTime]);
-  const noun = (n: number) => (partTime ? `part-time job${n === 1 ? "" : "s"}` : `internship${n === 1 ? "" : "s"}`);
+  const count = (n: number) => tn(partTime ? "part-time jobs" : "internships", n);
 
   const list = useMemo(() => {
     const rows = ofKind
@@ -51,44 +53,44 @@ export default function Jobs() {
         ListHeaderComponent={
           <View style={{ gap: space.sm, marginBottom: space.sm }}>
             <Segmented<Kind> value={kind} onChange={(k) => { setKind(k); setField("All"); }} options={[
-              { value: "internship", label: "Internships", icon: "briefcase-outline" },
-              { value: "part-time", label: "Part-time", icon: "time-outline" },
+              { value: "internship", label: t("Internships"), icon: "briefcase-outline" },
+              { value: "part-time", label: t("Part-time"), icon: "time-outline" },
             ]} />
             {partTime && (
               <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
                 <Row style={{ alignItems: "flex-start" }}>
                   <Ionicons name="shield-checkmark-outline" size={18} color={c.accent} />
                   <Text variant="small" color="ink" style={{ flex: 1 }}>
-                    On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.
+                    {t("On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.")}
                   </Text>
                 </Row>
                 <Row>
-                  <Button title="How to get it" variant="ghost" onPress={() => router.push("/guide/visa")} style={{ flex: 1 }} />
-                  <Button title="Share a job" icon="add-circle-outline" onPress={() => router.push("/share-job")} style={{ flex: 1 }} />
+                  <Button title={t("How to get it")} variant="ghost" onPress={() => router.push("/guide/visa")} style={{ flex: 1 }} />
+                  <Button title={t("Share a job")} icon="add-circle-outline" onPress={() => router.push("/share-job")} style={{ flex: 1 }} />
                 </Row>
               </Card>
             )}
-            <Input value={q} onChangeText={setQ} placeholder="Search role, company or city" returnKeyType="search" accessibilityLabel={`Search ${noun(2)}`} />
+            <Input value={q} onChangeText={setQ} placeholder={t("Search role, company or city")} returnKeyType="search" accessibilityLabel={t("Search role, company or city")} />
             <ChipRow>
-              <Chip label="Best match" selected={sort === "match"} onPress={() => setSort("match")} icon="sparkles-outline" />
-              <Chip label="Newest" selected={sort === "newest"} onPress={() => setSort("newest")} />
-              <Chip label="Foreigners welcome" selected={welcome} onPress={() => setWelcome(!welcome)} icon="globe-outline" />
+              <Chip label={t("Best match")} selected={sort === "match"} onPress={() => setSort("match")} icon="sparkles-outline" />
+              <Chip label={t("Newest")} selected={sort === "newest"} onPress={() => setSort("newest")} />
+              <Chip label={t("Foreigners welcome")} selected={welcome} onPress={() => setWelcome(!welcome)} icon="globe-outline" />
             </ChipRow>
             {!partTime && (   // office fields don't describe café or shop work
               <ChipRow>
-                {["All", ...JOB_FIELDS].map((f) => <Chip key={f} label={f} selected={field === f} onPress={() => setField(f)} />)}
+                {["All", ...JOB_FIELDS].map((f) => <Chip key={f} label={t(f)} selected={field === f} onPress={() => setField(f)} />)}
               </ChipRow>
             )}
-            {!loading && <Text variant="small">{list.length} {noun(list.length)}</Text>}
+            {!loading && <Text variant="small">{count(list.length)}</Text>}
             {error ? <ErrorBox message={error} onRetry={reload} /> : null}
           </View>
         }
         ListEmptyComponent={loading ? <Loading /> : partTime && ofKind.length === 0 ? (
-          <Empty icon="time-outline" title="No part-time jobs yet"
-            body="Know a café, shop or restaurant that hires international students? Share it and help others."
-            action={<Button title="Share a part-time job" icon="add-circle-outline" onPress={() => router.push("/share-job")} />} />
+          <Empty icon="time-outline" title={t("No part-time jobs yet")}
+            body={t("Know a café, shop or restaurant that hires international students? Share it and help others.")}
+            action={<Button title={t("Share a part-time job")} icon="add-circle-outline" onPress={() => router.push("/share-job")} />} />
         ) : (
-          <Empty icon="briefcase-outline" title={`No ${noun(2)} match`} body="Try another field or clear the search." />
+          <Empty icon="briefcase-outline" title={t("Nothing matches")} body={t("Try another field or clear the search.")} />
         )}
         renderItem={({ item }) => <JobCard job={item.j} match={sort === "match" ? item.m.reasons : undefined} />}
       />
