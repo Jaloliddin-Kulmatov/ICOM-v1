@@ -48,7 +48,7 @@ function Dot({ active, done }: { active: boolean; done: boolean }) {
 export default function Welcome() {
   const { user, refresh } = useAuth();
   const c = useColors();
-  const { jobs } = useJobs();
+  const { internships: jobs } = useJobs();
   const [nav, setNav] = useState<{ step: number; dir: 1 | -1 }>({ step: 0, dir: 1 });
   const step = nav.step;
   const [goals, setGoals] = useState<string[]>([]);

@@ -88,7 +88,8 @@ export default function RootLayout() {
         <Stack.Screen name="sign-in" options={{ title: "Sign in", headerShown: false }} />
         <Stack.Screen name="register" options={{ title: "Create account" }} />
         <Stack.Screen name="forgot-password" options={{ title: "Forgot password" }} />
-        <Stack.Screen name="job/[id]" options={{ title: "Internship" }} />
+        <Stack.Screen name="job/[id]" options={{ title: "Job" }} />
+        <Stack.Screen name="share-job" options={{ title: "Share a part-time job", presentation: "modal" }} />
         <Stack.Screen name="chat/[id]" options={{ title: "Question" }} />
         <Stack.Screen name="chat/new" options={{ title: "Ask a question", presentation: "modal" }} />
         <Stack.Screen name="club/[id]" options={{ title: "Club" }} />

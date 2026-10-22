@@ -21,7 +21,6 @@ async function ensurePermission(): Promise<boolean> {
   if (Platform.OS === "web") return false;
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      // eslint-disable-next-line import/namespace -- exported (NotificationChannelManager.types); the import plugin can't follow it
       name: "ICOM", importance: Notifications.AndroidImportance.DEFAULT,
     });
   }

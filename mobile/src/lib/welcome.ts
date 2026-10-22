@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { getItem, removeItem, setItem } from "./storage";
 
@@ -32,6 +33,19 @@ export async function saveAnswersToProfile(a: WelcomeAnswers): Promise<string | 
   if (a.alerts) await api.post("/admin/jobs/alerts", { enabled: true, field: a.job_field, city: a.city });
   await setItem("welcome_goals", JSON.stringify(a.goals));
   return null;
+}
+
+/** What the person said they're looking for in the welcome ("internship", "part-time", …). */
+export function useWelcomeGoals(): string[] {
+  const [goals, setGoals] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    getItem("welcome_goals").then((v) => {
+      try { if (live) setGoals(JSON.parse(v || "[]")); } catch { /* old or empty value */ }
+    });
+    return () => { live = false; };
+  }, []);
+  return goals;
 }
 
 /** After sign-up or sign-in: apply answers given before the account existed. True if anything was saved. */

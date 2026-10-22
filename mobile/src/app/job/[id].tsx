@@ -41,6 +41,9 @@ export default function JobDetail() {
     if (job.apply_link) await WebBrowser.openBrowserAsync(job.apply_link);
   };
 
+  const isPartTime = job.type === "part-time";
+  const permitNote = needsPermit && (isPartTime || !!job.insights?.student_role);
+
   return (
     <Screen>
       <Stack.Screen options={{ title: job.company }} />
@@ -52,15 +55,15 @@ export default function JobDetail() {
         {job.salary ? <Chip label={job.salary} /> : null}
       </Row>
 
-      {job.insights && ((job.insights.student_role && needsPermit) || job.insights.korean_required || job.insights.visa_support) && (
+      {(isPartTime || permitNote || job.insights?.korean_required || job.insights?.visa_support) && (
         <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
           <Text variant="heading">Before you apply</Text>
-          {job.insights.student_role && needsPermit && (
+          {permitNote && (
             <Text variant="small" color="ink">• {visa ? `On a ${visa} visa you` : "On a D-2 or D-4 visa you"} need a part-time work permit (시간제취업허가) before you start.</Text>
           )}
-          {job.insights.korean_required && <Text variant="small" color="ink">• The posting asks for strong Korean (for example business level or TOPIK 4+).</Text>}
-          {job.insights.visa_support && <Text variant="small" color="ink">• The posting mentions visa sponsorship or E-7 support. Confirm with the company.</Text>}
-          <Text variant="small">Read from the posting&apos;s text, so check with the company.</Text>
+          {job.insights?.korean_required && <Text variant="small" color="ink">• The posting asks for strong Korean (for example business level or TOPIK 4+).</Text>}
+          {job.insights?.visa_support && <Text variant="small" color="ink">• The posting mentions visa sponsorship or E-7 support. Confirm with the company.</Text>}
+          <Text variant="small">{isPartTime ? "Shared by a student and checked by the ICOM team. Confirm details with the employer." : "Read from the posting\u2019s text, so check with the company."}</Text>
         </Card>
       )}
 
@@ -77,7 +80,8 @@ export default function JobDetail() {
       {job.foreigner_note ? <Text variant="small">{job.foreigner_note}</Text> : null}
 
       <View style={{ gap: space.sm, marginTop: space.sm }}>
-        <Button title="Apply on the company site" icon="open-outline" onPress={apply} disabled={!job.apply_link} />
+        <Button icon="open-outline" onPress={apply} disabled={!job.apply_link}
+          title={isPartTime ? (job.apply_link ? "Apply" : "How to apply is in the details above") : "Apply on the company site"} />
         <Button title="Share" variant="secondary" icon="share-outline"
           onPress={() => Share.share({ message: `${job.title} at ${job.company}: ${WEB_URL}/internships/${job.id}` })} />
       </View>

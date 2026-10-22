@@ -174,3 +174,25 @@ const styles = StyleSheet.create({
   input: { minHeight: 48, borderWidth: 1, borderRadius: radius.input, paddingHorizontal: 14, fontSize: 16 },
   emptyIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });
+
+/** Two or three side-by-side choices, e.g. "All students | JBNU only". */
+export function Segmented<T extends string>({ value, options, onChange }: {
+  value: T; options: { value: T; label: string; icon?: IconName }[]; onChange: (v: T) => void;
+}) {
+  const c = useColors();
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: "row", padding: 3, borderRadius: radius.input, borderWidth: 1, borderColor: c.rule, backgroundColor: c.card }}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10,
+              borderRadius: radius.input - 2, backgroundColor: on ? c.accent : "transparent" }}>
+            {o.icon && <Ionicons name={o.icon} size={16} color={on ? c.onAccent : c.muted} />}
+            <RNText numberOfLines={1} style={{ fontSize: 13, fontWeight: "700", color: on ? c.onAccent : c.muted }}>{o.label}</RNText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}

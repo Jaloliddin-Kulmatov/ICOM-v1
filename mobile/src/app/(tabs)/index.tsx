@@ -7,6 +7,7 @@ import { matchScore } from "@/lib/jobs";
 import { space, useColors } from "@/lib/theme";
 import type { ClubEvent } from "@/lib/types";
 import { useJobs } from "@/hooks/use-jobs";
+import { useWelcomeGoals } from "@/lib/welcome";
 import { useApi } from "@/hooks/use-api";
 import { Button, Card, Icon, Row, Screen, Text } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
@@ -14,7 +15,8 @@ import { JobCard } from "@/components/job-card";
 export default function Home() {
   const { user, refresh } = useAuth();
   const c = useColors();
-  const { jobs, pull, refreshing } = useJobs();
+  const { internships: jobs, partTime, pull, refreshing } = useJobs();
+  const goals = useWelcomeGoals();
   const ev = useApi<{ events: ClubEvent[] }>("/clubs/events/upcoming");
   const events = ev.data?.events || [];
 
@@ -28,6 +30,34 @@ export default function Home() {
   const done = (user.checklist || []).length;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  // The welcome's "what are you looking for" decides which jobs Home shows.
+  const wantsPartTime = goals.includes("part-time");
+
+  const partTimeSection = (
+    <View style={{ gap: space.sm }}>
+      <Text variant="label" style={{ marginTop: space.sm }}>Part-time jobs</Text>
+      {partTime.slice(0, 3).map((j) => <JobCard key={j.id} job={j} />)}
+      {partTime.length === 0 && (
+        <Card>
+          <Text variant="small">No part-time jobs yet. Know a place that hires international students? Share it.</Text>
+          <Button title="Share a part-time job" variant="secondary" icon="add-circle-outline" onPress={() => router.push("/share-job")} />
+        </Card>
+      )}
+      {partTime.length > 0 && <Button title="See all part-time jobs" variant="ghost" onPress={() => router.push("/jobs?kind=part-time")} />}
+    </View>
+  );
+
+  const internshipSection = (
+    <View style={{ gap: space.sm }}>
+      <Text variant="label" style={{ marginTop: space.sm }}>{user.job_field || user.city ? "Internships for you" : "Latest internships"}</Text>
+      {top.map(({ j, m }) => <JobCard key={j.id} job={j} match={m.reasons} />)}
+      {!user.job_field && !user.city && (
+        <Button title="Set your field and city for better matches" variant="secondary" icon="options-outline" onPress={() => router.push("/profile")} />
+      )}
+      <Button title="See all internships" variant="ghost" onPress={() => router.push("/jobs")} />
+    </View>
+  );
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { pull(); refresh(); ev.reload(); }}>
@@ -70,15 +100,8 @@ export default function Home() {
         </View>
       )}
 
-      <Row style={{ justifyContent: "space-between", marginTop: space.sm }}>
-        <Text variant="label">{user.job_field || user.city ? "Internships for you" : "Latest internships"}</Text>
-        <Text variant="small" color="accent" style={{ fontWeight: "700" }} >{" "}</Text>
-      </Row>
-      {top.map(({ j, m }) => <JobCard key={j.id} job={j} match={m.reasons} />)}
-      {!user.job_field && !user.city && (
-        <Button title="Set your field and city for better matches" variant="secondary" icon="options-outline" onPress={() => router.push("/profile")} />
-      )}
-      <Button title="See all internships" variant="ghost" onPress={() => router.push("/jobs")} />
+      {wantsPartTime && partTimeSection}
+      {internshipSection}
     </Screen>
   );
 }
