@@ -1,5 +1,6 @@
 "use client";
 
+import PendingJobsReview from "@/components/admin/pending-jobs";
 import { CATEGORIES, categoryInfo, categoryKey } from "@/lib/club-categories";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -499,7 +500,7 @@ export default function AdminPage() {
   const tabs = [
     { id: "clubs"       as const, Icon: GraduationCap,    label: `Clubs (${cnt(clubsOnly.length)})` },
     { id: "communities" as const, Icon: Globe,            label: `Communities (${cnt(communitiesOnly.length)})` },
-    { id: "jobs"        as const, Icon: Briefcase,        label: `Internships (${cnt(jobs.length)})` },
+    { id: "jobs"        as const, Icon: Briefcase,        label: `Jobs (${cnt(jobs.length)})` },
     { id: "ambassadors" as const, Icon: Star,             label: pendingAmbassadors ? `Ambassadors (${pendingAmbassadors})` : "Ambassadors" },
     { id: "users"       as const, Icon: Users,            label: `Users (${cnt(appUsers.length)})` },
     { id: "feedback"    as const, Icon: MessageSquarePlus, label: `Feedback (${cnt(feedback.length)})` },
@@ -641,6 +642,7 @@ export default function AdminPage() {
         {/* ══════════════════ JOBS TAB ══════════════════ */}
         {!loading && tab === "jobs" && (
           <div className="space-y-6">
+            <PendingJobsReview onChanged={() => apiCallRetry("GET", "/admin/jobs?full=1").then(d => setJobs((d.jobs as Job[]) || [])).catch(() => {})} />
             {/* ── Auto-scrape internships from Wanted.co.kr ── */}
             <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 overflow-hidden">
               <div className="p-4 sm:p-5 flex items-center gap-4">

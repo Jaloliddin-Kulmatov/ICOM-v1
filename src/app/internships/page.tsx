@@ -10,7 +10,8 @@ import JobCard from "@/components/jobs/job-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, Sparkles, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2, X, CalendarClock, Globe2, ArrowUpDown } from "lucide-react";
+import Link from "next/link";
+import { Search, SlidersHorizontal, Sparkles, Clock, Plus, ShieldCheck, TrendingUp, CheckCircle2, MapPin, BellRing, BellOff, Loader2, X, CalendarClock, Globe2, ArrowUpDown } from "lucide-react";
 import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
@@ -91,7 +92,13 @@ export default function JobsPage() {
   const regionFilter = regionParam === "1";
   const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [everyJob, setEveryJob] = useState<Job[]>([]);
+  // Internships or part-time jobs (알바); lives in the URL like the other filters.
+  const [kindParam, setKind] = useQueryState("kind", "internship");
+  const partTime = kindParam === "part-time";
+  const allJobs = useMemo(() => everyJob.filter((j) => (j.type === "part-time") === partTime), [everyJob, partTime]);
+  const noun = partTime ? "part-time jobs" : "internships";
+  const nounFor = (n: number) => (n === 1 ? (partTime ? "part-time job" : "internship") : noun);
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [alertsBusy, setAlertsBusy] = useState(false);
@@ -139,7 +146,7 @@ export default function JobsPage() {
             insights?: Job["insights"];
           }) => ({
             id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
-            type: "internship" as Job["type"], salary: j.salary || "", description: j.description || "",
+            type: (j.type === "part-time" ? "part-time" : "internship") as Job["type"], salary: j.salary || "", description: j.description || "",
             requirements: j.requirements, visaCompatible: j.visa_compatible,
             // Use the real creation timestamp from the DB so "Posted X ago"
             // shows the actual age instead of "just now" every render.
@@ -155,7 +162,7 @@ export default function JobsPage() {
             insights: j.insights,
             foreignerNote: j.foreigner_note || "",
           }));
-          setAllJobs(mapped);
+          setEveryJob(mapped);
         }
         setLoading(false);
       })
@@ -320,21 +327,28 @@ export default function JobsPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="new" className="gap-1 text-xs">
-                    <Sparkles size={10} />
-                    AI-Powered Matching
-                  </Badge>
+                <div role="tablist" aria-label="Job type" className="inline-flex p-1 mb-4 rounded-xl border border-border bg-card">
+                  {([["internship", "Internships"], ["part-time", "Part-time jobs"]] as const).map(([k, label]) => (
+                    <button key={k} role="tab" aria-selected={(k === "part-time") === partTime}
+                      onClick={() => { setKind(k); setActiveCategory("All"); }}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        (k === "part-time") === partTime ? "bg-indigo-600 text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                      {label}
+                      <span className="ml-1.5 tabular-nums opacity-80">{everyJob.filter((j) => (j.type === "part-time") === (k === "part-time")).length || ""}</span>
+                    </button>
+                  ))}
                 </div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Internships</h1>
+                <h1 className="text-3xl font-bold text-foreground mb-2">{partTime ? "Part-time jobs" : "Internships"}</h1>
                 <p className="text-muted-foreground text-sm">
-                  Real internship opportunities at top companies — curated for international students
+                  {partTime
+                    ? "Part-time jobs (알바) shared by students and checked by the ICOM team"
+                    : "Real internship opportunities at top companies — curated for international students"}
                 </p>
               </div>
               <div className="hidden sm:flex items-center gap-3">
                 <div className="text-center">
                   <div className="text-xl font-bold gradient-text-primary">{allJobs.length || "—"}</div>
-                  <div className="text-xs text-muted-foreground">Internships</div>
+                  <div className="text-xs text-muted-foreground">{partTime ? "Part-time jobs" : "Internships"}</div>
                 </div>
                 <div className="h-8 w-px bg-border" />
                 <div className="text-center">
@@ -545,7 +559,7 @@ export default function JobsPage() {
                   {loading ? "Loading…" : (
                     <>
                       <span className="text-foreground font-semibold tabular-nums">{filteredJobs.length}</span>
-                      {filteredJobs.length === allJobs.length ? " internships" : ` of ${allJobs.length} internships`}
+                      {filteredJobs.length === allJobs.length ? ` ${nounFor(allJobs.length)}` : ` of ${allJobs.length} ${nounFor(allJobs.length)}`}
                     </>
                   )}
                 </p>
@@ -564,14 +578,34 @@ export default function JobsPage() {
                 </label>
               </div>
 
+              {partTime && (
+                <div className="mb-4 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] flex flex-col sm:flex-row sm:items-center gap-3">
+                  <ShieldCheck size={18} className="text-amber-600 shrink-0" />
+                  <p className="text-xs text-foreground/80 leading-relaxed flex-1">
+                    On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.{" "}
+                    <Link href="/guide/visa" className="font-semibold text-indigo-600 hover:underline">How to get one</Link>
+                  </p>
+                  <Link href="/internships/share" className="shrink-0">
+                    <Button size="sm" className="gap-1.5"><Plus size={14} /> Share a part-time job</Button>
+                  </Link>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {loading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="h-40 rounded-2xl border border-border bg-card animate-pulse" />
                   ))
+                ) : partTime && allJobs.length === 0 ? (
+                  <div className="py-16 px-6 text-center rounded-2xl border border-dashed border-border">
+                    <Clock size={22} className="mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-sm font-semibold text-foreground">No part-time jobs yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">Know a café, shop or restaurant that hires international students? Share it and help others.</p>
+                    <Link href="/internships/share"><Button size="sm" className="gap-1.5"><Plus size={14} /> Share a part-time job</Button></Link>
+                  </div>
                 ) : filteredJobs.length === 0 ? (
                   <div className="py-16 px-6 text-center rounded-2xl border border-dashed border-border">
-                    <p className="text-sm font-semibold text-foreground">No internships match these filters</p>
+                    <p className="text-sm font-semibold text-foreground">No {noun} match these filters</p>
                     <p className="text-xs text-muted-foreground mt-1 mb-4">Try a different field or city, or remove a filter.</p>
                     <Button size="sm" variant="outline" onClick={clearAll}>Clear all filters</Button>
                   </div>

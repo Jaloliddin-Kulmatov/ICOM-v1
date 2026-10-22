@@ -1,14 +1,18 @@
 # Backend only. The frontend is deployed on Vercel (see vercel.json) and the
 # database is Supabase Postgres (free tier, Singapore), connected through DATABASE_URL.
+#
+# To (re)create the server: Render → New → Blueprint → pick this repo. Render reads
+# this file, asks for the values marked sync:false, and builds it in Singapore,
+# next to the database. Region can't be changed later, only by creating a new service.
 services:
   - type: web
     name: icom-backend
     runtime: python
     region: singapore          # closest Render region to Korea
     rootDir: backend
-    plan: free
+    plan: starter              # always on: no 30–60 s wake-up after idle time
     # bootstrap.py creates tables and seeds data once per deploy, so the web
-    # process itself starts fast (free instances sleep and cold-start often).
+    # process itself starts fast.
     buildCommand: pip install -r requirements.txt && python bootstrap.py
     # One worker keeps APScheduler from running twice; threads handle concurrency.
     startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
@@ -39,4 +43,8 @@ services:
       - key: RESEND_API_KEY
         sync: false          # optional: job-alert emails
       - key: RESEND_FROM
-        sync: false          # optional
+        sync: false          # optional: e.g. ICOM <no-reply@icom.ai.kr> once the domain is verified in Resend
+      - key: SENDER_EMAIL
+        sync: false          # optional Gmail fallback for emails
+      - key: SENDER_PASSWORD
+        sync: false          # Gmail app password (not the account password)

@@ -331,7 +331,6 @@ export default function ProfilePage() {
           <div className="space-y-1">
             {[
               { href: "/dashboard/notifications", icon: Bell, label: "Notifications" },
-              { href: "/dashboard/achievements", icon: Trophy, label: "Achievements" },
               { href: "/dashboard/settings", icon: Settings, label: "Settings & Privacy" },
             ].map(({ href, icon: Icon, label }) => (
               <Link

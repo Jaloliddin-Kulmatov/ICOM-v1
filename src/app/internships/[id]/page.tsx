@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, Clock, DollarSign, CheckCircle2,
   Briefcase, Tag, Calendar, Loader2, AlertCircle, Building2, ExternalLink,
-  Bookmark, BookmarkCheck, Globe, Users,
+  Bookmark, BookmarkCheck, Globe, Users, Share2, Check,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [bookmarked, setBookmarked] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/admin/jobs/${id}`)
@@ -148,6 +149,20 @@ export default function JobDetailPage() {
   );
 
   const typeInfo = typeConfig[job.type] ?? { label: job.type, variant: "default" as const };
+  const isPartTime = job.type === "part-time";
+  const backHref = isPartTime ? "/internships?kind=part-time" : "/internships";
+
+  // Phones get the system share sheet (KakaoTalk, Telegram…); computers copy the link.
+  const shareJob = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: job.title, text: `${job.title} at ${job.company} — found on ICOM`, url }).catch(() => {});
+      return;
+    }
+    await navigator.clipboard?.writeText(url).catch(() => {});
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,7 +170,7 @@ export default function JobDetailPage() {
       <main className="pt-16">
         <div className="border-b border-border bg-gradient-to-b from-indigo-500/5 to-transparent">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-            <Link href="/internships" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
+            <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
               <ArrowLeft size={13} /> Back to Jobs
             </Link>
 
@@ -212,17 +227,17 @@ export default function JobDetailPage() {
             </div>
 
             {/* What this means for an international student (read from the posting) */}
-            {job.insights && (job.insights.student_role || job.insights.korean_required || job.insights.visa_support) && (
+            {(isPartTime || (job.insights && (job.insights.student_role || job.insights.korean_required || job.insights.visa_support))) && (
               <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.05] p-5 space-y-2">
                 <h2 className="text-sm font-bold text-foreground">Before you apply</h2>
                 <ul className="text-sm text-foreground/85 space-y-1.5 list-disc pl-5">
-                  {job.insights.student_role && (
+                  {(isPartTime || job.insights?.student_role) && (
                     <li>On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start. <Link href="/guide/visa" className="text-indigo-700 dark:text-indigo-300 font-semibold hover:underline">How to get it</Link></li>
                   )}
-                  {job.insights.korean_required && <li>The posting asks for strong Korean (for example business level or TOPIK 4+).</li>}
-                  {job.insights.visa_support && <li>The posting mentions visa sponsorship or E-7 support. Confirm the details with the company.</li>}
+                  {job.insights?.korean_required && <li>The posting asks for strong Korean (for example business level or TOPIK 4+).</li>}
+                  {job.insights?.visa_support && <li>The posting mentions visa sponsorship or E-7 support. Confirm the details with the company.</li>}
                 </ul>
-                <p className="text-xs text-muted-foreground">Read from the posting&apos;s text, so check with the company.</p>
+                <p className="text-xs text-muted-foreground">{isPartTime ? "Shared by a student and checked by the ICOM team. Confirm details with the employer." : "Read from the posting\u2019s text, so check with the company."}</p>
               </div>
             )}
 
@@ -308,7 +323,7 @@ export default function JobDetailPage() {
                   disabled
                   title="No application link provided — contact the employer directly"
                 >
-                  Apply Now
+                  {isPartTime ? "See how to apply below" : "Apply Now"}
                 </Button>
               )}
 
@@ -326,6 +341,13 @@ export default function JobDetailPage() {
                 ) : (
                   <><Bookmark size={14} /> Save for later</>
                 )}
+              </button>
+
+              <button
+                onClick={shareJob}
+                className="w-full h-10 mt-2 rounded-xl border border-border bg-card text-sm font-medium flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-indigo-500/30 transition-all"
+              >
+                {shared ? <><Check size={14} /> Link copied</> : <><Share2 size={14} /> Share with a friend</>}
               </button>
 
               <p className="text-[11px] text-muted-foreground text-center mt-3">
@@ -410,7 +432,7 @@ export default function JobDetailPage() {
               )}
             </div>
 
-            <Link href="/internships" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
+            <Link href={backHref} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
               <ExternalLink size={11} /> Browse more jobs
             </Link>
           </div>

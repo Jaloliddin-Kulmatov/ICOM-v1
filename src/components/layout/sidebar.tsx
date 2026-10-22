@@ -16,11 +16,9 @@ import {
   ChevronRight,
   Sparkles,
   MessageSquare,
-  Trophy,
   GraduationCap,
   FileText,
   HelpCircle,
-  TrendingUp,
   LogOut,
   ShieldCheck,
 } from "lucide-react";
@@ -47,7 +45,6 @@ const sidebarSections = [
       { href: "/dashboard/messages", icon: MessageSquare, label: "Messages" },
       { href: "/dashboard/cv", icon: FileText, label: "My CV" },
       { href: "/dashboard/bookmarks", icon: Bookmark, label: "Saved" },
-      { href: "/dashboard/achievements", icon: Trophy, label: "Achievements" },
     ],
   },
   {
@@ -63,7 +60,6 @@ const sidebarSections = [
     label: "Account",
     links: [
       { href: "/dashboard/notifications", icon: Bell, label: "Notifications" },
-      { href: "/dashboard/analytics", icon: TrendingUp, label: "My Stats" },
       { href: "/dashboard/settings", icon: Settings, label: "Settings" },
     ],
   },
