@@ -129,6 +129,8 @@ def create_app():
     from routes.devices import devices_bp, app_config_bp
     app.register_blueprint(devices_bp, url_prefix="/api/devices")
     app.register_blueprint(app_config_bp, url_prefix="/api/app")
+    from routes.invites import invites_bp
+    app.register_blueprint(invites_bp, url_prefix="/api/invites")
     # Uploaded CVs are capped at 2 MB in routes/cv.py; reject anything far bigger early.
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
@@ -309,6 +311,9 @@ def _run_lightweight_migrations():
         ("users", "alert_last_sent", "TIMESTAMP"),
         ("users", "visa_reminder_sent", "VARCHAR(20)"),
         ("users", "checklist", "JSON"),
+        ("users", "invite_code", "VARCHAR(24)"),
+        ("users", "signup_ref", "VARCHAR(40)"),
+        ("users", "referred_by_id", "INTEGER"),
         ("chat_answers", "is_accepted", "BOOLEAN DEFAULT FALSE"),
     ):
         try:
@@ -318,6 +323,12 @@ def _run_lightweight_migrations():
                 print(f"[migration] Added {table}.{col}")
         except Exception as e:
             print(f"[migration] {table}.{col} failed (probably already done): {e}")
+
+    try:
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_invite_code_unique ON users (invite_code)"))
+    except Exception as e:
+        print(f"[migration] users.invite_code index failed: {e}")
 
     # scope on chat_posts — audience targeting. Empty = global ("All Korea"),
     # a university token (e.g. "jbnu") = that university's chat only.

@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { api } from "./api";
+import { savedRef } from "./invite";
 
 interface UserProfile {
   id: number;
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (payload: RegisterData) => {
     const { data, error } = await api.post<{ token: string; user: UserProfile }>(
       "/auth/register",
-      payload
+      { ...payload, ref: savedRef() }
     );
     if (error) return error;
     localStorage.setItem("icon_token", data!.token);
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: UserProfile;
       created?: boolean;
       profile_complete?: boolean;
-    }>("/auth/google", { access_token: accessToken, mode });
+    }>("/auth/google", { access_token: accessToken, mode, ref: savedRef() });
     if (result.error) {
       return { error: { message: result.error, code: result.code, status: result.status } };
     }

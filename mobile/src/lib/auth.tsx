@@ -7,7 +7,7 @@ type AuthState = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
-  register: (form: { name: string; email: string; password: string; university: string; country: string; visa_type: string }) => Promise<string | null>;
+  register: (form: { name: string; email: string; password: string; university: string; country: string; visa_type: string; ref?: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   deleteAccount: () => Promise<string | null>;

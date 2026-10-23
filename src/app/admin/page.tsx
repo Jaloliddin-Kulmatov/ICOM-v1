@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import GrowthPanel from "@/components/admin/growth-panel";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -1066,6 +1067,8 @@ export default function AdminPage() {
         {/* ══════════════════ ANALYTICS TAB ══════════════════ */}
         {tab === "analytics" && (
           <div className="space-y-6">
+            <GrowthPanel />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pt-2">Website visits (including signed-out visitors)</p>
             {analyticsLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 size={24} className="animate-spin text-muted-foreground" />

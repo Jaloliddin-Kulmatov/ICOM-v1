@@ -8,6 +8,7 @@ import { GraduationCap, Globe, FileText, ArrowRight, Loader2, CheckCircle2, LogO
 import { useAuth } from "@/lib/auth";
 import { UNIVERSITIES } from "@/lib/constants";
 import { api } from "@/lib/api";
+import { afterAuthPath } from "@/lib/invite";
 
 const VISA_OPTIONS = ["D-2", "D-4", "F-2", "F-4", "E-7", "Other"];
 
@@ -59,7 +60,7 @@ export default function OnboardingPage() {
     });
     // If the user actually already has everything, skip the page.
     if ((user.university || "").trim() && (user.country || "").trim() && (user.visa_type || "").trim()) {
-      router.replace("/dashboard");
+      router.replace(afterAuthPath("/dashboard"));
     }
   }, [user, authLoading, router]);
 
@@ -92,7 +93,7 @@ export default function OnboardingPage() {
       return;
     }
     await refreshUser();
-    router.replace("/dashboard");
+    router.replace(afterAuthPath("/dashboard"));
   };
 
   // Loading auth context

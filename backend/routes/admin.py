@@ -1389,6 +1389,19 @@ def get_analytics():
     }), 200
 
 
+# ── Growth — active users and where sign-ups come from ──────────────────────
+
+@admin_bp.route("/growth", methods=["GET"])
+@jwt_required()
+def get_growth():
+    """Daily/weekly/monthly active users, sign-ups by invite link, top inviters."""
+    user, err = _require_admin()
+    if err:
+        return err
+    from routes.invites import growth_stats
+    return jsonify(growth_stats()), 200
+
+
 # ── Part-time jobs shared by students ────────────────────────────────────────
 # Signed-in students can share a part-time job (알바) they know about. It stays
 # hidden (is_active=False, review_status="pending") until an admin approves it.

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Linking } from "react-native";
+import { Linking, Share } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
+import { WEB_URL } from "@/lib/config";
 import { confirmReport } from "@/lib/report";
 import { useApi } from "@/hooks/use-api";
 import { CLUB_CATEGORIES } from "@/lib/options";
@@ -45,6 +46,12 @@ export default function ClubScreen() {
   if (!club) return <Screen><Loading /></Screen>;
   const member = club.is_creator || club.my_status === "approved";
 
+  const invite = async () => {
+    const { data } = await api.get<{ code: string }>("/invites/me");
+    const url = `${WEB_URL}/community/${club.id}${data ? `?ref=${data.code}` : ""}`;
+    Share.share({ message: `${t("Join “{name}” with me on ICOM:", { name: club.name })} ${url}` });
+  };
+
   const joinOrLeave = async () => {
     setBusy(true);
     await api.post(`/clubs/${club.id}/${member || club.my_status === "pending" ? "leave" : "request"}`);
@@ -73,6 +80,7 @@ export default function ClubScreen() {
         <Button title={member ? t("Leave") : club.my_status === "pending" ? t("Cancel request") : t("Join")} variant={member ? "secondary" : "primary"}
           icon={member ? "exit-outline" : "add-circle-outline"} onPress={joinOrLeave} loading={busy} />
       )}
+      <Button title={t("Invite friends")} variant="secondary" icon="person-add-outline" onPress={invite} />
       {member && club.kakao_link ? (
         <Button title={t("Open the KakaoTalk group")} variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => Linking.openURL(club.kakao_link!)} />
       ) : null}

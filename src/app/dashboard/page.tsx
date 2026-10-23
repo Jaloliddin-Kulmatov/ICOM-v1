@@ -12,6 +12,7 @@ import {
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import NextSteps from "@/components/dashboard/next-steps";
 import StudyToolsGrid from "@/components/tools/study-tools-grid";
+import InviteCard from "@/components/dashboard/invite-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -254,6 +255,8 @@ export default function DashboardPage() {
           </Link>
         </aside>
       </div>
+
+      <InviteCard />
 
       {/* ── Study tools ── */}
       <section className="mt-2">

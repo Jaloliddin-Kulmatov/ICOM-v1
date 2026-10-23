@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { UNIVERSITIES } from "@/lib/constants";
 import GoogleSignInButton, { GOOGLE_AUTH_ENABLED } from "@/components/auth/google-signin-button";
+import { afterAuthPath } from "@/lib/invite";
 
 const steps = [
   { label: "Account", hint: "Your login credentials" },
@@ -85,7 +86,7 @@ export default function RegisterPage() {
     }
     // Brand-new Google account → onboarding to fill in university / visa / country.
     // (Even if profile_complete were somehow true here, we still want them to confirm.)
-    router.push(result.ok.profileComplete ? "/dashboard" : "/onboarding");
+    router.push(result.ok.profileComplete ? afterAuthPath("/dashboard") : "/onboarding");
   };
   const [form, setForm] = useState({
     name: "", email: "", password: "",
@@ -160,7 +161,7 @@ export default function RegisterPage() {
       setError(err);
       return;
     }
-    router.push("/dashboard");
+    router.push(afterAuthPath("/dashboard"));
   };
 
   return (

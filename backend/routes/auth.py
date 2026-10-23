@@ -9,8 +9,9 @@ from app import db, bcrypt
 from models import (
     User, Club, ClubMembership, ClubMessage,
     Post, PostComment, AmbassadorApplication, Feedback, AISession, Job,
-    ChatPost, ChatAnswer, ClubEvent, Device,
+    ChatPost, ChatAnswer, ClubEvent, Device, UserActivity,
 )
+from routes.invites import apply_ref, record_activity
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -95,6 +96,7 @@ def register():
         visa_type=visa_type,
         country=country,
     )
+    apply_ref(user, data.get("ref"))
     db.session.add(user)
     db.session.commit()
 
@@ -226,6 +228,7 @@ def google_auth():
             password_hash="",        # no password — Google-only account
             is_verified=True,        # Google has already verified the email
         )
+        apply_ref(user, data.get("ref"))
         db.session.add(user)
         db.session.commit()
         created = True
@@ -239,6 +242,7 @@ def google_auth():
                 password_hash="",
                 is_verified=True,
             )
+            apply_ref(user, data.get("ref"))
             db.session.add(user)
             db.session.commit()
             created = True
@@ -275,6 +279,7 @@ def google_auth():
 def me():
     user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
+    record_activity(user)   # opening ICOM signed in counts as active today
     return jsonify({"user": user.to_dict()}), 200
 
 
@@ -376,6 +381,7 @@ def delete_me():
         AISession.query.filter_by(user_id=user_id).delete(synchronize_session=False)
         ClubEvent.query.filter_by(created_by=user_id).update({ClubEvent.created_by: None}, synchronize_session=False)
         Device.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        UserActivity.query.filter_by(user_id=user_id).delete(synchronize_session=False)
         own_comment_ids = [c.id for c in PostComment.query.filter_by(user_id=user_id).all()]
         if own_comment_ids:
             PostComment.query.filter(PostComment.parent_id.in_(own_comment_ids))\

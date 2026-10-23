@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import GoogleSignInButton, { GOOGLE_AUTH_ENABLED } from "@/components/auth/google-signin-button";
+import { afterAuthPath } from "@/lib/invite";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function LoginPage() {
     const err = await login(email, password);
     setLoading(false);
     if (err) { setError(err); return; }
-    router.push("/dashboard");
+    router.push(afterAuthPath("/dashboard"));
   };
 
   const handleGoogleSuccess = async (accessToken: string) => {
@@ -78,7 +79,7 @@ export default function LoginPage() {
     // Returning users with a complete profile go straight to dashboard.
     // If they signed up with Google previously but never finished the form,
     // send them to /onboarding instead.
-    router.push(result.ok.profileComplete ? "/dashboard" : "/onboarding");
+    router.push(result.ok.profileComplete ? afterAuthPath("/dashboard") : "/onboarding");
   };
 
   return (

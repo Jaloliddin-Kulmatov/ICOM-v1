@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useApi } from "@/hooks/use-api";
-import { Alert, Platform, Switch, View } from "react-native";
+import { Alert, Platform, Share, Switch, View } from "react-native";
 import { router } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as WebBrowser from "expo-web-browser";
@@ -30,6 +30,8 @@ export default function Profile() {
   const cv = cvReq.data?.file || null;
   const [cvBusy, setCvBusy] = useState(false);
   const alertsReq = useApi<{ enabled: boolean }>("/admin/jobs/alerts");
+  const inviteReq = useApi<{ code: string; link: string; joined: number }>("/invites/me");
+  const invite = inviteReq.data;
   const alerts = !!alertsReq.data?.enabled;
 
   if (!user) return null;
@@ -133,6 +135,18 @@ export default function Profile() {
           <Switch value={alerts} onValueChange={toggleAlerts} trackColor={{ true: c.accent, false: c.rule }} accessibilityLabel={t("Internship alerts")} />
         </Row>
       </Card>
+
+      {invite ? (
+        <Card>
+          <Text variant="heading">{t("Invite friends to ICOM")}</Text>
+          <Text variant="small">
+            {invite.joined > 0 ? t("{count} joined with your invite. Thank you!", { count: tn("friends", invite.joined) })
+              : t("Share your link in your class or country group chat. Your invite code: {code}", { code: invite.code })}
+          </Text>
+          <Button title={t("Share my invite link")} icon="share-social-outline"
+            onPress={() => Share.share({ message: `${t("Join me on ICOM, the app for international students in Korea:")} ${invite.link}` })} />
+        </Card>
+      ) : null}
 
       <Card>
         <Text variant="heading">{t("My CV")}</Text>

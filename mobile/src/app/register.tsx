@@ -9,7 +9,7 @@ import { useT } from "@/i18n";
 
 export default function Register() {
   const { register } = useAuth();
-  const [form, setForm] = useState({ name: "", email: "", password: "", university: "jbnu", country: "", visa_type: "D-2" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", university: "jbnu", country: "", visa_type: "D-2", ref: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -39,6 +39,8 @@ export default function Register() {
       <ChipRow>{VISAS.map((v) => <Chip key={v} label={v} selected={form.visa_type === v} onPress={() => set("visa_type")(v)} />)}</ChipRow>
       <Text variant="small" style={{ fontWeight: "600" }}>{t("Home country")}</Text>
       <ChipRow>{COUNTRIES.map((v) => <Chip key={v} label={v} selected={form.country === v} onPress={() => set("country")(v)} />)}</ChipRow>
+      <Input label={t("Invite code (optional)")} value={form.ref} onChangeText={set("ref")} autoCapitalize="none" autoCorrect={false} maxLength={40}
+        placeholder={t("From the friend who invited you, e.g. aziz-k3f")} />
       {error ? <Text color="coral" variant="small">{error}</Text> : null}
       <Button title={t("Create account")} onPress={submit} loading={busy} disabled={!form.name || !form.email || form.password.length < 6} style={{ marginTop: space.sm }} />
       <Text variant="small" style={{ textAlign: "center" }}>

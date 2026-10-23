@@ -33,6 +33,12 @@ class User(db.Model):
     alert_last_sent = db.Column(db.DateTime)
     visa_reminder_sent = db.Column(db.String(20))  # "<expiry>:<days>" of the last reminder sent
     checklist = db.Column(db.JSON)             # arrival checklist: list of finished step ids
+    # Invites: this user's own link code (icom.ai.kr/?ref=<code>), the ref they
+    # signed up with (a friend's code or a campaign tag like "kakao-jbnu"), and
+    # the friend it belonged to.
+    invite_code = db.Column(db.String(24), unique=True, index=True)
+    signup_ref = db.Column(db.String(40), index=True)
+    referred_by_id = db.Column(db.Integer, index=True)
 
     def to_dict(self):
         return {
@@ -463,6 +469,16 @@ class ChatAnswer(db.Model):
             "content": self.content,
             "created_at": self.created_at.isoformat() + "Z",
         }
+
+
+class UserActivity(db.Model):
+    """One row per user per day they opened ICOM signed in: powers daily/weekly active users."""
+    __tablename__ = "user_activity"
+    __table_args__ = (db.UniqueConstraint("user_id", "day", name="uq_user_activity_day"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    day = db.Column(db.Date, nullable=False, index=True)
 
 
 class PageVisit(db.Model):

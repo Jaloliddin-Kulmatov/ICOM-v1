@@ -11,9 +11,11 @@ import MessageButton from "@/components/messages/message-button";
 import {
   ArrowLeft, Users, MessageSquare, Info, Globe, MapPin, Clock,
   Phone, Link as LinkIcon, Send, Loader2, CornerUpLeft, X, Lock,
-  ExternalLink, CheckCircle2, Crown, Settings,
+  ExternalLink, CheckCircle2, Crown, Settings, UserPlus, Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { rememberClubInvite, shareLink } from "@/lib/invite";
 import { formatRelativeTime } from "@/lib/utils";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
@@ -271,6 +273,25 @@ export default function CommunityDetailPage() {
   const [tab, setTab] = useState<"chat" | "members" | "about">("chat");
   const [joining, setJoining] = useState(false);
   const [showManage, setShowManage] = useState(false);
+  const [invited, setInvited] = useState(false);       // arrived through an invite link
+  const [inviteDone, setInviteDone] = useState("");
+
+  // An invite link (?ref=… or ?invited=1 after signing up) shows a "join" banner.
+  // Signed-out visitors come back here after creating an account.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("ref") || q.get("invited")) setInvited(true);
+  }, []);
+  useEffect(() => {
+    if (invited && !user) rememberClubInvite(clubId);
+  }, [invited, user, clubId]);
+
+  const inviteFriends = async () => {
+    const { data } = await api.get<{ code: string }>("/invites/me");
+    const link = `${window.location.origin}/community/${clubId}${data ? `?ref=${data.code}` : ""}`;
+    const r = await shareLink(link, `Join "${club?.name}" with me on ICOM:`);
+    if (r !== "failed") { setInviteDone(r === "copied" ? "Link copied" : "Shared"); setTimeout(() => setInviteDone(""), 2500); }
+  };
 
   // Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -457,6 +478,25 @@ export default function CommunityDetailPage() {
             Back to Community
           </Link>
 
+          {invited && !isApproved && !isPending && (
+            <div className="mb-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/8 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <UserPlus size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <p className="flex-1 text-sm text-foreground">
+                You&apos;ve been invited to join <strong>{club.name}</strong>
+                {user ? "." : ". Create a free ICOM account to join; you'll come right back here."}
+              </p>
+              {user ? (
+                <button onClick={handleJoin} disabled={joining}
+                  className="h-9 px-4 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-1.5">
+                  {joining && <Loader2 size={14} className="animate-spin" />} Join
+                </button>
+              ) : (
+                <Link href="/register" onClick={() => rememberClubInvite(clubId)}
+                  className="h-9 px-4 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 flex items-center">Sign up to join</Link>
+              )}
+            </div>
+          )}
+
           {/* ── Hero header ── */}
           {(() => {
             const coverUrl = club.cover_image || getClubCoverUrl(club);
@@ -488,6 +528,14 @@ export default function CommunityDetailPage() {
                         )}
                       </button>
                     )}
+                    {user && (
+                      <button
+                        onClick={inviteFriends}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-sm border border-white/15 text-xs text-white/90 hover:text-white hover:border-white/30 transition-all"
+                      >
+                        {inviteDone ? <><Check size={12} /> {inviteDone}</> : <><UserPlus size={12} /> Invite</>}
+                      </button>
+                    )}
                     {user && !club.is_creator && (
                       <button
                         onClick={handleJoin}
@@ -506,10 +554,11 @@ export default function CommunityDetailPage() {
                     )}
                     {!user && (
                       <Link
-                        href="/login?force=1"
+                        href={invited ? "/register" : "/login?force=1"}
+                        onClick={() => rememberClubInvite(clubId)}
                         className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-500 border border-indigo-400/30 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors backdrop-blur-sm"
                       >
-                        Sign in to Join
+                        {invited ? "Sign up to join" : "Sign in to Join"}
                       </Link>
                     )}
                   </div>
@@ -621,10 +670,11 @@ export default function CommunityDetailPage() {
                   )}
                   {!user && (
                     <Link
-                      href="/login?force=1"
+                      href={invited ? "/register" : "/login?force=1"}
+                      onClick={() => rememberClubInvite(clubId)}
                       className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
                     >
-                      Sign in to Join
+                      {invited ? "Sign up to join" : "Sign in to Join"}
                     </Link>
                   )}
                 </div>
