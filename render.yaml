@@ -40,6 +40,8 @@ services:
         sync: false
       - key: SARAMIN_API_KEY
         sync: false          # optional
+      - key: GOOGLE_CLIENT_ID
+        sync: false          # Google sign-in: the website's OAuth client ID (public); comma-separate to add app IDs
       - key: RESEND_API_KEY
         sync: false          # optional: job-alert emails
       - key: RESEND_FROM

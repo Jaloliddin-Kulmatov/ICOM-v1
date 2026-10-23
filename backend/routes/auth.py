@@ -153,6 +153,23 @@ def google_auth():
     if not access_token:
         return jsonify({"error": "Google access token is required."}), 400
 
+    # ── Check the token was issued to ICOM ────────────────────────────────────
+    # userinfo alone accepts a token from ANY Google app, so another site that
+    # got someone's token could sign in here as them. GOOGLE_CLIENT_ID may list
+    # several IDs (website, iOS, Android), separated by commas.
+    allowed = {c.strip() for c in os.getenv("GOOGLE_CLIENT_ID", "").split(",") if c.strip()}
+    if not allowed:
+        return jsonify({"error": "Google sign-in isn't set up yet. Use email and password."}), 503
+    try:
+        token_info = http_requests.get(
+            "https://oauth2.googleapis.com/tokeninfo", params={"access_token": access_token}, timeout=10,
+        )
+    except Exception:
+        return jsonify({"error": "Could not reach Google servers. Try again."}), 503
+    issued_to = token_info.json() if token_info.status_code == 200 else {}
+    if not ({issued_to.get("aud"), issued_to.get("azp")} & allowed):
+        return jsonify({"error": "Invalid or expired Google token."}), 401
+
     # ── Verify token with Google ──────────────────────────────────────────────
     try:
         resp = http_requests.get(
