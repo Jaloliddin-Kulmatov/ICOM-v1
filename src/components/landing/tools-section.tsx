@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import {
-  ArrowRight, Bell, Briefcase, Check, Compass, FileText, ListChecks, MessageSquare, Sparkles, Users,
+  ArrowRight, Bell, Briefcase, Calculator, Check, FileText, ListChecks, MessageSquare, Sparkles, Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -153,12 +153,14 @@ function ClubsPreview() {
   );
 }
 
-function GuidesPreview() {
-  const topics = ["Visa", "Banking", "Housing", "Insurance", "Transport", "Korean"];
+function StudyPreview() {
   return (
-    <Box className="flex flex-wrap gap-1.5">
-      {topics.map((t) => (
-        <span key={t} className="text-[11px] font-medium rounded-full border border-border bg-card px-2.5 py-1 text-foreground">{t}</span>
+    <Box className="grid grid-cols-3 gap-2 text-center">
+      {[["4.12", "GPA / 4.5", "text-fuchsia-600 dark:text-fuchsia-400"], ["13:00", "Next class", "text-blue-600 dark:text-blue-400"], ["2", "Due this week", "text-orange-600 dark:text-orange-400"]].map(([v, l, c]) => (
+        <div key={l} className="rounded-lg bg-card border border-border py-2">
+          <p className={`text-base font-extrabold tabular-nums ${c}`}>{v}</p>
+          <p className="text-[10px] text-muted-foreground">{l}</p>
+        </div>
       ))}
     </Box>
   );
@@ -176,11 +178,11 @@ const TOOLS: Tool[] = [
   { title: "Ask students", href: "/chat", icon: MessageSquare, tile: "bg-pink-500", preview: <AskPreview />,
     text: "Ask everyone, or only students at your university." },
   { title: "Arrival checklist", href: "/guide", icon: ListChecks, tile: "bg-teal-500", preview: <ChecklistPreview />,
-    text: "Everything to do in your first weeks, in order." },
+    text: "Everything to do in your first weeks, in order, plus guides for daily life." },
   { title: "Clubs", href: "/community", icon: Users, tile: "bg-sky-500", preview: <ClubsPreview />,
     text: "Join university clubs and see their next events." },
-  { title: "Life in Korea guides", href: "/guide", icon: Compass, tile: "bg-violet-500", preview: <GuidesPreview />,
-    text: "Simple step-by-step guides for daily life." },
+  { title: "Study tools", href: "/dashboard/tools", icon: Calculator, tile: "bg-fuchsia-500", preview: <StudyPreview />,
+    text: "Timetable, GPA on the Korean 4.5 scale, deadlines, attendance and a focus timer." },
 ];
 
 export default function ToolsSection() {

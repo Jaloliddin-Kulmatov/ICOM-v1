@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import NextSteps from "@/components/dashboard/next-steps";
+import StudyToolsGrid from "@/components/tools/study-tools-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -39,16 +40,6 @@ interface MyClub {
 
 // Category keys and labels: src/lib/club-categories.ts
 const CLUB_CATEGORIES = CATEGORIES.map((c) => c.key);
-
-const quickLinks = [
-  { href: "/guide",      icon: "🗺️", label: "Life Guide" },
-  { href: "/guide/visa", icon: "🛂", label: "Visa Info" },
-  { href: "/community",    icon: "👥", label: "Community" },
-  { href: "/internships",         icon: "💼", label: "Jobs" },
-  { href: "/dashboard/cv", icon: "📄", label: "My CV" },
-  { href: "/dashboard/messages", icon: "💬", label: "Messages" },
-  { href: "/dashboard/ai", icon: "✨", label: "AI Chat" },
-];
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -264,19 +255,19 @@ export default function DashboardPage() {
         </aside>
       </div>
 
-      {/* ── Quick actions ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {quickLinks.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all text-center"
-          >
-            <span className="text-2xl">{item.icon}</span>
-            <span className="text-[11px] font-medium text-foreground">{item.label}</span>
+      {/* ── Study tools ── */}
+      <section className="mt-2">
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Study tools</h2>
+            <p className="text-xs text-muted-foreground">Timetable, GPA, deadlines, attendance and focus, saved on this device.</p>
+          </div>
+          <Link href="/dashboard/tools" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+            All tools <ArrowRight size={12} />
           </Link>
-        ))}
-      </div>
+        </div>
+        <StudyToolsGrid compact />
+      </section>
 
       {/* ══════════ EDIT CLUB MODAL ══════════ */}
       {editingClub && (

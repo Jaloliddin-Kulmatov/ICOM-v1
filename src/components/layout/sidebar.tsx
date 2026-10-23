@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  Calculator,
   Users,
   Briefcase,
   Globe,
@@ -44,6 +45,7 @@ const sidebarSections = [
       { href: "/dashboard/ai", icon: Sparkles, label: "AI Assistant", badge: "AI" },
       { href: "/dashboard/messages", icon: MessageSquare, label: "Messages" },
       { href: "/dashboard/cv", icon: FileText, label: "My CV" },
+      { href: "/dashboard/tools", icon: Calculator, label: "Study tools" },
       { href: "/dashboard/bookmarks", icon: Bookmark, label: "Saved" },
     ],
   },
