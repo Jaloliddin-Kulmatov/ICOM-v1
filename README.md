@@ -1,8 +1,8 @@
 <img width="1428" height="779" alt="Screenshot 2026-05-20 at 6 34 54 PM" src="https://github.com/user-attachments/assets/1bbfad44-fc0a-410a-b694-5db67b79a599" />
 
+# ICOM — International Community in Korea
 
-
-# ICOM — International Community in Korea, https://icom.ai.kr/
+**Live:** [icom.ai.kr](https://icom.ai.kr) (also at [icom-v1.vercel.app](https://icom-v1.vercel.app)) · **Code:** [github.com/Jaloliddin-Kulmatov/ICOM-v1](https://github.com/Jaloliddin-Kulmatov/ICOM-v1)
 
 > The all-in-one platform for international students living and studying in Korea.
 > Community, internships, visa guides, housing, banking, and an AI assistant — in one place.
