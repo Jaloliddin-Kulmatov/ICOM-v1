@@ -42,6 +42,10 @@ services:
         sync: false          # optional
       - key: GOOGLE_CLIENT_ID
         sync: false          # Google sign-in: the website's OAuth client ID (public); comma-separate to add app IDs
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false          # daily opportunities post: bot from @BotFather, admin of the channel
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false          # e.g. @icomkorea
       - key: RESEND_API_KEY
         sync: false          # optional: job-alert emails
       - key: RESEND_FROM

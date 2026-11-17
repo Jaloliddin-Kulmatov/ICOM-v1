@@ -26,7 +26,7 @@ import { useDmUnread } from "@/hooks/use-dm-unread";
 const desktopNavLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/community", label: "Clubs", icon: Users },
-  { href: "/internships", label: "Internships", icon: Briefcase },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
   { href: "/guide", label: "Guide", icon: Compass },
 ];
 

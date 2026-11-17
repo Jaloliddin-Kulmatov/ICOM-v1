@@ -29,7 +29,10 @@ def _send(to, subject, html, text) -> bool:
 
 
 def matching_jobs(user: User, since: datetime) -> list:
-    rows = (Job.query.filter(Job.is_active.is_(True), Job.created_at > since)
+    # Job alerts are about jobs: scholarships, contests and programs go out in the social posts instead.
+    not_jobs = ("scholarship", "contest", "program")
+    rows = (Job.query.filter(Job.is_active.is_(True), Job.created_at > since,
+                             db.or_(Job.job_type.is_(None), Job.job_type.notin_(not_jobs)))
             .order_by(Job.created_at.desc()).limit(300).all())
     out = []
     for j in rows:
@@ -64,7 +67,7 @@ def send_job_alerts(now: datetime | None = None) -> dict:
         html = (f'<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto">'
                 f'<h2 style="color:#16213a">{len(jobs)} new internship{"s" if len(jobs) != 1 else ""} for you</h2>'
                 f'<p style="color:#5c6b80">Your alert: {_html.escape(what)}</p><ul style="padding-left:18px">{items}</ul>'
-                + (f'<p><a href="{site}/internships">See {more} more on ICOM</a></p>' if more > 0 else "")
+                + (f'<p><a href="{site}/opportunities">See {more} more on ICOM</a></p>' if more > 0 else "")
                 + f'<p style="font-size:12px;color:#5c6b80">Change or stop alerts on the Internships page.</p></div>')
         text = "\n".join(f"- {j.title} ({j.company}): {site}/internships/{j.id}" for j in jobs[:MAX_JOBS_PER_EMAIL])
         if _send(user.email, f"ICOM: {len(jobs)} new internship{'s' if len(jobs) != 1 else ''} for you", html, text):

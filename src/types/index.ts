@@ -41,7 +41,7 @@ export interface Job {
   company: string;
   companyLogo?: string;
   location: string;
-  type: "part-time" | "internship" | "research" | "full-time" | "remote";
+  type: "part-time" | "internship" | "research" | "full-time" | "remote" | "scholarship" | "contest" | "program";
   salary?: string;
   description: string;
   requirements: string[];

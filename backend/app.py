@@ -314,6 +314,7 @@ def _run_lightweight_migrations():
         ("users", "invite_code", "VARCHAR(24)"),
         ("users", "signup_ref", "VARCHAR(40)"),
         ("users", "referred_by_id", "INTEGER"),
+        ("jobs", "posted_at", "TIMESTAMP"),
         ("chat_answers", "is_accepted", "BOOLEAN DEFAULT FALSE"),
     ):
         try:
@@ -1122,6 +1123,17 @@ def _start_scheduler(flask_app):
         hour=1,
         minute=0,
         id="daily_emails",
+        replace_existing=True,
+        misfire_grace_time=6 * 3600,
+    )
+    # 09:00 KST: the daily opportunities post on the ICOM Telegram channel.
+    import social
+    scheduler.add_job(
+        lambda: social.run_scheduled(flask_app),
+        trigger="cron",
+        hour=0,
+        minute=0,
+        id="social_post",
         replace_existing=True,
         misfire_grace_time=6 * 3600,
     )

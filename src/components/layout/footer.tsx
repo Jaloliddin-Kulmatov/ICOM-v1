@@ -24,7 +24,7 @@ function TelegramIcon({ size = 14 }: { size?: number }) {
 const footerLinks = {
   Platform: [
     { label: "Clubs", href: "/community" },
-    { label: "Jobs & Internships", href: "/internships" },
+    { label: "Opportunities", href: "/opportunities" },
     { label: "Chat / Q&A", href: "/chat" },
     { label: "Guide", href: "/guide" },
     { label: "AI Assistant", href: "/dashboard/ai" },

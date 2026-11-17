@@ -32,9 +32,9 @@ const STATIC_PAGES: Result[] = [
   },
   {
     type: "page",
-    label: "Jobs & Internships",
-    sub: "Find visa-compatible opportunities",
-    href: "/internships",
+    label: "Opportunities",
+    sub: "Internships, part-time jobs, scholarships and contests",
+    href: "/opportunities",
     icon: <Briefcase size={14} className="text-violet-500 dark:text-violet-400" />,
   },
   {

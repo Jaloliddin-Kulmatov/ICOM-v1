@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import type { Job as JobType } from "@/types";
+import { kindInfo, kindOf } from "@/lib/opportunity-kinds";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -23,6 +24,9 @@ const typeConfig: Record<string, { label: string; variant: "default" | "success"
   research:     { label: "Research",   variant: "violet"  },
   "full-time":  { label: "Full-time",  variant: "success" },
   remote:       { label: "Remote",     variant: "warning" },
+  scholarship:  { label: "Scholarship", variant: "violet" },
+  contest:      { label: "Contest",    variant: "warning" },
+  program:      { label: "Program",    variant: "success" },
 };
 
 interface JobDetail {
@@ -141,8 +145,8 @@ export default function JobDetailPage() {
           ))}
         </div>
 
-        <Link href="/internships" className="text-sm px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors inline-block">
-          ← Back to ICOM Jobs
+        <Link href="/opportunities" className="text-sm px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors inline-block">
+          ← Back to opportunities
         </Link>
       </div>
     </div>
@@ -150,7 +154,7 @@ export default function JobDetailPage() {
 
   const typeInfo = typeConfig[job.type] ?? { label: job.type, variant: "default" as const };
   const isPartTime = job.type === "part-time";
-  const backHref = isPartTime ? "/internships?kind=part-time" : "/internships";
+  const backHref = `/opportunities?kind=${kindOf(job.type)}`;
 
   // Phones get the system share sheet (KakaoTalk, Telegram…); computers copy the link.
   const shareJob = async () => {
@@ -171,7 +175,7 @@ export default function JobDetailPage() {
         <div className="border-b border-border bg-gradient-to-b from-indigo-500/5 to-transparent">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
             <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 transition-colors">
-              <ArrowLeft size={13} /> Back to Jobs
+              <ArrowLeft size={13} /> Back to {kindInfo(job.type).many}
             </Link>
 
             <div className="flex items-start gap-4">
@@ -433,7 +437,7 @@ export default function JobDetailPage() {
             </div>
 
             <Link href={backHref} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors justify-center">
-              <ExternalLink size={11} /> Browse more jobs
+              <ExternalLink size={11} /> Browse more opportunities
             </Link>
           </div>
         </div>

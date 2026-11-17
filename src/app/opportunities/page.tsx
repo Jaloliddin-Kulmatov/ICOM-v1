@@ -15,6 +15,7 @@ import { Search, SlidersHorizontal, Sparkles, Clock, Plus, ShieldCheck, Trending
 import { JOB_CATEGORIES, UNIVERSITIES } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 import type { Job } from "@/types";
+import { KINDS, kindOf, kindInfo, type Kind } from "@/lib/opportunity-kinds";
 
 // Same names as the job filters, so alert emails match what the filters show.
 const ALERT_FIELDS = ["All Fields", ...JOB_FIELDS];
@@ -93,12 +94,16 @@ export default function JobsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [everyJob, setEveryJob] = useState<Job[]>([]);
-  // Internships or part-time jobs (알바); lives in the URL like the other filters.
-  const [kindParam, setKind] = useQueryState("kind", "internship");
-  const partTime = kindParam === "part-time";
-  const allJobs = useMemo(() => everyJob.filter((j) => (j.type === "part-time") === partTime), [everyJob, partTime]);
-  const noun = partTime ? "part-time jobs" : "internships";
-  const nounFor = (n: number) => (n === 1 ? (partTime ? "part-time job" : "internship") : noun);
+  // Which kind of opportunity (or all of them); lives in the URL like the other filters.
+  const [kindParam, setKind] = useQueryState("kind", "all");
+  const kind: Kind | "all" = kindParam === "all" ? "all" : kindOf(kindParam);
+  const partTime = kind === "part-time";
+  const jobLike = kind === "internship" || kind === "part-time";   // field filters only fit jobs
+  const allJobs = useMemo(() => (kind === "all" ? everyJob : everyJob.filter((j) => kindOf(j.type) === kind)), [everyJob, kind]);
+  const info = kind === "all" ? null : kindInfo(kind);
+  const noun = info ? info.many : "opportunities";
+  const nounFor = (n: number) => (n === 1 ? (info ? info.one : "opportunity") : noun);
+  const shareHref = `/internships/share?kind=${kind === "all" || kind === "internship" ? "part-time" : kind}`;
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [alertsBusy, setAlertsBusy] = useState(false);
@@ -146,7 +151,7 @@ export default function JobsPage() {
             insights?: Job["insights"];
           }) => ({
             id: `db-${j.id}`, title: j.title, company: j.company, location: j.location || "",
-            type: (j.type === "part-time" ? "part-time" : "internship") as Job["type"], salary: j.salary || "", description: j.description || "",
+            type: kindOf(j.type), salary: j.salary || "", description: j.description || "",
             requirements: j.requirements, visaCompatible: j.visa_compatible,
             // Use the real creation timestamp from the DB so "Posted X ago"
             // shows the actual age instead of "just now" every render.
@@ -186,11 +191,13 @@ export default function JobsPage() {
       .catch(() => { /* harmless */ });
   }, [user]);
 
-  // Top hiring companies — counted from currently-active jobs. Falls back
-  // to nothing when the DB is empty (the sidebar block hides itself).
+  // Top hiring companies — counted from currently-active jobs (not scholarship
+  // or contest organizers). Falls back to nothing when the DB is empty (the
+  // sidebar block hides itself).
   const topCompanies = useMemo(() => {
     const tallies = new Map<string, number>();
     for (const j of allJobs) {
+      if (!["internship", "part-time"].includes(kindOf(j.type))) continue;
       const name = (j.company || "").trim();
       if (!name) continue;
       tallies.set(name, (tallies.get(name) || 0) + 1);
@@ -327,34 +334,35 @@ export default function JobsPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div role="tablist" aria-label="Job type" className="inline-flex p-1 mb-4 rounded-xl border border-border bg-card">
-                  {([["internship", "Internships"], ["part-time", "Part-time jobs"]] as const).map(([k, label]) => (
-                    <button key={k} role="tab" aria-selected={(k === "part-time") === partTime}
-                      onClick={() => { setKind(k); setActiveCategory("All"); }}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        (k === "part-time") === partTime ? "bg-indigo-600 text-white" : "text-muted-foreground hover:text-foreground"}`}>
-                      {label}
-                      <span className="ml-1.5 tabular-nums opacity-80">{everyJob.filter((j) => (j.type === "part-time") === (k === "part-time")).length || ""}</span>
-                    </button>
-                  ))}
+                <div role="tablist" aria-label="Kind of opportunity" className="flex flex-wrap gap-1.5 mb-4">
+                  {([["all", "All"], ...KINDS.map((k) => [k.key, k.label])] as [string, string][]).map(([k, label]) => {
+                    const n = k === "all" ? everyJob.length : everyJob.filter((j) => kindOf(j.type) === k).length;
+                    const on = kind === k;
+                    return (
+                      <button key={k} role="tab" aria-selected={on}
+                        onClick={() => { setKind(k); setActiveCategory("All"); }}
+                        className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          on ? "bg-indigo-600 text-white border-indigo-600" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}>
+                        {label}
+                        {n > 0 && <span className="ml-1.5 tabular-nums opacity-80">{n}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">{partTime ? "Part-time jobs" : "Internships"}</h1>
+                <h1 className="text-3xl font-bold text-foreground mb-2">{info ? info.many[0].toUpperCase() + info.many.slice(1) : "Opportunities"}</h1>
                 <p className="text-muted-foreground text-sm">
-                  {partTime
-                    ? "Part-time jobs (알바) shared by students and checked by the ICOM team"
-                    : "Real internship opportunities at top companies — curated for international students"}
+                  {info ? info.intro : "Internships, part-time jobs, scholarships, contests and programs open to international students"}
                 </p>
               </div>
               <div className="hidden sm:flex items-center gap-3">
                 <div className="text-center">
                   <div className="text-xl font-bold gradient-text-primary">{allJobs.length || "—"}</div>
-                  <div className="text-xs text-muted-foreground">{partTime ? "Part-time jobs" : "Internships"}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{noun}</div>
                 </div>
                 <div className="h-8 w-px bg-border" />
-                <div className="text-center">
-                  <div className="text-xl font-bold text-emerald-400">Real</div>
-                  <div className="text-xs text-muted-foreground">Apply links</div>
-                </div>
+                <Link href={shareHref}>
+                  <Button size="sm" variant="outline" className="gap-1.5"><Plus size={14} /> Share an opportunity</Button>
+                </Link>
               </div>
             </div>
 
@@ -365,10 +373,10 @@ export default function JobsPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search role, company, skill or city"
+                    placeholder="Search title, organization, skill or city"
                     icon={<Search size={15} />}
                     className="h-11"
-                    aria-label="Search internships"
+                    aria-label="Search opportunities"
                   />
                 </div>
                 <Button
@@ -388,8 +396,8 @@ export default function JobsPage() {
                 </Button>
               </div>
 
-              {/* Field — the main way students browse */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1" role="group" aria-label="Field">
+              {/* Field — the main way students browse jobs */}
+              {jobLike && <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1" role="group" aria-label="Field">
                 {JOB_CATEGORIES.map((cat) => {
                   const n = cat === "All" ? categoryCounts.total : categoryCounts.counts.get(cat) || 0;
                   const on = activeCategory === cat;
@@ -410,7 +418,7 @@ export default function JobsPage() {
                     </button>
                   );
                 })}
-              </div>
+              </div>}
 
               {/* Secondary filters — collapsible on phones, always visible on desktop */}
               <div id="internship-filters" className={`${showFilters ? "flex" : "hidden"} md:flex flex-wrap items-center gap-2`}>
@@ -550,7 +558,7 @@ export default function JobsPage() {
                   <p className="text-sm font-medium text-foreground">
                     All listings include <span className="text-indigo-400 font-bold">real apply links</span>
                   </p>
-                  <p className="text-xs text-muted-foreground">Click Apply ↗ to go directly to the company's official careers page</p>
+                  <p className="text-xs text-muted-foreground">Click Apply ↗ to go straight to the official page of the company or organizer</p>
                 </div>
               </div>
 
@@ -585,7 +593,7 @@ export default function JobsPage() {
                     On a D-2 or D-4 visa you need a part-time work permit (시간제취업허가) before you start.{" "}
                     <Link href="/guide/visa" className="font-semibold text-indigo-600 hover:underline">How to get one</Link>
                   </p>
-                  <Link href="/internships/share" className="shrink-0">
+                  <Link href={shareHref} className="shrink-0">
                     <Button size="sm" className="gap-1.5"><Plus size={14} /> Share a part-time job</Button>
                   </Link>
                 </div>
@@ -596,12 +604,15 @@ export default function JobsPage() {
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="h-40 rounded-2xl border border-border bg-card animate-pulse" />
                   ))
-                ) : partTime && allJobs.length === 0 ? (
+                ) : kind !== "internship" && kind !== "all" && allJobs.length === 0 ? (
                   <div className="py-16 px-6 text-center rounded-2xl border border-dashed border-border">
                     <Clock size={22} className="mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-sm font-semibold text-foreground">No part-time jobs yet</p>
-                    <p className="text-xs text-muted-foreground mt-1 mb-4">Know a café, shop or restaurant that hires international students? Share it and help others.</p>
-                    <Link href="/internships/share"><Button size="sm" className="gap-1.5"><Plus size={14} /> Share a part-time job</Button></Link>
+                    <p className="text-sm font-semibold text-foreground">No {noun} yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">
+                      {partTime ? "Know a café, shop or restaurant that hires international students? Share it and help others."
+                        : `Know about ${info!.a} for international students? Share it and the ICOM team will add it.`}
+                    </p>
+                    <Link href={shareHref}><Button size="sm" className="gap-1.5"><Plus size={14} /> Share {info!.a}</Button></Link>
                   </div>
                 ) : filteredJobs.length === 0 ? (
                   <div className="py-16 px-6 text-center rounded-2xl border border-dashed border-border">
@@ -686,8 +697,8 @@ export default function JobsPage() {
                 </div>
               )}
 
-              {/* Salary guide */}
-              <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
+              {/* Salary guide (jobs only) */}
+              {(kind === "all" || jobLike) && <div className="p-5 rounded-2xl border border-white/8 bg-white/3">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Avg. Salary Guide</h3>
                 <div className="space-y-2">
                   {[
@@ -705,7 +716,7 @@ export default function JobsPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
         </div>

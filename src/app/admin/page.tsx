@@ -1,6 +1,7 @@
 "use client";
 
 import PendingJobsReview from "@/components/admin/pending-jobs";
+import SocialPanel from "@/components/admin/social-panel";
 import { CATEGORIES, categoryInfo, categoryKey } from "@/lib/club-categories";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -84,7 +85,7 @@ interface FeedbackItem {
 
 // Category keys and labels: src/lib/club-categories.ts
 const CLUB_CATEGORIES = CATEGORIES.map((c) => c.key);
-const JOB_TYPES = ["part-time", "internship", "research", "full-time", "volunteer"];
+const JOB_TYPES = ["part-time", "internship", "scholarship", "contest", "program", "research", "full-time", "volunteer"];
 
 const AVATAR_COLORS = [
   ["bg-indigo-500", "text-white"], ["bg-violet-500", "text-white"],
@@ -644,6 +645,7 @@ export default function AdminPage() {
         {!loading && tab === "jobs" && (
           <div className="space-y-6">
             <PendingJobsReview onChanged={() => apiCallRetry("GET", "/admin/jobs?full=1").then(d => setJobs((d.jobs as Job[]) || [])).catch(() => {})} />
+            <SocialPanel />
             {/* ── Auto-scrape internships from Wanted.co.kr ── */}
             <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 overflow-hidden">
               <div className="p-4 sm:p-5 flex items-center gap-4">

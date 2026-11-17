@@ -878,7 +878,7 @@ def _send_alert_welcome_async(flask_app, user_id, to_email, name, field, locatio
                     <li><b>Location:</b> {location}</li>
                   </ul>
                   <p>Browse all current openings any time at
-                     <a href="https://icom.ai.kr/internships">icom.ai.kr/internships</a>.</p>
+                     <a href="https://icom.ai.kr/opportunities">icom.ai.kr/opportunities</a>.</p>
                   <p style="color:#888;font-size:13px">
                     Don&#39;t want these emails?
                     <a href="{unsub}" style="color:#888">Turn off alerts</a>.
@@ -888,7 +888,7 @@ def _send_alert_welcome_async(flask_app, user_id, to_email, name, field, locatio
                 text = (
                     f"Hi {safe_name},\n\n"
                     f"Internship alerts are ON.\nField: {field}\nLocation: {location}\n\n"
-                    "See openings at https://icom.ai.kr/internships\n\n"
+                    "See openings at https://icom.ai.kr/opportunities\n\n"
                     f"Turn off alerts: {unsub}\n\n— ICOM Team"
                 )
                 _send_email(to_email, subject, html, text)
@@ -907,7 +907,7 @@ def unsubscribe_alerts():
     token = request.args.get("token", "")
     s = URLSafeSerializer(os.environ.get("SECRET_KEY", "dev-secret-change-me"), salt="alert-unsub")
     page = ("<html><body style='font-family:Arial;text-align:center;padding:60px'>"
-            "<h2>{msg}</h2><p><a href='https://icom.ai.kr/internships'>Back to ICOM</a></p>"
+            "<h2>{msg}</h2><p><a href='https://icom.ai.kr/opportunities'>Back to ICOM</a></p>"
             "</body></html>")
     try:
         data = s.loads(token)
@@ -1402,13 +1402,55 @@ def get_growth():
     return jsonify(growth_stats()), 200
 
 
-# ── Part-time jobs shared by students ────────────────────────────────────────
-# Signed-in students can share a part-time job (알바) they know about. It stays
-# hidden (is_active=False, review_status="pending") until an admin approves it.
+# ── Social media: the daily opportunities post (social.py) ─────────────────
+
+@admin_bp.route("/social", methods=["GET"])
+@jwt_required()
+def social_status():
+    """Is Telegram connected, what the next post would say, and recent posts."""
+    user, err = _require_admin()
+    if err:
+        return err
+    import social
+    from models import SocialPost
+    items = social.pick_items()
+    history = SocialPost.query.order_by(SocialPost.created_at.desc()).limit(10).all()
+    return jsonify({
+        "telegram_configured": social.telegram_configured(),
+        "next": {"count": len(items), "text": social.build_text(items) if items else ""},
+        "history": [p.to_dict() for p in history],
+    }), 200
+
+
+@admin_bp.route("/social/post-now", methods=["POST"])
+@jwt_required()
+def social_post_now():
+    user, err = _require_admin()
+    if err:
+        return err
+    import social
+    return jsonify(social.run(force=True)), 200
+
+
+@admin_bp.route("/social/run", methods=["POST"])
+def social_run():
+    """Daily trigger from GitHub Actions (X-Scraper-Key), in case the server slept through 09:00."""
+    if not _scraper_authorized():
+        return jsonify({"error": "Unauthorized"}), 401
+    import social
+    return jsonify(social.run()), 200
+
+
+# ── Opportunities shared by students ─────────────────────────────────────────
+# Signed-in students can share a part-time job (알바), scholarship, contest or
+# program they know about. It stays hidden (is_active=False,
+# review_status="pending") until an admin approves it.
 
 PART_TIME = "part-time"
+SHAREABLE_KINDS = ("part-time", "scholarship", "contest", "program")
+KIND_TAGS = {"part-time": "Part-time", "scholarship": "Scholarship", "contest": "Contest", "program": "Program"}
 _SUBMIT_LIMITS = {"title": 120, "company": 100, "location": 60, "pay": 60, "schedule": 120,
-                  "korean": 40, "contact": 300, "description": 2000}
+                  "korean": 40, "contact": 300, "description": 2000, "deadline": 10, "eligibility": 120}
 MAX_PENDING_PER_USER = 3
 
 
@@ -1418,32 +1460,41 @@ def submit_part_time_job():
     from routes.chat import _is_safe
     user = User.query.get_or_404(int(get_jwt_identity()))
     data = request.get_json(silent=True) or {}
+    kind = (data.get("kind") or PART_TIME).strip().lower()
+    if kind not in SHAREABLE_KINDS:
+        return jsonify({"error": "Choose part-time job, scholarship, contest or program."}), 400
     f = {k: re.sub(r"[ \t]+", " ", str(data.get(k) or "")).strip()[:n] for k, n in _SUBMIT_LIMITS.items()}
 
-    missing = [label for key, label in (("title", "job title"), ("company", "place"), ("location", "city"),
-                                       ("pay", "pay"), ("contact", "how to apply")) if not f[key]]
+    required = (("title", "title"), ("company", "who offers it"), ("contact", "how to apply"))
+    if kind == PART_TIME:
+        required = (("title", "job title"), ("company", "place"), ("location", "city"),
+                    ("pay", "pay"), ("contact", "how to apply"))
+    missing = [label for key, label in required if not f[key]]
     if missing:
         return jsonify({"error": f"Please fill in: {', '.join(missing)}."}), 400
+    if f["deadline"] and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", f["deadline"]):
+        return jsonify({"error": "Use the date picker for the deadline."}), 400
     ok, _ = _is_safe(*f.values())
     if not ok:
         return jsonify({"error": "This post can't be shared because it breaks the community rules."}), 400
     pending = Job.query.filter_by(created_by=user.id, review_status="pending").count()
     if pending >= MAX_PENDING_PER_USER:
-        return jsonify({"error": "You already have 3 jobs waiting for review. Please wait for an admin to check them."}), 429
+        return jsonify({"error": "You already have 3 posts waiting for review. Please wait for an admin to check them."}), 429
 
     contact = f["contact"]
     is_link = contact.startswith(("http://", "https://"))
     facts = [f"Schedule: {f['schedule']}" if f["schedule"] else "",
              f"Korean needed: {f['korean']}" if f["korean"] else "",
+             f"Who can apply: {f['eligibility']}" if f["eligibility"] else "",
              "" if is_link else f"How to apply: {contact}"]
     description = "\n".join(x for x in facts if x)
     if f["description"]:
         description = f"{description}\n\n{f['description']}".strip()
     job = Job(
-        title=f["title"], company=f["company"], location=f["location"], job_type=PART_TIME,
-        salary=f["pay"], description=description,
+        title=f["title"], company=f["company"], location=f["location"], job_type=kind,
+        salary=f["pay"], description=description, deadline=f["deadline"],
         visa_compatible="D-2, D-4", apply_link=contact if is_link else "",
-        tags="Part-time", created_by=user.id,
+        tags=KIND_TAGS[kind], created_by=user.id,
         is_active=False, review_status="pending",
     )
     db.session.add(job)
@@ -1487,7 +1538,8 @@ def review_job(job_id):
     if action == "approve" and job.created_by and job.created_by != user.id:
         try:
             from push import notify_user
-            notify_user(job.created_by, "Your part-time job is live",
+            what = "part-time job" if job.job_type == PART_TIME else (job.job_type or "post")
+            notify_user(job.created_by, f"Your {what} is live",
                         f"{job.title} is now on ICOM. Thanks for sharing!", {"url": f"/job/{job.id}"})
         except Exception as e:   # never fail the review because of push
             print(f"[push] review notify failed: {e}")

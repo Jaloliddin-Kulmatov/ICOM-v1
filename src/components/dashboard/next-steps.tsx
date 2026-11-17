@@ -92,7 +92,7 @@ export default function NextSteps() {
               ? `Sorted for ${[user.job_field, user.city].filter(Boolean).join(" in ") || "your Korean level"}.`
               : "Tell us your field, city and Korean level to see the best matches first."}
           </p>
-          <Link href={profileSet ? "/internships?sort=for-you" : "/dashboard/profile"}
+          <Link href={profileSet ? "/opportunities?kind=internship&sort=for-you" : "/dashboard/profile"}
             className="mt-3 inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">
             {profileSet ? "See matches" : "Set up matching"} <ChevronRight size={13} />
           </Link>

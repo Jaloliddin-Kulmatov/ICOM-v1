@@ -8,12 +8,16 @@ const nextConfig = {
       { protocol: "https", hostname: "api.dicebear.com" },
     ],
   },
-  // The internships page moved from /jobs to /internships. Redirect old links
-  // (already-sent alert emails, bookmarks, search engines) to the new URL.
+  // The job list moved from /jobs to /internships, then became /opportunities
+  // (internships, part-time, scholarships, contests, programs). Old links
+  // (alert emails, bookmarks, search engines) still land on the right tab.
+  // Single postings keep their /internships/:id address.
   async redirects() {
     return [
-      { source: "/jobs", destination: "/internships", permanent: true },
+      { source: "/jobs", destination: "/opportunities?kind=internship", permanent: true },
       { source: "/jobs/:id", destination: "/internships/:id", permanent: true },
+      { source: "/internships", has: [{ type: "query", key: "kind" }], destination: "/opportunities", permanent: true },
+      { source: "/internships", destination: "/opportunities?kind=internship", permanent: true },
       // Support and Daily Life were merged into one Guide section.
       { source: "/support", destination: "/guide", permanent: true },
       { source: "/support/:path*", destination: "/guide/:path*", permanent: true },

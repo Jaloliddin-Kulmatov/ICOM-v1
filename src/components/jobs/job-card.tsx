@@ -7,6 +7,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import { Bookmarks } from "@/lib/bookmarks";
 import { jobCategory, jobCity, daysLeft } from "@/lib/job-filters";
 import type { Job } from "@/types";
+import { kindInfo, kindOf } from "@/lib/opportunity-kinds";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -58,6 +59,7 @@ export default function JobCard({ job, featured = false, match }: JobCardProps) 
   const [applies, setApplies] = useState(job.applyCount ?? job.applications ?? 0);
   const city = jobCity(job);
   const field = jobCategory(job);
+  const kind = kindInfo(job.type);
 
   return (
     <article
@@ -110,6 +112,9 @@ export default function JobCard({ job, featured = false, match }: JobCardProps) 
 
       {/* Key facts, in the order students decide on them */}
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {kindOf(job.type) !== "internship" && (
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${kind.chip}`}>{kind.label.replace(/s$/, "")}</span>
+        )}
         {match && match.length > 0 && (
           <span className="chip-good" title="Matches the field and city in your profile">
             <Sparkles size={11} /> Matches you: {match.join(" · ")}
@@ -168,7 +173,7 @@ export default function JobCard({ job, featured = false, match }: JobCardProps) 
             Apply <ArrowUpRight size={14} />
           </a>
         ) : (
-          <span className="text-xs text-muted-foreground">Apply link coming soon</span>
+          <span className="text-xs text-muted-foreground">{kindOf(job.type) === "part-time" ? "How to apply is in the details" : "Apply link coming soon"}</span>
         )}
       </div>
     </article>

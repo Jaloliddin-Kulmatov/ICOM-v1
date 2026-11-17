@@ -330,6 +330,8 @@ class Job(db.Model):
     closed_at = db.Column(db.DateTime)
     # Part-time jobs shared by students wait for an admin: pending | approved | rejected.
     review_status = db.Column(db.String(20), default="approved")
+    # When this posting went out in the daily social media post (social.py).
+    posted_at = db.Column(db.DateTime)
 
     def to_dict(self, list_view=False):
         # list_view trims the heavy description/requirements text so the list
@@ -469,6 +471,23 @@ class ChatAnswer(db.Model):
             "content": self.content,
             "created_at": self.created_at.isoformat() + "Z",
         }
+
+
+class SocialPost(db.Model):
+    """One automatic post to a social platform (the daily opportunities digest)."""
+    __tablename__ = "social_posts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    platform = db.Column(db.String(20), nullable=False)      # "telegram"
+    text = db.Column(db.Text, nullable=False)
+    job_ids = db.Column(db.JSON)
+    status = db.Column(db.String(20), nullable=False)        # posted | failed
+    error = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {"id": self.id, "platform": self.platform, "text": self.text, "job_ids": self.job_ids or [],
+                "status": self.status, "error": self.error or "", "created_at": self.created_at.isoformat() + "Z"}
 
 
 class UserActivity(db.Model):

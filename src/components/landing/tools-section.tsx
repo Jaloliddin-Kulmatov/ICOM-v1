@@ -73,7 +73,7 @@ function JobsPreview() {
   const jobs = [
     { t: "Marketing intern", m: "Seoul · Internship", c: "bg-blue-500" },
     { t: "Café staff (weekends)", m: "Jeonju · ₩10,500/h", c: "bg-emerald-500" },
-    { t: "Research assistant", m: "JBNU · D-2 OK", c: "bg-violet-500" },
+    { t: "International student scholarship", m: "Scholarship · 5 days left", c: "bg-fuchsia-500" },
   ];
   return (
     <Box className="space-y-2.5">
@@ -171,8 +171,8 @@ const TOOLS: Tool[] = [
     text: "Turn your CV into a Korean 이력서 in the format companies expect, then download it as Word." },
   { title: "Visa reminders", href: "/dashboard/profile", icon: Bell, tile: "bg-amber-500", preview: <VisaPreview />,
     text: "Add your visa end date. We remind you 90, 60, 30 and 7 days before." },
-  { title: "Internships & part-time", href: "/internships", icon: Briefcase, tile: "bg-emerald-500", preview: <JobsPreview />,
-    text: "Jobs open to international students, checked every day." },
+  { title: "Opportunities", href: "/opportunities", icon: Briefcase, tile: "bg-emerald-500", preview: <JobsPreview />,
+    text: "Internships, part-time jobs, scholarships and contests open to international students." },
   { title: "AI assistant", href: "/dashboard/ai", icon: Sparkles, tile: "bg-orange-500", preview: <AiPreview />,
     text: "Ask about visas, banks or hospitals and get an answer in seconds." },
   { title: "Ask students", href: "/chat", icon: MessageSquare, tile: "bg-pink-500", preview: <AskPreview />,

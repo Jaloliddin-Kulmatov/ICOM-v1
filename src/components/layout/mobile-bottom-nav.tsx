@@ -18,7 +18,7 @@ const tabs = [
   { href: "/dashboard",   icon: LayoutDashboard, label: "Home"  },
   { href: "/chat",        icon: MessageSquare,   label: "Chat"  },
   { href: "/guide",       icon: Compass,         label: "Guide" },
-  { href: "/internships", icon: Briefcase,       label: "Jobs"  },
+  { href: "/opportunities", icon: Briefcase,     label: "Opportunities" },
   { href: "/community",   icon: Users,           label: "Clubs" },
 ];
 
