@@ -144,3 +144,11 @@ def test_admin_turns_the_bot_on(admin, bot):
     assert method == "setWebhook" and data["url"].endswith("/admin/telegram/webhook")
     assert data["secret_token"] == telegram_bot.webhook_secret()
     assert admin.get("/api/admin/social").get_json()["bot_admins"] == 2
+
+
+def test_a_saved_list_of_links_gets_a_card_each(bot):
+    bot.send("Notes\nhttps://camp.example.com/a\nCheck coupon\nhttps://camp.example.com/b\nhttps://camp.example.com/a")
+    texts = [d.get("text") or "" for _, d in bot.sent]
+    assert any("Got 2 links" in t for t in texts)                       # repeated link counted once
+    assert sum("Link check" in t for t in texts) == 2
+    assert Job.query.filter(Job.source_url.in_(["https://camp.example.com/a", "https://camp.example.com/b"])).count() == 2

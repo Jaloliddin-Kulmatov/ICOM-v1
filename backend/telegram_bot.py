@@ -33,7 +33,7 @@ import social
 from app import db
 from models import BotAdmin, BotState, Job, SocialPost, User
 
-MAX_LINKS = 3
+MAX_LINKS = 20         # links checked from one message (a whole saved list)
 e = html.escape
 
 # Fields an admin can change: name shown on the button, Job attribute.
@@ -464,11 +464,14 @@ def button(cq: dict) -> None:
 # ── Messages ─────────────────────────────────────────────────────────────────
 
 def handle_links(chat_id, urls: list) -> None:
+    if len(urls) > 1:
+        send(chat_id, f"📥 Got {len(urls)} links. I'll check them one by one and send a card for each.")
     for url in urls:
         if not _public_url(url):
             send(chat_id, f"⚠️ I can't open that link: {e(url)}")
             continue
-        send(chat_id, "🔎 Checking the link…")
+        if len(urls) == 1:
+            send(chat_id, "🔎 Checking the link…")
         try:
             job, relevant, new = analyze(url)
             head = "🔎 <b>Link check</b>\n\n" if new else "ℹ️ <b>Already on ICOM</b>\n\n"
