@@ -332,6 +332,8 @@ class Job(db.Model):
     review_status = db.Column(db.String(20), default="approved")
     # When this posting went out in the daily social media post (social.py).
     posted_at = db.Column(db.DateTime)
+    # The article it was imported from (scrapers/scholarships_corner.py), so it is imported once.
+    source_url = db.Column(db.String(500), index=True)
 
     def to_dict(self, list_view=False):
         # list_view trims the heavy description/requirements text so the list
@@ -351,6 +353,7 @@ class Job(db.Model):
             "company": self.company,
             "location": self.location,
             "type": self.job_type,
+            "source_url": self.source_url or "",
             "salary": self.salary,
             "description": description,
             "requirements": requirements,

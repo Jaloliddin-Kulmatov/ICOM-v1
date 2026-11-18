@@ -1417,9 +1417,39 @@ def social_status():
     history = SocialPost.query.order_by(SocialPost.created_at.desc()).limit(10).all()
     return jsonify({
         "telegram_configured": social.telegram_configured(),
-        "next": {"count": len(items), "text": social.build_text(items) if items else ""},
+        "instagram_configured": social.instagram_configured(),
+        "next": {"count": len(items), "text": social.build_text(items) if items else "",
+                 "caption": social.build_caption(items) if items else "",
+                 "card": f"/admin/social/card.jpg?ids={','.join(str(j.id) for j in items[:social.CARD_ITEMS])}" if items else ""},
         "history": [p.to_dict() for p in history],
     }), 200
+
+
+@admin_bp.route("/social/card.jpg", methods=["GET"])
+def social_card():
+    """The Instagram picture for up to 5 listed opportunities (public: Instagram downloads it)."""
+    import social
+    import social_card
+    from job_lifecycle import is_listed
+    ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip().isdigit()][:social.CARD_ITEMS]
+    by_id = {j.id: j for j in Job.query.filter(Job.id.in_(ids)).all()} if ids else {}
+    items = [by_id[i] for i in ids if i in by_id and is_listed(by_id[i])]
+    if not items:
+        return jsonify({"error": "Nothing to show."}), 404
+    resp = Response(social_card.render(items, social.days_left), mimetype="image/jpeg")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@admin_bp.route("/opportunities/import", methods=["POST"])
+@jwt_required()
+def import_opportunities_now():
+    """Look for new scholarships and contests on other sites now (they land in the review queue)."""
+    user, err = _require_admin()
+    if err:
+        return err
+    import opportunity_import
+    return jsonify(opportunity_import.run()), 200
 
 
 @admin_bp.route("/social/post-now", methods=["POST"])

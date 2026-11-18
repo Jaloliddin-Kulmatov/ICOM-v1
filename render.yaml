@@ -46,6 +46,12 @@ services:
         sync: false          # daily opportunities post: bot from @BotFather, admin of the channel
       - key: TELEGRAM_CHANNEL_ID
         sync: false          # e.g. @icomkorea
+      - key: INSTAGRAM_USER_ID
+        sync: false          # daily post on Instagram: the business account id
+      - key: INSTAGRAM_ACCESS_TOKEN
+        sync: false          # long-lived token with instagram_content_publish
+      - key: PUBLIC_API_URL
+        value: https://icom-v1.onrender.com/api   # where Instagram downloads the card picture
       - key: RESEND_API_KEY
         sync: false          # optional: job-alert emails
       - key: RESEND_FROM
