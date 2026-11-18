@@ -46,6 +46,8 @@ services:
         sync: false          # daily opportunities post: bot from @BotFather, admin of the channel
       - key: TELEGRAM_CHANNEL_ID
         sync: false          # e.g. @icomkorea
+      - key: TELEGRAM_ADMIN_IDS
+        sync: false          # Telegram ids allowed to send links to the bot (send it /start to see yours)
       - key: INSTAGRAM_USER_ID
         sync: false          # daily post on Instagram: the business account id
       - key: INSTAGRAM_ACCESS_TOKEN

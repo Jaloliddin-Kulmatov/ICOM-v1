@@ -31,9 +31,14 @@ def _font(size: int):
     return ImageFont.load_default(size=size)
 
 
+_PLAIN = str.maketrans({"\u2013": "-", "\u2014": "-", "\u2018": "'", "\u2019": "'", "\u201C": '"',
+                        "\u201D": '"', "\u2026": "...", "\u20A9": "KRW "})
+
+
 def _latin(text: str) -> str:
-    """Drop characters the built-in font can't draw (Hangul and other scripts)."""
-    text = re.sub(r"[^\x20-\x7E -ɏ–—‘’“”…₩]", "", text or "")
+    """Plain look-alikes for typographic marks the built-in font lacks, and drop
+    characters it can't draw at all (Hangul and other scripts)."""
+    text = re.sub(r"[^\x20-\x7E\u00A0-\u024F]", "", (text or "").translate(_PLAIN))
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
@@ -72,6 +77,47 @@ def render(items: list, days_left) -> bytes:
     d.text((70, H - 100), "Apply on icom.ai.kr/opportunities", font=_font(40), fill=GREEN)
     d.text((70, H - 52), "Link in bio", font=_font(28), fill=MUTED)
 
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    return buf.getvalue()
+
+
+def render_spotlight(job, days_left) -> bytes:
+    """One opportunity, big: for Telegram spotlight posts and albums."""
+    img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+    kind = job.job_type if job.job_type in LABELS else "internship"
+    fill, ink = KIND_COLORS[kind]
+
+    d.rectangle([0, 0, W, 150], fill=GREEN)
+    d.text((70, 52), "ICOM  ·  Opportunities in Korea", font=_font(42), fill=(255, 255, 255))
+
+    d.rounded_rectangle([50, 200, W - 50, H - 170], radius=40, fill=(255, 255, 255), outline=(225, 230, 228), width=2)
+    label = LABELS[kind].upper()
+    lw = d.textlength(label, font=_font(36)) + 50
+    d.rounded_rectangle([100, 260, 100 + lw, 320], radius=30, fill=fill)
+    d.text((125, 270), label, font=_font(36), fill=ink)
+
+    y = 370
+    for line in textwrap.wrap(_latin(job.title) or LABELS[kind], width=26)[:4]:
+        d.text((100, y), line, font=_font(64), fill=INK)
+        y += 80
+    y += 30
+    for icon, value in (("By", _latin(job.company or "")), ("Offer", _latin(job.salary or "")),
+                        ("Where", _latin(job.location or ""))):
+        if value:
+            d.text((100, y), icon, font=_font(32), fill=MUTED)
+            for line in textwrap.wrap(value, width=40)[:2]:
+                d.text((260, y), line, font=_font(38), fill=INK)
+                y += 50
+            y += 16
+    left = days_left(job)
+    if left:
+        d.rounded_rectangle([100, H - 330, W - 100, H - 230], radius=24, fill=(255, 241, 214))
+        d.text((140, H - 305), f"Deadline: {left}", font=_font(44), fill=(154, 52, 18))
+
+    d.text((70, H - 120), "Apply on icom.ai.kr", font=_font(44), fill=GREEN)
+    d.text((70, H - 62), "Free for international students", font=_font(30), fill=MUTED)
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=90)
     return buf.getvalue()

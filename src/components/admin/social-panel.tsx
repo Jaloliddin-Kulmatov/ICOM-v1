@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 type Post = { id: number; platform: string; text: string; job_ids: number[]; status: string; error: string; created_at: string };
 type Social = {
-  telegram_configured: boolean; instagram_configured: boolean;
+  telegram_configured: boolean; instagram_configured: boolean; bot_admins: number;
   next: { count: number; text: string; caption: string; card: string }; history: Post[];
 };
 
@@ -35,6 +35,8 @@ export default function SocialPanel() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
+  const [botBusy, setBotBusy] = useState(false);
+  const [botResult, setBotResult] = useState("");
 
   const load = useCallback(async () => {
     const { data, error: e } = await api.get<Social>("/admin/social");
@@ -50,6 +52,13 @@ export default function SocialPanel() {
     load();
   };
 
+  const connectBot = async () => {
+    setBotBusy(true); setBotResult("");
+    const { data, error: e } = await api.post<{ ok: boolean; admins: number }>("/admin/social/telegram-bot", {});
+    setBotBusy(false);
+    setBotResult(data ? `The bot is on. ${data.admins} admin${data.admins === 1 ? "" : "s"} can send it links.` : e || "Couldn't turn on the bot.");
+  };
+
   if (!s) return <p className="text-xs text-muted-foreground">{error || "Loading social posts…"}</p>;
   const any = s.telegram_configured || s.instagram_configured;
   return (
@@ -57,7 +66,7 @@ export default function SocialPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Daily social post</h2>
-          <p className="text-[11px] text-muted-foreground">Every day at 09:00 KST, newly approved opportunities go to Telegram (with ?ref=telegram links) and Instagram (a picture card).</p>
+          <p className="text-[11px] text-muted-foreground">Every day at 09:00 KST, newly approved opportunities go to Telegram and Instagram with pictures. The Telegram style changes daily: a list picture, an album of cards, or one spotlight.</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <Status on={s.telegram_configured} name="Telegram" />
@@ -86,6 +95,28 @@ export default function SocialPanel() {
             <li>On Render, add <code>INSTAGRAM_USER_ID</code> and <code>INSTAGRAM_ACCESS_TOKEN</code>. Keep the token private.</li>
           </ol>
         </details>
+      )}
+
+      {s.telegram_configured && (
+        <div className="rounded-xl border border-border p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold text-foreground">Telegram bot: send a link, it goes on ICOM and the channel</p>
+              <p className="text-[11px] text-muted-foreground">
+                {s.bot_admins > 0 ? `${s.bot_admins} admin${s.bot_admins === 1 ? "" : "s"} can send links.` : "No admins set yet."}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={connectBot} disabled={botBusy}>
+              {botBusy ? <Loader2 size={13} className="animate-spin" /> : null} Turn on the bot
+            </Button>
+          </div>
+          <ol className="text-[11px] text-foreground/80 list-decimal pl-5 space-y-0.5">
+            <li>Open your bot in Telegram and send <code>/start</code>. It replies with your Telegram id.</li>
+            <li>On Render, add <code>TELEGRAM_ADMIN_IDS</code> with that id (several ids: separate with commas).</li>
+            <li>Press <b>Turn on the bot</b> once. Then send the bot any opportunity link.</li>
+          </ol>
+          {botResult && <p role="status" className="text-xs text-foreground">{botResult}</p>}
+        </div>
       )}
 
       <div>

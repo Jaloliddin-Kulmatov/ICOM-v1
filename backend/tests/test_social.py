@@ -1,5 +1,6 @@
 """The daily opportunities post to Telegram."""
 from datetime import datetime, timedelta
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -23,6 +24,7 @@ def telegram(app, monkeypatch):
     monkeypatch.setattr(social.requests, "post", post)
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
     monkeypatch.setenv("TELEGRAM_CHANNEL_ID", "@icomtest")
+    monkeypatch.setattr(social, "pick_style", lambda today=None: "digest")
     monkeypatch.delenv("INSTAGRAM_USER_ID", raising=False)
     monkeypatch.delenv("INSTAGRAM_ACCESS_TOKEN", raising=False)
     with app.app_context():
@@ -44,11 +46,14 @@ def test_posts_new_items_once_scholarships_first(telegram):
     intern = _add("Data intern", "internship")
     scholar = _add("Excellence <scholarship>", "scholarship", salary="50% tuition",
                    deadline=(datetime.utcnow() + timedelta(days=10)).strftime("%Y-%m-%d"))
-    assert social.run() == {"status": "posted", "items": 2, "platforms": {"telegram": "posted"}, "error": ""}
+    assert social.run() == {"status": "posted", "items": 2, "platforms": {"telegram": "posted"},
+                            "style": "digest", "error": ""}
 
     url, data = telegram.sent[0]
-    assert url == "https://api.telegram.org/bot123:abc/sendMessage" and data["chat_id"] == "@icomtest"
-    text = data["text"]
+    assert url == "https://api.telegram.org/bot123:abc/sendPhoto" and data["chat_id"] == "@icomtest"
+    assert f"card.jpg?ids={scholar.id},{intern.id}" in data["photo"]           # one picture of the list
+    assert "See all on ICOM" in data["reply_markup"]
+    text = data["caption"]
     assert text.index("Excellence") < text.index("Data intern")        # scholarships before internships
     assert "&lt;scholarship&gt;" in text                                 # titles are escaped for HTML
     assert f"/internships/{scholar.id}?ref=telegram" in text and "days left" in text
@@ -108,7 +113,7 @@ def test_instagram_card_and_publish(client, telegram, monkeypatch):
     assert r["platforms"] == {"telegram": "posted", "instagram": "posted"}
     create = calls[0]
     assert create[1].endswith("/1789/media") and create[2]["access_token"] == "ig-token"
-    assert create[2]["image_url"] == f"https://api.icom.test/api/admin/social/card.jpg?ids={j1.id},{j2.id}"
+    assert create[2]["image_url"].startswith(f"https://api.icom.test/api/admin/social/card.jpg?ids={j1.id},{j2.id}&d=")
     assert "GIST scholarship 2027" in create[2]["caption"] and "#InternationalStudents" in create[2]["caption"]
     assert calls[-1][1].endswith("/1789/media_publish") and calls[-1][2]["creation_id"] == "c55"
 
@@ -127,3 +132,43 @@ def test_one_platform_failing_does_not_stop_the_other(telegram, monkeypatch):
     r = social.run()
     assert r["platforms"] == {"telegram": "posted", "instagram": "failed"} and "access token" in r["error"]
     assert db.session.get(Job, j.id).posted_at is not None
+
+
+def test_spotlight_and_album_styles(client, telegram, monkeypatch):
+    a = _add("Spotlight scholarship", "scholarship", salary="Full tuition", location="Seoul",
+             description="Great.\n\nWho can apply: D-2 students, TOPIK 4+")
+    b = _add("Second intern", "internship")
+    monkeypatch.setattr(social, "pick_style", lambda today=None: "spotlight")
+    social.run()
+    (u1, photo), (u2, rest) = telegram.sent[:2]
+    assert u1.endswith("/sendPhoto") and "style=spotlight" in photo["photo"] and f"ids={a.id}&" in photo["photo"]
+    assert "Full tuition" in photo["caption"] and "D-2 students, TOPIK 4+" in photo["caption"]
+    assert "Apply on ICOM" in photo["reply_markup"] and f"/internships/{a.id}?ref=telegram" in photo["reply_markup"]
+    assert u2.endswith("/sendMessage") and "Second intern" in rest["text"]
+    assert client.get(f"/api/admin/social/card.jpg?ids={a.id}&style=spotlight").data[:2] == b"\xff\xd8"
+
+    telegram.sent.clear()
+    c, d = _add("Album contest", "contest"), _add("Album program", "program")
+    monkeypatch.setattr(social, "pick_style", lambda today=None: "album")
+    social.run(force=True)
+    url, data = telegram.sent[0]
+    media = json.loads(data["media"])
+    assert url.endswith("/sendMediaGroup") and len(media) == 2 and all("style=spotlight" in m["media"] for m in media)
+    assert "Album contest" in media[0]["caption"]
+
+
+def test_picture_failure_falls_back_to_text(telegram, monkeypatch):
+    j = _add("Fallback intern", "internship")
+    real = social.requests.post
+
+    def post(url, data=None, **kw):
+        if url.endswith("/sendPhoto"):
+            return SimpleNamespace(status_code=400, headers={"content-type": "application/json"},
+                                   json=lambda: {"ok": False, "description": "wrong file identifier/HTTP URL specified"})
+        return real(url, data=data, **kw)
+
+    monkeypatch.setattr(social.requests, "post", post)
+    r = social.run()
+    assert r["status"] == "posted" and db.session.get(Job, j.id).posted_at is not None
+    assert telegram.sent[-1][0].endswith("/sendMessage") and "Fallback intern" in telegram.sent[-1][1]["text"]
+    assert "sent as text" in SocialPost.query.order_by(SocialPost.id.desc()).first().error

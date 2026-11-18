@@ -1412,12 +1412,14 @@ def social_status():
     if err:
         return err
     import social
+    import telegram_bot
     from models import SocialPost
     items = social.pick_items()
     history = SocialPost.query.order_by(SocialPost.created_at.desc()).limit(10).all()
     return jsonify({
         "telegram_configured": social.telegram_configured(),
         "instagram_configured": social.instagram_configured(),
+        "bot_admins": len(telegram_bot.admin_ids()),
         "next": {"count": len(items), "text": social.build_text(items) if items else "",
                  "caption": social.build_caption(items) if items else "",
                  "card": f"/admin/social/card.jpg?ids={','.join(str(j.id) for j in items[:social.CARD_ITEMS])}" if items else ""},
@@ -1436,7 +1438,11 @@ def social_card():
     items = [by_id[i] for i in ids if i in by_id and is_listed(by_id[i])]
     if not items:
         return jsonify({"error": "Nothing to show."}), 404
-    resp = Response(social_card.render(items, social.days_left), mimetype="image/jpeg")
+    if request.args.get("style") == "spotlight":
+        picture = social_card.render_spotlight(items[0], social.days_left)
+    else:
+        picture = social_card.render(items, social.days_left)
+    resp = Response(picture, mimetype="image/jpeg")
     resp.headers["Cache-Control"] = "public, max-age=3600"
     return resp
 
@@ -1450,6 +1456,37 @@ def import_opportunities_now():
         return err
     import opportunity_import
     return jsonify(opportunity_import.run()), 200
+
+
+@admin_bp.route("/telegram/webhook", methods=["POST"])
+def telegram_webhook():
+    """Messages to the ICOM bot (Telegram calls this). Admins can send links to add and post them."""
+    import hmac
+    import telegram_bot
+    from flask import current_app
+    sent = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not os.environ.get("TELEGRAM_BOT_TOKEN") or not hmac.compare_digest(sent, telegram_bot.webhook_secret()):
+        return jsonify({"error": "Unauthorized"}), 401
+    telegram_bot.handle_update_async(current_app._get_current_object(), request.get_json(silent=True) or {})
+    return jsonify({"ok": True}), 200
+
+
+@admin_bp.route("/social/telegram-bot", methods=["POST"])
+@jwt_required()
+def connect_telegram_bot():
+    """Tell Telegram to send the bot's messages to this server."""
+    user, err = _require_admin()
+    if err:
+        return err
+    import social
+    import telegram_bot
+    if not social.telegram_configured():
+        return jsonify({"error": "Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID on Render first."}), 400
+    try:
+        telegram_bot.set_webhook()
+    except Exception as e:
+        return jsonify({"error": f"Telegram said: {e}"}), 502
+    return jsonify({"ok": True, "admins": len(telegram_bot.admin_ids())}), 200
 
 
 @admin_bp.route("/social/post-now", methods=["POST"])
