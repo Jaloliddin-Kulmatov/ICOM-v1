@@ -24,7 +24,8 @@ def bot(app, client, monkeypatch):
 
     def tg_post(url, data=None, **kw):
         sent.append((url.rsplit("/", 1)[-1], data))
-        return SimpleNamespace(status_code=200, headers={"content-type": "application/json"}, json=lambda: {"ok": True})
+        return SimpleNamespace(status_code=200, headers={"content-type": "application/json"},
+                               json=lambda: {"ok": True, "result": {"message_id": 77}})
 
     monkeypatch.setattr(social.requests, "post", tg_post)
     monkeypatch.setattr(telegram_bot.requests, "get", lambda url, **kw: SimpleNamespace(
@@ -46,17 +47,32 @@ def bot(app, client, monkeypatch):
         yield SimpleNamespace(sent=sent, send=send)
 
 
-def test_admin_link_goes_live_and_is_posted(bot):
+def _press(bot, client, data, user=111):
+    update = {"callback_query": {"id": "cq1", "data": data, "from": {"id": user},
+                                 "message": {"message_id": 5, "chat": {"id": user}}}}
+    return client.post("/api/admin/telegram/webhook", json=update,
+                       headers={"X-Telegram-Bot-Api-Secret-Token": telegram_bot.webhook_secret()})
+
+
+def _texts(bot):
+    return [d.get("text") or d.get("caption") or "" for _, d in bot.sent]
+
+
+def test_link_is_analyzed_then_published_from_buttons(bot, client):
     assert bot.send("look https://camp.example.com/apply").status_code == 200
     job = Job.query.filter_by(source_url="https://camp.example.com/apply").one()
-    assert (job.job_type, job.is_active, job.review_status) == ("program", True, "approved")
-    assert job.posted_at is not None and "via Telegram bot" in job.tags
-    methods = [m for m, _ in bot.sent]
-    assert "sendPhoto" in methods                                         # spotlight in the channel
+    assert (job.job_type, job.is_active, job.review_status) == ("program", False, "draft")   # not live yet
+    check = bot.sent[-1][1]
+    assert "Link check" in check["text"] and "Seoul Global Center" in check["text"] and "D-2 students" in check["text"]
+    assert f"pub:{job.id}" in check["reply_markup"] and f"edit:{job.id}" in check["reply_markup"]
+
+    bot.sent.clear()
+    _press(bot, client, f"pub:{job.id}")
+    db.session.refresh(job)
+    assert (job.is_active, job.review_status) == (True, "approved") and job.posted_at is not None
     photo = next(d for m, d in bot.sent if m == "sendPhoto")
     assert photo["chat_id"] == "@icomtest" and "Global Startup Camp 2027" in photo["caption"]
-    last = bot.sent[-1][1]
-    assert last["chat_id"] == 111 and "Added to ICOM and posted" in last["text"]
+    assert any(m == "editMessageText" and "Published and posted" in d["text"] for m, d in bot.sent)
 
     bot.sent.clear()
     bot.send("https://camp.example.com/apply")                            # same link again: no duplicate
@@ -64,12 +80,54 @@ def test_admin_link_goes_live_and_is_posted(bot):
     assert "Already on ICOM" in bot.sent[-1][1]["text"]
 
 
+def test_editing_with_buttons_and_commands_updates_the_channel(bot, client):
+    bot.send("https://camp.example.com/edit-me")
+    job = Job.query.filter_by(source_url="https://camp.example.com/edit-me").one()
+    _press(bot, client, f"pub:{job.id}")
+    sent_before = len(bot.sent)
+
+    _press(bot, client, f"ef:{job.id}:deadline")
+    assert "new <b>deadline</b>" in bot.sent[-1][1]["text"]
+    bot.send("next week")
+    assert "like 2026-12-31" in bot.sent[-1][1]["text"]                   # bad date: asked again
+    bot.send("2099-06-30")
+    db.session.refresh(job)
+    assert job.deadline == "2099-06-30"
+    assert any(m == "editMessageCaption" for m, _ in bot.sent[sent_before:])   # the channel post follows
+
+    bot.send(f"/edit {job.id} who Undergraduates on D-2 or D-4")
+    db.session.refresh(job)
+    assert "Who can apply: Undergraduates on D-2 or D-4" in job.description and job.description.count("Who can apply") == 1
+    _press(bot, client, f"kind:{job.id}:contest")
+    db.session.refresh(job)
+    assert job.job_type == "contest"
+    bot.send(f"/hide {job.id}")
+    db.session.refresh(job)
+    assert not job.is_active
+    bot.send("/list")
+    assert f"#{job.id}" in bot.sent[-1][1]["text"]
+
+
+def test_owner_manages_admins(bot):
+    bot.send("/addadmin 333 Aziz")
+    assert "333" in _texts(bot)[-2] and "now an ICOM bot admin" in _texts(bot)[-1]
+    assert 333 in telegram_bot.admin_ids()
+    bot.send("/addadmin 444", user=333)                                   # admins can't add admins
+    assert "Only the owner" in bot.sent[-1][1]["text"]
+    bot.send("/help", user=333)
+    assert "/addadmin" not in bot.sent[-1][1]["text"]
+    bot.send("/removeadmin 333")
+    assert 333 not in telegram_bot.admin_ids()
+
+
 def test_strangers_and_bad_requests(bot, client):
     bot.send("https://camp.example.com/other", user=999)
     assert not Job.query.filter_by(source_url="https://camp.example.com/other").first()
-    assert "Only ICOM admins" in bot.sent[-1][1]["text"] and "999" in bot.sent[-1][1]["text"]
+    assert "internships/share" in bot.sent[-1][1]["text"] and "999" in bot.sent[-1][1]["text"]
     bot.send("/start", user=999)
     assert "Your Telegram id" in bot.sent[-1][1]["text"]
+    _press(bot, client, "pub:1", user=999)
+    assert "Only ICOM admins" in bot.sent[-1][1]["text"]
     r = client.post("/api/admin/telegram/webhook", json={"message": {}}, headers={"X-Telegram-Bot-Api-Secret-Token": "guess"})
     assert r.status_code == 401
 

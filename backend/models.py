@@ -486,11 +486,32 @@ class SocialPost(db.Model):
     job_ids = db.Column(db.JSON)
     status = db.Column(db.String(20), nullable=False)        # posted | failed
     error = db.Column(db.String(300))
+    message_id = db.Column(db.String(40))      # Telegram message id, so a spotlight can be edited later
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     def to_dict(self):
         return {"id": self.id, "platform": self.platform, "text": self.text, "job_ids": self.job_ids or [],
                 "status": self.status, "error": self.error or "", "created_at": self.created_at.isoformat() + "Z"}
+
+
+class BotAdmin(db.Model):
+    """Telegram accounts the owner (TELEGRAM_ADMIN_IDS) has allowed to use the bot's admin commands."""
+    __tablename__ = "bot_admins"
+
+    telegram_id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.String(80))
+    added_by = db.Column(db.BigInteger)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class BotState(db.Model):
+    """What the bot is waiting for in a chat, e.g. the new deadline for opportunity 42."""
+    __tablename__ = "bot_states"
+
+    chat_id = db.Column(db.BigInteger, primary_key=True)
+    job_id = db.Column(db.Integer)
+    field = db.Column(db.String(20))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class UserActivity(db.Model):

@@ -101,7 +101,7 @@ export default function SocialPanel() {
         <div className="rounded-xl border border-border p-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-semibold text-foreground">Telegram bot: send a link, it goes on ICOM and the channel</p>
+              <p className="text-xs font-semibold text-foreground">Telegram bot: send a link, check what it found, publish with one tap</p>
               <p className="text-[11px] text-muted-foreground">
                 {s.bot_admins > 0 ? `${s.bot_admins} admin${s.bot_admins === 1 ? "" : "s"} can send links.` : "No admins set yet."}
               </p>
@@ -113,7 +113,8 @@ export default function SocialPanel() {
           <ol className="text-[11px] text-foreground/80 list-decimal pl-5 space-y-0.5">
             <li>Open your bot in Telegram and send <code>/start</code>. It replies with your Telegram id.</li>
             <li>On Render, add <code>TELEGRAM_ADMIN_IDS</code> with that id (several ids: separate with commas).</li>
-            <li>Press <b>Turn on the bot</b> once. Then send the bot any opportunity link.</li>
+            <li>Press <b>Turn on the bot</b> once. Then send the bot any opportunity link, or /help for all commands.</li>
+            <li>To let teammates use it, send the bot <code>/addadmin their-id Name</code> (they get their id with /start).</li>
           </ol>
           {botResult && <p role="status" className="text-xs text-foreground">{botResult}</p>}
         </div>

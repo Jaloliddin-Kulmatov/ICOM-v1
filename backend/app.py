@@ -316,6 +316,7 @@ def _run_lightweight_migrations():
         ("users", "referred_by_id", "INTEGER"),
         ("jobs", "posted_at", "TIMESTAMP"),
         ("jobs", "source_url", "VARCHAR(500)"),
+        ("social_posts", "message_id", "VARCHAR(40)"),
         ("chat_answers", "is_accepted", "BOOLEAN DEFAULT FALSE"),
     ):
         try:

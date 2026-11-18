@@ -184,9 +184,11 @@ def pick_style(today=None) -> str:
     return STYLES[(today or kst_today()).toordinal() % len(STYLES)]
 
 
-def send_spotlight(job: Job) -> None:
-    telegram_api("sendPhoto", chat_id=os.environ["TELEGRAM_CHANNEL_ID"], photo=card_url([job], "spotlight"),
-                 caption=spotlight_caption(job), parse_mode="HTML", reply_markup=apply_button(job))
+def send_spotlight(job: Job) -> str:
+    """Post one opportunity as a picture with its details; returns the Telegram message id."""
+    body = telegram_api("sendPhoto", chat_id=os.environ["TELEGRAM_CHANNEL_ID"], photo=card_url([job], "spotlight"),
+                        caption=spotlight_caption(job), parse_mode="HTML", reply_markup=apply_button(job))
+    return str((body.get("result") or {}).get("message_id") or "")
 
 
 def post_telegram(items: list, style: str) -> str:
