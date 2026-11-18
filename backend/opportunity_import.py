@@ -134,6 +134,35 @@ def enrich(client, cand: dict) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def enrich_with_retry(client, cand: dict, tries: int = 3) -> dict | None:
+    """The free AI plan allows only so much per minute; when a long list hits that, wait and try again."""
+    for attempt in range(tries):
+        try:
+            return enrich(client, cand)
+        except Exception as e:
+            if attempt == tries - 1:
+                raise
+            print(f"[import] AI busy ({str(e)[:80]}), retrying")
+            time.sleep(8 * (attempt + 1) ** 2)      # 8 s, then 32 s
+
+
+# Used when the AI couldn't answer: the commonest words for each kind.
+_KIND_WORDS = (
+    ("internship", r"\bintern(ship)?s?\b|인턴"),
+    ("contest", r"contest|competition|award|hackathon|challenge|prize|공모전|대회"),
+    ("scholarship", r"scholarship|grant|tuition|bursary|장학"),
+    ("program", r"fellowship|program|programme|summer school|winter school|camp|conference|summit|forum|workshop|residency|exchange|call for papers"),
+)
+
+
+def guess_kind(text: str, fallback: str = "program") -> str:
+    low = (text or "").lower()
+    for kind, pattern in _KIND_WORDS:
+        if re.search(pattern, low):
+            return kind
+    return fallback
+
+
 def _deadline_ok(d: str) -> bool:
     try:
         return date.fromisoformat(d[:10]) >= kst_today()
@@ -142,7 +171,8 @@ def _deadline_ok(d: str) -> bool:
 
 
 def _save(cand: dict, info: dict) -> Job:
-    kind = info.get("kind") if info.get("kind") in KINDS else (cand.get("kind_hint") or "scholarship")
+    kind = info.get("kind") if info.get("kind") in KINDS else (
+        cand.get("kind_hint") or guess_kind(f"{cand.get('title', '')} {cand.get('text', '')[:1500]}"))
     deadline = (info.get("deadline") or cand.get("deadline") or "").strip()[:10]
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", deadline):
         deadline = ""
@@ -183,7 +213,7 @@ def run(sources=None) -> dict:
                 result["skipped"] += 1
                 continue
             try:
-                info = enrich(client, cand)
+                info = enrich_with_retry(client, cand)
             except Exception as e:
                 result["errors"].append(f"{name}: AI: {str(e)[:80]}")
                 continue

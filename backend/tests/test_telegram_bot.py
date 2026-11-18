@@ -152,3 +152,15 @@ def test_a_saved_list_of_links_gets_a_card_each(bot):
     assert any("Got 2 links" in t for t in texts)                       # repeated link counted once
     assert sum("Link check" in t for t in texts) == 2
     assert Job.query.filter(Job.source_url.in_(["https://camp.example.com/a", "https://camp.example.com/b"])).count() == 2
+
+
+def test_card_says_when_the_ai_could_not_check(bot, monkeypatch):
+    def broken(model, messages, **kw):
+        raise RuntimeError("rate limit")
+    monkeypatch.setattr(ai_routes, "_get_client", lambda: SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=broken))))
+    monkeypatch.setattr(telegram_bot.imp.time, "sleep", lambda s: None)
+    bot.send("https://camp.example.com/no-ai")
+    job = Job.query.filter_by(source_url="https://camp.example.com/no-ai").one()
+    assert job.job_type == "program"                                     # guessed from "camp"
+    assert "AI couldn't check this page" in bot.sent[-1][1]["text"]

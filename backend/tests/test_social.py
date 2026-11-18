@@ -172,3 +172,15 @@ def test_picture_failure_falls_back_to_text(telegram, monkeypatch):
     assert r["status"] == "posted" and db.session.get(Job, j.id).posted_at is not None
     assert telegram.sent[-1][0].endswith("/sendMessage") and "Fallback intern" in telegram.sent[-1][1]["text"]
     assert "sent as text" in SocialPost.query.order_by(SocialPost.id.desc()).first().error
+
+
+def test_spotlight_pictures_and_captions_vary(telegram):
+    import social_card
+    jobs = [_add(f"Varied {k}", k, deadline=(datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d"))
+            for k in ("scholarship", "contest", "program", "internship")]
+    pictures = {social_card.render_spotlight(j, social.days_left) for j in jobs}
+    assert len(pictures) == 4 and all(p[:2] == b"\xff\xd8" for p in pictures)       # four different designs
+    openers = {social.spotlight_caption(j).split("\n")[0] for j in jobs}
+    assert len(openers) > 1
+    soon = _add("Soon", "contest", deadline=(datetime.utcnow() + timedelta(days=3)).strftime("%Y-%m-%d"))
+    assert social.spotlight_caption(soon).startswith("⏰ Closing soon")

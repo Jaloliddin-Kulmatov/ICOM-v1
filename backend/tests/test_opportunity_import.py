@@ -98,3 +98,10 @@ def test_admin_can_run_it_and_needs_ai(client, admin, fake_web, monkeypatch):
     assert admin.post("/api/admin/opportunities/import").get_json()["status"] == "done"
     monkeypatch.setattr(ai_routes, "_get_client", lambda: None)
     assert imp.run()["status"] == "no_ai"
+
+
+def test_kind_guessed_when_the_ai_is_down():
+    assert imp.guess_kind("CASSConf2027 - Call for Papers") == "program"
+    assert imp.guess_kind("Hackathon for students") == "contest"
+    assert imp.guess_kind("Summer internship at KAIST") == "internship"
+    assert imp.guess_kind("SK Global Scholarship") == "scholarship"

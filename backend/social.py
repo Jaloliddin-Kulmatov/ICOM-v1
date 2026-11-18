@@ -147,7 +147,7 @@ def spotlight_caption(job: Job) -> str:
     """The full card for one opportunity: kind, title, organizer, amount, deadline, who can apply."""
     e = html.escape
     icon, label = KINDS[_kind(job)]
-    lines = [f"{icon} <b>{label.upper()}</b>", f"<b>{e(job.title)}</b>", ""]
+    lines = [f"{opener(job)} · {icon} <b>{label}</b>", f"<b>{e(job.title)}</b>", ""]
     if job.company:
         lines.append(f"🏢 {e(job.company)}")
     if job.salary:
@@ -160,6 +160,20 @@ def spotlight_caption(job: Job) -> str:
         lines.append(f"✅ {e(_who(job))}")
     lines += ["", f"#ICOM #{label.replace('-', '')} #InternationalStudents #Korea"]
     return "\n".join(lines)[:PHOTO_CAPTION_LIMIT]
+
+
+OPENERS = ("📌 New on ICOM", "🔥 Don't miss this", "💡 Opportunity of the day", "✨ Fresh pick",
+           "🎯 Worth applying", "👀 Have you seen this?")
+
+
+def opener(job: Job) -> str:
+    """A different first line from post to post; a near deadline always says so."""
+    left = days_left(job)
+    if left == "closes today":
+        return "🚨 Last day to apply"
+    if left and left.split()[0].isdigit() and int(left.split()[0]) <= 7:
+        return "⏰ Closing soon"
+    return OPENERS[job.id % len(OPENERS)]
 
 
 def digest_caption(items: list) -> str:

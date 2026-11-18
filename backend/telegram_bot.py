@@ -133,18 +133,18 @@ def read_page(url: str) -> dict:
 
 
 def analyze(url: str):
-    """Read the page into a draft (not live yet). Returns (job, relevant, was_new)."""
+    """Read the page into a draft (not live yet). Returns (job, relevant, was_new, ai_ok)."""
     existing = Job.query.filter(db.or_(Job.source_url == url, Job.apply_link == url),
                                 Job.job_type != "skipped").first()
     if existing:
-        return existing, True, False
+        return existing, True, False, True
     cand = read_page(url)
     info = {}
     from routes.ai import _get_client
     client = _get_client()
     if client is not None:
         try:
-            info = imp.enrich(client, cand) or {}
+            info = imp.enrich_with_retry(client, cand) or {}
         except Exception as err:
             print(f"[bot] AI failed for {url}: {err}")
     if not (info.get("title") or cand["title"]):
@@ -153,7 +153,7 @@ def analyze(url: str):
     job.review_status = "draft"          # stays hidden until an admin presses Publish
     job.tags = job.tags.replace(f"via {cand['source']}", "via Telegram bot")
     db.session.commit()
-    return job, bool(info.get("relevant", True)), True
+    return job, bool(info.get("relevant", True)), True, bool(info)
 
 
 # ── Showing and changing an opportunity ──────────────────────────────────────
@@ -177,7 +177,7 @@ def status_of(job: Job) -> str:
     return "✅ Live on ICOM" + (" · posted" if job.posted_at else "")
 
 
-def card_text(job: Job, relevant: bool = True) -> str:
+def card_text(job: Job, relevant: bool = True, ai_ok: bool = True) -> str:
     icon, label = social.KINDS[social._kind(job)]
     rows = [f"{icon} <b>{e(job.title)}</b>  <i>#{job.id}</i>", status_of(job), "",
             f"Type: {label}", f"Organizer: {e(job.company or '—')}",
@@ -186,7 +186,9 @@ def card_text(job: Job, relevant: bool = True) -> str:
             f"Place: {e(job.location or '—')}", f"Apply link: {e(job.apply_link or '—')}"]
     if _summary(job):
         rows += ["", e(_summary(job))[:500]]
-    if not relevant:
+    if not ai_ok:
+        rows += ["", "⚠️ The AI couldn't check this page, so only its title was read. Fix the details with ✏️ Edit before publishing."]
+    elif not relevant:
         rows += ["", "⚠️ The AI thinks international students in Korea can't apply, or it isn't in Korea. Check before publishing."]
     return "\n".join(rows)
 
@@ -473,9 +475,9 @@ def handle_links(chat_id, urls: list) -> None:
         if len(urls) == 1:
             send(chat_id, "🔎 Checking the link…")
         try:
-            job, relevant, new = analyze(url)
+            job, relevant, new, ai_ok = analyze(url)
             head = "🔎 <b>Link check</b>\n\n" if new else "ℹ️ <b>Already on ICOM</b>\n\n"
-            send(chat_id, head + card_text(job, relevant), buttons_for(job))
+            send(chat_id, head + card_text(job, relevant, ai_ok), buttons_for(job))
         except Exception as err:
             db.session.rollback()
             send(chat_id, f"⚠️ Couldn't read {e(url)}\n{e(str(err)[:200])}")
