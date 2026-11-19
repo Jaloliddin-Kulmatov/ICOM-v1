@@ -52,6 +52,10 @@ services:
         sync: false          # daily post on Instagram: the business account id
       - key: INSTAGRAM_ACCESS_TOKEN
         sync: false          # long-lived token with instagram_content_publish
+      - key: FACEBOOK_PAGE_ID
+        sync: false          # daily post on the ICOM Facebook Page (waits for an admin's approval)
+      - key: FACEBOOK_PAGE_TOKEN
+        sync: false          # long-lived Page token with pages_manage_posts
       - key: PUBLIC_API_URL
         value: https://icom-v1.onrender.com/api   # where Instagram downloads the card picture
       - key: RESEND_API_KEY

@@ -7,11 +7,44 @@ import { api } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-type Post = { id: number; platform: string; text: string; job_ids: number[]; status: string; error: string; created_at: string };
+type Post = { id: number; platform: string; text: string; job_ids: number[]; status: string; error: string; created_at: string; source?: string };
+type Draft = Post & { card: string };
 type Social = {
-  telegram_configured: boolean; instagram_configured: boolean; bot_admins: number;
-  next: { count: number; text: string; caption: string; card: string }; history: Post[];
+  telegram_configured: boolean; instagram_configured: boolean; facebook_configured: boolean; bot_admins: number;
+  next: { count: number; text: string; caption: string; card: string }; history: Post[]; drafts: Draft[];
 };
+
+/** An Instagram/Facebook post waiting for an admin: the picture, an editable caption, Post or Skip. */
+function DraftCard({ draft, onDone }: { draft: Draft; onDone: () => void }) {
+  const [caption, setCaption] = useState(draft.text);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const act = async (action: "approve" | "skip") => {
+    setBusy(true); setError("");
+    const { error: e } = await api.post(`/admin/social/drafts/${draft.id}`, { action, caption });
+    setBusy(false);
+    if (e) setError(e); else onDone();
+  };
+  const name = draft.platform[0].toUpperCase() + draft.platform.slice(1);
+  return (
+    <div className="grid gap-3 sm:grid-cols-[160px_1fr] rounded-xl border border-border p-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`${API}${draft.card}`} alt={`The picture for ${name}`} className="w-full rounded-lg border border-border" />
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-foreground">{name} · {draft.job_ids.length} opportunities</p>
+        <textarea value={caption} onChange={(ev) => setCaption(ev.target.value)} rows={7} aria-label={`${name} caption`}
+          className="w-full rounded-lg border border-border bg-background p-2 text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+        {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <Button size="sm" className="gap-1.5" disabled={busy} onClick={() => act("approve")}>
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Post to {name}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => act("skip")}>Skip</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const RESULT: Record<string, string> = {
   posted: "Posted.",
@@ -60,17 +93,18 @@ export default function SocialPanel() {
   };
 
   if (!s) return <p className="text-xs text-muted-foreground">{error || "Loading social posts…"}</p>;
-  const any = s.telegram_configured || s.instagram_configured;
+  const any = s.telegram_configured || s.instagram_configured || s.facebook_configured;
   return (
     <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Daily social post</h2>
-          <p className="text-[11px] text-muted-foreground">Every day at 09:00 KST, newly approved opportunities go to Telegram and Instagram with pictures. The Telegram style changes daily: a list picture, an album of cards, or one spotlight.</p>
+          <p className="text-[11px] text-muted-foreground">Every day at 09:00 KST, newly approved opportunities go to Telegram automatically (a list picture, an album of cards, or one spotlight). Instagram and Facebook posts are prepared too, and wait here and in the Telegram bot until you approve them.</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <Status on={s.telegram_configured} name="Telegram" />
           <Status on={s.instagram_configured} name="Instagram" />
+          <Status on={s.facebook_configured} name="Facebook" />
         </div>
       </div>
 
@@ -95,6 +129,24 @@ export default function SocialPanel() {
             <li>On Render, add <code>INSTAGRAM_USER_ID</code> and <code>INSTAGRAM_ACCESS_TOKEN</code>. Keep the token private.</li>
           </ol>
         </details>
+      )}
+
+      {!s.facebook_configured && (
+        <details className="text-xs rounded-xl bg-amber-500/[0.06] border border-amber-500/25 p-3">
+          <summary className="font-semibold cursor-pointer">How to connect Facebook</summary>
+          <ol className="list-decimal pl-5 space-y-1 mt-2 text-foreground/80">
+            <li>Create a Facebook Page for ICOM (the same Page your Instagram is linked to).</li>
+            <li>In your Meta developer app, get a long-lived <b>Page</b> access token with <code>pages_manage_posts</code> and <code>pages_read_engagement</code>, and the Page id.</li>
+            <li>On Render, add <code>FACEBOOK_PAGE_ID</code> and <code>FACEBOOK_PAGE_TOKEN</code>. Keep the token private.</li>
+          </ol>
+        </details>
+      )}
+
+      {s.drafts.length > 0 && (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/[0.04] p-3 space-y-3">
+          <p className="text-xs font-semibold text-foreground">Waiting for your approval ({s.drafts.length})</p>
+          {s.drafts.map((d) => <DraftCard key={d.id} draft={d} onDone={load} />)}
+        </div>
       )}
 
       {s.telegram_configured && (

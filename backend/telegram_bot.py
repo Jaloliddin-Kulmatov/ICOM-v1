@@ -281,7 +281,7 @@ def repost(job: Job) -> str:
         note = f"picture post failed ({err}); sent as text"
     job.posted_at = datetime.utcnow()
     db.session.add(SocialPost(platform="telegram", text=social.spotlight_caption(job), job_ids=[job.id],
-                              status="posted", error=note[:300] or None, message_id=message_id or None))
+                              status="posted", error=note[:300] or None, message_id=message_id or None, source="bot"))
     db.session.commit()
     return note
 
@@ -417,6 +417,9 @@ def button(cq: dict) -> None:
         send(chat_id, "Only ICOM admins can use these buttons.")
         return
     action, _, rest = data.partition(":")
+    if action in ("sd", "sx"):                  # Instagram/Facebook draft: post or skip
+        draft_button(chat_id, message_id, action, rest)
+        return
     job_id, _, extra = rest.partition(":")
     job = _job(job_id)
     if not job:
@@ -461,6 +464,33 @@ def button(cq: dict) -> None:
     elif action == "kind" and extra in KIND_CHOICES:
         set_field(job, "kind", extra)
         update("✅ Saved.\n\n" + card_text(job), buttons_for(job))
+
+
+def draft_button(chat_id, message_id, action: str, post_id: str) -> None:
+    post = db.session.get(SocialPost, int(post_id)) if post_id.isdigit() else None
+
+    def caption(text):
+        try:
+            social.telegram_api("editMessageCaption", chat_id=chat_id, message_id=message_id, caption=text[:1024],
+                                parse_mode="HTML", reply_markup={"inline_keyboard": []})
+        except Exception:
+            send(chat_id, text)
+
+    if not post:
+        caption("That post no longer exists.")
+    elif post.status != "draft":
+        caption(f"Already handled: this {post.platform.title()} post is {post.status}.")
+    elif action == "sx":
+        social.skip_draft(post)
+        caption(f"❌ Skipped. Nothing was posted to {post.platform.title()}.")
+    else:
+        try:
+            social.approve_draft(post)
+        except ValueError as err:
+            caption(f"⚠️ {e(str(err))}")
+            return
+        caption(f"✅ Posted to {post.platform.title()}." if post.status == "posted"
+                else f"⚠️ {post.platform.title()} refused it: {e(post.error or '')}")
 
 
 # ── Messages ─────────────────────────────────────────────────────────────────

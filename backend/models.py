@@ -484,14 +484,16 @@ class SocialPost(db.Model):
     platform = db.Column(db.String(20), nullable=False)      # "telegram"
     text = db.Column(db.Text, nullable=False)
     job_ids = db.Column(db.JSON)
-    status = db.Column(db.String(20), nullable=False)        # posted | failed
+    status = db.Column(db.String(20), nullable=False)        # posted | failed | draft (waits for approval) | skipped
     error = db.Column(db.String(300))
     message_id = db.Column(db.String(40))      # Telegram message id, so a spotlight can be edited later
+    source = db.Column(db.String(10))          # daily (09:00 job) | manual (Post now) | bot
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     def to_dict(self):
         return {"id": self.id, "platform": self.platform, "text": self.text, "job_ids": self.job_ids or [],
-                "status": self.status, "error": self.error or "", "created_at": self.created_at.isoformat() + "Z"}
+                "status": self.status, "error": self.error or "", "source": self.source or "",
+                "created_at": self.created_at.isoformat() + "Z"}
 
 
 class BotAdmin(db.Model):

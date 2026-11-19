@@ -60,7 +60,8 @@ def instagram_configured() -> bool:
 
 
 def platforms() -> list:
-    return [p for p, ok in (("telegram", telegram_configured()), ("instagram", instagram_configured())) if ok]
+    return [p for p, ok in (("telegram", telegram_configured()), ("instagram", instagram_configured()),
+                            ("facebook", facebook_configured())) if ok]
 
 
 def _went_live(j: Job) -> datetime:
@@ -250,19 +251,19 @@ def card_url(items: list, style: str = "list") -> str:
     return f"{api}/admin/social/card.jpg?ids={ids}{extra}&d={kst_today().isoformat()}"
 
 
-def _graph(method: str, path: str, **params) -> dict:
-    params["access_token"] = os.environ["INSTAGRAM_ACCESS_TOKEN"]
+def _graph(method: str, path: str, token: str | None = None, **params) -> dict:
+    params["access_token"] = token or os.environ["INSTAGRAM_ACCESS_TOKEN"]
     r = requests.request(method, f"{GRAPH}/{path}", timeout=60, **({"params": params} if method == "GET" else {"data": params}))
     body = r.json() if r.headers.get("content-type", "").startswith(("application/json", "text/javascript")) else {}
     if r.status_code != 200 or "error" in body:
-        raise RuntimeError((body.get("error") or {}).get("message") or f"Instagram answered {r.status_code}")
+        raise RuntimeError((body.get("error") or {}).get("message") or f"Meta answered {r.status_code}")
     return body
 
 
-def send_instagram(items: list) -> None:
+def send_instagram(items: list, caption: str | None = None) -> None:
     """Create the picture post, wait until Instagram has fetched the picture, then publish it."""
     user = os.environ["INSTAGRAM_USER_ID"]
-    container = _graph("POST", f"{user}/media", image_url=card_url(items), caption=build_caption(items))["id"]
+    container = _graph("POST", f"{user}/media", image_url=card_url(items), caption=caption or build_caption(items))["id"]
     for _ in range(10):
         status = _graph("GET", container, fields="status_code").get("status_code")
         if status == "FINISHED":
@@ -273,44 +274,141 @@ def send_instagram(items: list) -> None:
     _graph("POST", f"{user}/media_publish", creation_id=container)
 
 
+# ── Facebook Page ────────────────────────────────────────────────────────────
+
+def facebook_configured() -> bool:
+    return bool(os.environ.get("FACEBOOK_PAGE_ID") and os.environ.get("FACEBOOK_PAGE_TOKEN"))
+
+
+def build_facebook_caption(items: list) -> str:
+    """Facebook shows links, so each opportunity gets its own (?ref=facebook)."""
+    lines = ["🇰🇷 New opportunities for international students in Korea", ""]
+    for j in items:
+        icon, label = KINDS[_kind(j)]
+        left = days_left(j)
+        lines += [f"{icon} {label}: {j.title} ({j.company}){' · ' + left if left else ''}", link(j, "facebook"), ""]
+    lines += [f"All opportunities: {SITE}/opportunities?ref=facebook", "", "#ICOM #InternationalStudents #Korea #StudyInKorea"]
+    return "\n".join(lines)[:CAPTION_LIMIT * 2]
+
+
+def send_facebook(items: list, caption: str | None = None) -> None:
+    _graph("POST", f"{os.environ['FACEBOOK_PAGE_ID']}/photos", token=os.environ["FACEBOOK_PAGE_TOKEN"],
+           url=card_url(items), message=caption or build_facebook_caption(items), published="true")
+
+
+# ── Drafts that wait for an admin (Instagram and Facebook) ──────────────────
+
+APPROVAL_PLATFORMS = {"instagram": (instagram_configured, build_caption, send_instagram),
+                      "facebook": (facebook_configured, build_facebook_caption, send_facebook)}
+
+
+def make_drafts(items: list, source: str) -> list:
+    """Prepare today's Instagram/Facebook posts; nothing goes out until an admin approves."""
+    drafts = []
+    for platform, (configured, caption, _send) in APPROVAL_PLATFORMS.items():
+        if configured():
+            post = SocialPost(platform=platform, text=caption(items), job_ids=[j.id for j in items],
+                              status="draft", source=source)
+            db.session.add(post)
+            drafts.append(post)
+    return drafts
+
+
+def approve_draft(post: SocialPost, caption: str | None = None) -> SocialPost:
+    """Publish a waiting draft (optionally with an edited caption)."""
+    if post.status != "draft" or post.platform not in APPROVAL_PLATFORMS:
+        raise ValueError("This post isn't waiting for approval any more.")
+    from job_lifecycle import is_listed
+    by_id = {j.id: j for j in Job.query.filter(Job.id.in_(post.job_ids or [])).all()}
+    items = [by_id[i] for i in post.job_ids or [] if i in by_id and is_listed(by_id[i])]
+    if not items:
+        raise ValueError("Every opportunity in this post has closed or been removed.")
+    if caption and caption.strip():
+        post.text = caption.strip()[:CAPTION_LIMIT * 2]
+    try:
+        APPROVAL_PLATFORMS[post.platform][2](items, post.text)
+        post.status, post.error = "posted", None
+    except Exception as e:
+        post.status, post.error = "failed", str(e)[:300]
+    post.created_at = datetime.utcnow()
+    db.session.commit()
+    return post
+
+
+def skip_draft(post: SocialPost) -> SocialPost:
+    if post.status == "draft":
+        post.status = "skipped"
+        db.session.commit()
+    return post
+
+
+def notify_admins(drafts: list) -> None:
+    """Send each draft to the bot's admins with Post / Skip buttons."""
+    if not drafts or not os.environ.get("TELEGRAM_BOT_TOKEN"):
+        return
+    import telegram_bot
+    from job_lifecycle import is_listed
+    for post in drafts:
+        jobs = [j for j in Job.query.filter(Job.id.in_(post.job_ids or [])).all() if is_listed(j)]
+        if not jobs:
+            continue
+        name = post.platform.title()
+        for admin in telegram_bot.admin_ids():
+            try:
+                telegram_api("sendPhoto", chat_id=admin, photo=card_url(jobs),
+                             caption=f"📝 <b>{name} post waiting for you</b>\n\n{html.escape(post.text)}"[:PHOTO_CAPTION_LIMIT],
+                             parse_mode="HTML", reply_markup={"inline_keyboard": [[
+                                 {"text": f"✅ Post to {name}", "callback_data": f"sd:{post.id}"},
+                                 {"text": "❌ Skip", "callback_data": f"sx:{post.id}"}]]})
+            except Exception as e:     # an admin who never started the bot can't be messaged
+                print(f"[social] couldn't notify {admin}: {e}")
+
+
+# ── The daily run ────────────────────────────────────────────────────────────
+
 def posted_today() -> bool:
-    start = datetime.utcnow() - timedelta(hours=20)
-    return SocialPost.query.filter(SocialPost.status == "posted", SocialPost.created_at > start).first() is not None
+    """Has the 09:00 post already gone out today (Korea date)? Bot posts and Post now don't count."""
+    midnight_kst = datetime.combine(kst_today(), datetime.min.time()) - timedelta(hours=9)
+    return SocialPost.query.filter(SocialPost.source == "daily", SocialPost.status.in_(("posted", "draft")),
+                                   SocialPost.created_at >= midnight_kst).first() is not None
 
 
 def run(force: bool = False) -> dict:
-    """Post today's digest to every connected platform. Without force, at most once a day."""
-    targets = platforms()
-    if not targets:
+    """Telegram gets today's digest straight away; Instagram and Facebook get drafts that wait for an
+    admin. Without force (the 09:00 job) it runs at most once per Korea date."""
+    if not platforms():
         return {"status": "not_configured"}
     if not force and posted_today():
         return {"status": "already_posted"}
     items = pick_items()
     if not items:
         return {"status": "nothing_new"}
+    source = "manual" if force else "daily"
     results, errors = {}, []
     style = pick_style()
-    for platform in targets:
-        text = digest_caption(items) if platform == "telegram" else build_caption(items)
-        post = SocialPost(platform=platform, text=text, job_ids=[j.id for j in items], status="posted")
+    if telegram_configured():
+        post = SocialPost(platform="telegram", text=digest_caption(items), job_ids=[j.id for j in items],
+                          status="posted", source=source)
         try:
-            if platform == "telegram":
-                note = post_telegram(items, style)
-                if note:
-                    post.error = note[:300]
-            else:
-                send_instagram(items)
-        except Exception as e:   # shown to admins; the other platform still posts
+            note = post_telegram(items, style)
+            if note:
+                post.error = note[:300]
+        except Exception as e:   # shown to admins; the drafts are still made
             post.status, post.error = "failed", str(e)[:300]
-            errors.append(f"{platform}: {post.error}")
+            errors.append(f"telegram: {post.error}")
         db.session.add(post)
-        results[platform] = post.status
-    if "posted" in results.values():   # if every platform failed, keep the items for tomorrow
+        results["telegram"] = post.status
+    drafts = make_drafts(items, source)
+    for d in drafts:
+        results[d.platform] = "waiting_approval"
+    if "posted" in results.values() or drafts:   # handled; if everything failed, keep them for tomorrow
         now = datetime.utcnow()
         for j in items:
             j.posted_at = now
     db.session.commit()
-    return {"status": "posted" if "posted" in results.values() else "failed", "items": len(items),
+    notify_admins(drafts)
+    ok = "posted" in results.values() or bool(drafts)
+    return {"status": "posted" if ok else "failed", "items": len(items),
             "platforms": results, "style": style, "error": "; ".join(errors)}
 
 

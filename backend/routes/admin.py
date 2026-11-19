@@ -1419,11 +1419,14 @@ def social_status():
     return jsonify({
         "telegram_configured": social.telegram_configured(),
         "instagram_configured": social.instagram_configured(),
+        "facebook_configured": social.facebook_configured(),
         "bot_admins": len(telegram_bot.admin_ids()),
         "next": {"count": len(items), "text": social.build_text(items) if items else "",
                  "caption": social.build_caption(items) if items else "",
                  "card": f"/admin/social/card.jpg?ids={','.join(str(j.id) for j in items[:social.CARD_ITEMS])}" if items else ""},
         "history": [p.to_dict() for p in history],
+        "drafts": [{**p.to_dict(), "card": f"/admin/social/card.jpg?ids={','.join(str(i) for i in (p.job_ids or [])[:social.CARD_ITEMS])}"}
+                   for p in SocialPost.query.filter_by(status="draft").order_by(SocialPost.created_at.desc()).limit(10).all()],
     }), 200
 
 
@@ -1487,6 +1490,28 @@ def connect_telegram_bot():
     except Exception as e:
         return jsonify({"error": f"Telegram said: {e}"}), 502
     return jsonify({"ok": True, "admins": len(telegram_bot.admin_ids())}), 200
+
+
+@admin_bp.route("/social/drafts/<int:post_id>", methods=["POST"])
+@jwt_required()
+def social_draft_action(post_id):
+    """Approve (optionally with an edited caption) or skip an Instagram/Facebook draft."""
+    user, err = _require_admin()
+    if err:
+        return err
+    import social
+    from models import SocialPost
+    post = SocialPost.query.get_or_404(post_id)
+    data = request.get_json(silent=True) or {}
+    if data.get("action") == "skip":
+        return jsonify(social.skip_draft(post).to_dict()), 200
+    if data.get("action") != "approve":
+        return jsonify({"error": "action must be approve or skip."}), 400
+    try:
+        social.approve_draft(post, data.get("caption"))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify(post.to_dict()), 200 if post.status == "posted" else 502
 
 
 @admin_bp.route("/social/post-now", methods=["POST"])

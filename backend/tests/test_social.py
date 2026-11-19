@@ -94,44 +94,88 @@ def test_admin_endpoints(client, admin, telegram):
     assert admin.post("/api/admin/social/post-now").get_json()["status"] == "nothing_new"
 
 
-def test_instagram_card_and_publish(client, telegram, monkeypatch):
+def _meta(monkeypatch, fail=False):
+    calls = []
+
+    def graph(method, url, **kw):
+        calls.append((method, url, kw.get("data") or kw.get("params")))
+        if fail:
+            return SimpleNamespace(status_code=400, headers={"content-type": "application/json"},
+                                   json=lambda: {"error": {"message": "Error validating access token"}})
+        body = {"id": "c55"} if url.endswith("/media") else {"status_code": "FINISHED"} if method == "GET" else {"id": "p1"}
+        return SimpleNamespace(status_code=200, headers={"content-type": "application/json"}, json=lambda: body)
+
+    monkeypatch.setattr(social.requests, "request", graph)
+    return calls
+
+
+def test_instagram_and_facebook_wait_for_approval(client, admin, telegram, monkeypatch):
     j1 = _add("GIST scholarship 2027", "scholarship", salary="Full tuition",
               deadline=(datetime.utcnow() + timedelta(days=12)).strftime("%Y-%m-%d"))
     j2 = _add("한국어 Speech contest", "contest")
     monkeypatch.setenv("INSTAGRAM_USER_ID", "1789")
     monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "ig-token")
+    monkeypatch.setenv("FACEBOOK_PAGE_ID", "555")
+    monkeypatch.setenv("FACEBOOK_PAGE_TOKEN", "fb-token")
     monkeypatch.setenv("PUBLIC_API_URL", "https://api.icom.test/api")
-    calls = []
+    monkeypatch.setenv("TELEGRAM_ADMIN_IDS", "111")
+    calls = _meta(monkeypatch)
 
-    def graph(method, url, **kw):
-        calls.append((method, url, kw.get("data") or kw.get("params")))
-        body = {"id": "c55"} if url.endswith("/media") else {"status_code": "FINISHED"} if method == "GET" else {"id": "p1"}
-        return SimpleNamespace(status_code=200, headers={"content-type": "application/json"}, json=lambda: body)
-
-    monkeypatch.setattr(social.requests, "request", graph)
     r = social.run()
-    assert r["platforms"] == {"telegram": "posted", "instagram": "posted"}
+    assert r["platforms"] == {"telegram": "posted", "instagram": "waiting_approval", "facebook": "waiting_approval"}
+    assert calls == []                                                        # nothing on Meta yet
+    notes = [d for m, d in telegram.sent if d.get("chat_id") == 111]
+    assert len(notes) == 2 and "sd:" in notes[0]["reply_markup"]              # the bot asks the admin
+
+    s = admin.get("/api/admin/social").get_json()
+    assert s["facebook_configured"] and len(s["drafts"]) == 2
+    ig = next(d for d in s["drafts"] if d["platform"] == "instagram")
+    fb = next(d for d in s["drafts"] if d["platform"] == "facebook")
+    assert f"/internships/{j1.id}?ref=facebook" in fb["text"] and "link in bio" in ig["text"]
+
+    r = admin.post(f"/api/admin/social/drafts/{ig['id']}", json={"action": "approve", "caption": "Edited caption #ICOM"})
+    assert r.status_code == 200 and r.get_json()["status"] == "posted"
     create = calls[0]
     assert create[1].endswith("/1789/media") and create[2]["access_token"] == "ig-token"
+    assert create[2]["caption"] == "Edited caption #ICOM"
     assert create[2]["image_url"].startswith(f"https://api.icom.test/api/admin/social/card.jpg?ids={j1.id},{j2.id}&d=")
-    assert "GIST scholarship 2027" in create[2]["caption"] and "#InternationalStudents" in create[2]["caption"]
     assert calls[-1][1].endswith("/1789/media_publish") and calls[-1][2]["creation_id"] == "c55"
+
+    calls.clear()
+    assert admin.post(f"/api/admin/social/drafts/{fb['id']}", json={"action": "skip"}).get_json()["status"] == "skipped"
+    assert calls == []
+    assert admin.post(f"/api/admin/social/drafts/{fb['id']}", json={"action": "approve"}).status_code == 400
 
     img = client.get(f"/api/admin/social/card.jpg?ids={j1.id},{j2.id}")
     assert img.status_code == 200 and img.mimetype == "image/jpeg" and img.data[:2] == b"\xff\xd8"
     assert client.get("/api/admin/social/card.jpg?ids=999999").status_code == 404
 
 
-def test_one_platform_failing_does_not_stop_the_other(telegram, monkeypatch):
-    j = _add("Program for foreign students", "program")
-    monkeypatch.setenv("INSTAGRAM_USER_ID", "1789")
-    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "expired")
-    monkeypatch.setattr(social.requests, "request", lambda *a, **k: SimpleNamespace(
-        status_code=400, headers={"content-type": "application/json"},
-        json=lambda: {"error": {"message": "Error validating access token"}}))
-    r = social.run()
-    assert r["platforms"] == {"telegram": "posted", "instagram": "failed"} and "access token" in r["error"]
-    assert db.session.get(Job, j.id).posted_at is not None
+def test_facebook_post_from_the_bot_and_a_refusal(client, telegram, monkeypatch):
+    _add("Program for foreign students", "program")
+    monkeypatch.setenv("FACEBOOK_PAGE_ID", "555")
+    monkeypatch.setenv("FACEBOOK_PAGE_TOKEN", "expired")
+    monkeypatch.setenv("TELEGRAM_ADMIN_IDS", "111")
+    social.run()
+    draft = SocialPost.query.filter_by(platform="facebook", status="draft").one()
+    calls = _meta(monkeypatch, fail=True)
+    import telegram_bot
+    client.post("/api/admin/telegram/webhook", headers={"X-Telegram-Bot-Api-Secret-Token": telegram_bot.webhook_secret()},
+                json={"callback_query": {"id": "q", "data": f"sd:{draft.id}", "from": {"id": 111},
+                                         "message": {"message_id": 9, "chat": {"id": 111}}}})
+    assert calls[0][1].endswith("/555/photos") and calls[0][2]["access_token"] == "expired"
+    db.session.refresh(draft)
+    assert draft.status == "failed" and "access token" in draft.error
+    assert "refused it" in telegram.sent[-1][1]["caption"]
+
+
+def test_yesterdays_bot_posts_dont_block_todays_digest(telegram):
+    db.session.add(SocialPost(platform="telegram", text="spotlight", job_ids=[1], status="posted", source="bot"))
+    db.session.add(SocialPost(platform="telegram", text="manual", job_ids=[1], status="posted", source="manual"))
+    db.session.commit()
+    _add("Morning intern", "internship")
+    assert social.run()["status"] == "posted"                               # the 09:00 run still posts
+    assert social.run()["status"] == "already_posted"                       # but only once a day
 
 
 def test_spotlight_and_album_styles(client, telegram, monkeypatch):
