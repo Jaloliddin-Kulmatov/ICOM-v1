@@ -81,7 +81,9 @@ def test_imports_into_the_review_queue_once(fake_web):
     assert not any("Twente" in a for a in fake_web.asked)                # posts without Korea never reach the AI
 
     again = imp.run()
-    assert again["added"] == 0 and len(fake_web.asked) == 2              # nothing is imported or checked twice
+    checks = [x for x in fake_web.asked if x.startswith("Source:")]
+    assert again["added"] == 0 and len(checks) == 2                     # nothing is imported or checked twice
+    assert kaist.post_text                                               # the full channel post was written too
 
 
 def test_not_for_international_students_is_remembered_not_listed(fake_web, monkeypatch):

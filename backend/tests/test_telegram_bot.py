@@ -164,3 +164,61 @@ def test_card_says_when_the_ai_could_not_check(bot, monkeypatch):
     job = Job.query.filter_by(source_url="https://camp.example.com/no-ai").one()
     assert job.job_type == "program"                                     # guessed from "camp"
     assert "AI couldn't check this page" in bot.sent[-1][1]["text"]
+
+
+UZ_POST = """🇰🇷 Koreyada "Global Startup Camp 2027" — bepul startap lageri!
+
+Seoul Global Center xalqaro talabalarni 4 haftalik lagerga taklif qiladi. Lager davomida ishtirokchilar o‘z g‘oyalarini rivojlantiradi, tajribali mentorlar bilan ishlaydi va
+dastur oxirida investorlar hamda hamkor kompaniyalar oldida o‘z loyihalarini taqdim etadi. Barcha mashg‘ulotlar ingliz tilida.
+
+👥 Dastur haqida:
+• Davlat / Joylashuv: Janubiy Koreya (Seul)
+• Tashkilotchi: Seoul Global Center
+• Kimlar uchun: D-2 vizasidagi talabalar
+
+🎁 Imtiyozlar:
+• Bepul ishtirok
+• Mentorlar bilan ishlash
+• Sertifikat va yakuniy taqdimot
+• Investorlar bilan uchrashuv
+• Jamoaviy loyiha tajribasi
+• Tarmoq (networking) imkoniyatlari
+• Koreya startap ekotizimi bilan tanishish
+• Ingliz tilidagi mashg‘ulotlar
+• Har bir jamoaga alohida mentor biriktiriladi
+• Eng yaxshi uchta loyiha uchun pul mukofotlari
+• Seul shahridagi startap ofislariga tashriflar
+• Koreya kompaniyalarida amaliyot o‘tash imkoniyati
+• Dastur yakunida rasmiy sertifikat beriladi
+
+📌 Ariza to‘lovi: Bepul
+
+📊 Oxirgi muddat (Deadline): 2099-12-01"""
+
+
+def test_full_post_in_the_channels_style(bot, client, monkeypatch):
+    def answer(model, messages, **kw):
+        writing = "Telegram posts" in messages[0]["content"]
+        content = UZ_POST if writing else json.dumps(AI)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+    monkeypatch.setattr(ai_routes, "_get_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=answer))))
+    bot.send("https://camp.example.com/uz")
+    job = Job.query.filter_by(source_url="https://camp.example.com/uz").one()
+    assert job.post_text.startswith("🇰🇷 Koreyada")
+    check = bot.sent[-1][1]["text"]
+    assert "<b>🇰🇷 Koreyada" in check and "Dastur haqida" in check and "Batafsil va ariza" in check
+    assert "Bizning kanal: @icomtest" in check
+
+    bot.sent.clear()
+    _press(bot, client, f"pub:{job.id}")
+    method, data = next((m, d) for m, d in bot.sent if d.get("chat_id") == "@icomtest")
+    assert method == "sendMessage"                                       # too long for a photo caption
+    preview = json.loads(data["link_preview_options"])
+    assert "style=spotlight" in preview["url"] and preview["show_above_text"] and preview["prefer_large_media"]
+    assert "Imtiyozlar" in data["text"] and "https://camp.example.com/uz" in data["text"]
+
+    sent_before = len(bot.sent)
+    bot.send(f"/edit {job.id} post Qisqa post matni")                  # the admin's own wording
+    db.session.refresh(job)
+    assert job.post_text == "Qisqa post matni"
+    assert any(m == "editMessageText" for m, _ in bot.sent[sent_before:])   # the channel post follows

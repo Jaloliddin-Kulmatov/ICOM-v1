@@ -163,6 +163,110 @@ def guess_kind(text: str, fallback: str = "program") -> str:
     return fallback
 
 
+# ── The full Telegram post ───────────────────────────────────────────────────
+# A detailed post in the students' language, in the style of the big Uzbek
+# opportunity channels: headline, short intro, "about", benefits, fee, deadline.
+# Links, the channel and hashtags are added by social.post_body, not the AI.
+
+POST_TEMPLATE = {
+    "uz": """{flag} {Mamlakat}da "{Nomi}" — {qisqa tavsif}!
+
+{1-2 gapli kirish: kim tashkil qiladi va nima taklif qiladi}
+
+👥 Dastur haqida:
+• Davlat / Joylashuv: …
+• Tashkilotchi: …
+• Dastur sanasi: …
+• Yosh chegarasi: …
+• Kimlar uchun: …
+• Saralash bosqichlari: …
+
+🎁 Imtiyozlar:
+• …
+
+📌 Ariza to‘lovi: …
+
+📊 Oxirgi muddat (Deadline): …""",
+    "en": """{flag} "{Name}" in {Country} — {short description}!
+
+{1-2 sentence intro: who runs it and what it offers}
+
+👥 About:
+• Country / Location: …
+• Organizer: …
+• Dates: …
+• Age limit: …
+• Who can apply: …
+• Selection steps: …
+
+🎁 Benefits:
+• …
+
+📌 Application fee: …
+
+📊 Deadline: …""",
+    "ru": """{flag} "{Название}" в {Страна} — {краткое описание}!
+
+{1-2 предложения: кто организует и что предлагает}
+
+👥 О программе:
+• Страна / Место: …
+• Организатор: …
+• Даты: …
+• Возраст: …
+• Для кого: …
+• Этапы отбора: …
+
+🎁 Преимущества:
+• …
+
+📌 Взнос за подачу: …
+
+📊 Дедлайн: …""",
+}
+LANG_NAME = {"uz": "Uzbek (Latin script, standard spelling: sh, ch, oʻ, gʻ)", "en": "English", "ru": "Russian"}
+
+
+def post_language() -> str:
+    import os
+    lang = os.environ.get("POST_LANGUAGE", "uz").lower()
+    return lang if lang in POST_TEMPLATE else "uz"
+
+
+def write_post(client, job: Job, page_text: str = "") -> str:
+    """The AI writes the opportunity as a full Telegram post. Returns "" if it can't."""
+    from groq_models import complete
+    lang = post_language()
+    facts = "\n".join(f"{k}: {v}" for k, v in (
+        ("Type", job.job_type), ("Title", job.title), ("Organizer", job.company), ("Place", job.location),
+        ("Deadline", job.deadline), ("Money / prize / benefits", job.salary), ("Details", job.description)) if v)
+    system = (f"You write Telegram posts about opportunities for international students. Write in {LANG_NAME[lang]}.\n"
+              "Use ONLY facts from the information given. If a fact is missing, leave that whole line out: never guess "
+              "dates, ages, money or steps. Rename the 'Dastur haqida' heading to fit the type (e.g. Stipendiya / Tanlov / "
+              "Amaliyot haqida). Pick the flag of the country where it takes place. Keep each bullet short. "
+              "Do NOT add links, channel names or hashtags. Reply with the post only, in exactly this shape:\n\n"
+              + POST_TEMPLATE[lang])
+    resp = complete(client, [
+        {"role": "system", "content": system},
+        {"role": "user", "content": f"{facts}\n\nPage text:\n{(page_text or '')[:3000]}"},
+    ], temperature=0.3, max_tokens=900)
+    text = (resp.choices[0].message.content or "").strip().strip("`").strip()
+    return text[:3300]
+
+
+def write_post_safely(client, job: Job, page_text: str = "") -> None:
+    """Best effort: a missing post just means the shorter standard caption is used."""
+    if client is None:
+        return
+    for attempt in range(2):
+        try:
+            job.post_text = write_post(client, job, page_text) or job.post_text
+            return
+        except Exception as e:
+            print(f"[post] couldn't write post for {job.title[:40]}: {str(e)[:80]}")
+            time.sleep(8)
+
+
 def _deadline_ok(d: str) -> bool:
     try:
         return date.fromisoformat(d[:10]) >= kst_today()
@@ -224,7 +328,8 @@ def run(sources=None) -> dict:
                                    source_url=cand["source_url"][:500], is_active=False, review_status="rejected",
                                    closed_at=datetime.utcnow()))   # purged after 30 days, then checked again
                 continue
-            _save(cand, info)
+            job = _save(cand, info)
+            write_post_safely(client, job, cand["text"])
             result["added"] += 1
         db.session.commit()
     return result

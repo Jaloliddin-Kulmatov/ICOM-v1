@@ -199,11 +199,63 @@ def pick_style(today=None) -> str:
     return STYLES[(today or kst_today()).toordinal() % len(STYLES)]
 
 
+def channel_handle() -> str:
+    chat = os.environ.get("TELEGRAM_CHANNEL_ID", "")
+    return chat if chat.startswith("@") else ""
+
+
+FOOTER = {
+    "uz": ("🌐 Rasmiy sayt / Manba", "⛓ Batafsil va ariza", "➡️ Bizning kanal"),
+    "en": ("🌐 Official site", "⛓ Details and apply", "➡️ Our channel"),
+    "ru": ("🌐 Официальный сайт", "⛓ Подробнее и подать", "➡️ Наш канал"),
+}
+
+
+def post_body(job: Job) -> str:
+    """The full post (AI-written, HTML-safe) with links and the channel, or the standard caption."""
+    if not (job.post_text or "").strip():
+        return spotlight_caption(job)
+    from opportunity_import import post_language
+    site, apply, ours = FOOTER[post_language()]
+    lines = [html.escape(l) for l in job.post_text.strip().split("\n")]
+    lines[0] = f"<b>{lines[0]}</b>"                         # the headline in bold
+    lines += [""]
+    if job.apply_link:
+        lines.append(f"{site}: {html.escape(job.apply_link)}")
+    lines.append(f"{apply}: {link(job)}")
+    if channel_handle():
+        lines += ["", f"{ours}: {channel_handle()}"]
+    return "\n".join(lines)[:TELEGRAM_LIMIT]
+
+
 def send_spotlight(job: Job) -> str:
-    """Post one opportunity as a picture with its details; returns the Telegram message id."""
-    body = telegram_api("sendPhoto", chat_id=os.environ["TELEGRAM_CHANNEL_ID"], photo=card_url([job], "spotlight"),
-                        caption=spotlight_caption(job), parse_mode="HTML", reply_markup=apply_button(job))
-    return str((body.get("result") or {}).get("message_id") or "")
+    """Post one opportunity. A short post is a picture with a caption; a long one (over Telegram's
+    1024-character caption limit) is a message with the picture shown big above the text.
+    Returns the message id, "t:<id>" for the long kind, so it can be edited later."""
+    chat, body = os.environ["TELEGRAM_CHANNEL_ID"], post_body(job)
+    if len(body) <= PHOTO_CAPTION_LIMIT:
+        res = telegram_api("sendPhoto", chat_id=chat, photo=card_url([job], "spotlight"),
+                           caption=body, parse_mode="HTML", reply_markup=apply_button(job))
+        return str((res.get("result") or {}).get("message_id") or "")
+    res = telegram_api("sendMessage", chat_id=chat, text=body, parse_mode="HTML", reply_markup=apply_button(job),
+                       link_preview_options={"url": card_url([job], "spotlight"), "prefer_large_media": True,
+                                             "show_above_text": True})
+    message_id = (res.get("result") or {}).get("message_id")
+    return f"t:{message_id}" if message_id else ""
+
+
+def edit_spotlight(job: Job, message_id: str) -> None:
+    """Change a spotlight already in the channel to match the opportunity now."""
+    chat, body = os.environ["TELEGRAM_CHANNEL_ID"], post_body(job)
+    if message_id.startswith("t:"):
+        telegram_api("editMessageText", chat_id=chat, message_id=message_id[2:], text=body, parse_mode="HTML",
+                     reply_markup=apply_button(job),
+                     link_preview_options={"url": card_url([job], "spotlight"), "prefer_large_media": True,
+                                           "show_above_text": True})
+    else:
+        caption = body if len(body) <= PHOTO_CAPTION_LIMIT else spotlight_caption(job)
+        telegram_api("editMessageCaption", chat_id=chat, message_id=message_id, caption=caption,
+                     parse_mode="HTML", reply_markup=apply_button(job))
 
 
 def post_telegram(items: list, style: str) -> str:

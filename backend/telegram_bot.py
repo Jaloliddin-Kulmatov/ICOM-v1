@@ -41,7 +41,7 @@ FIELDS = {
     "title": ("Title", "title"), "org": ("Organizer", "company"), "kind": ("Type", "job_type"),
     "deadline": ("Deadline", "deadline"), "amount": ("Amount / prize", "salary"),
     "who": ("Who can apply", None), "place": ("Place", "location"), "link": ("Apply link", "apply_link"),
-    "summary": ("Summary", None),
+    "summary": ("Summary", None), "post": ("Whole post text", None),
 }
 KIND_CHOICES = ("internship", "part-time", "scholarship", "contest", "program")
 
@@ -150,6 +150,8 @@ def analyze(url: str):
     if not (info.get("title") or cand["title"]):
         raise ValueError("I couldn't read that page. It may need a login or only work in an app.")
     job = imp._save(cand, info)
+    if info:
+        imp.write_post_safely(client, job, cand["text"])   # the full channel post, in POST_LANGUAGE
     job.review_status = "draft"          # stays hidden until an admin presses Publish
     job.tags = job.tags.replace(f"via {cand['source']}", "via Telegram bot")
     db.session.commit()
@@ -179,6 +181,14 @@ def status_of(job: Job) -> str:
 
 def card_text(job: Job, relevant: bool = True, ai_ok: bool = True) -> str:
     icon, label = social.KINDS[social._kind(job)]
+    if (job.post_text or "").strip():      # show the post exactly as the channel will see it
+        head = [f"{icon} <i>#{job.id} · {label}</i> · {status_of(job)}",
+                f"<i>Deadline: {e(job.deadline or '—')}</i>" + (f" <i>({social.days_left(job)})</i>" if social.days_left(job) else ""),
+                "━━━━━━━━━━"]
+        warn = []
+        if not relevant:
+            warn = ["━━━━━━━━━━", "⚠️ The AI thinks international students in Korea can't apply, or it isn't in Korea. Check before publishing."]
+        return "\n".join(head + [social.post_body(job)] + warn)[:4000]
     rows = [f"{icon} <b>{e(job.title)}</b>  <i>#{job.id}</i>", status_of(job), "",
             f"Type: {label}", f"Organizer: {e(job.company or '—')}",
             f"Deadline: {e(job.deadline or '—')}" + (f" ({social.days_left(job)})" if social.days_left(job) else ""),
@@ -228,7 +238,9 @@ def set_field(job: Job, key: str, value: str) -> None:
         raise ValueError("Type must be one of: " + ", ".join(KIND_CHOICES))
     elif key == "title" and not value:
         raise ValueError("The title can't be empty.")
-    if key in ("who", "summary"):
+    if key == "post":
+        job.post_text = value[:3300] or None          # the admin's own wording, used as is
+    elif key in ("who", "summary"):
         parts = [p for p in (job.description or "").split("\n\n") if p.strip()]
         if key == "who":
             parts = [p for p in parts if not p.startswith("Who can apply:")]
@@ -243,6 +255,9 @@ def set_field(job: Job, key: str, value: str) -> None:
     else:
         limit = {"title": 200, "org": 150, "amount": 100, "place": 150, "link": 500}.get(key, 50)
         setattr(job, FIELDS[key][1], value[:limit])
+    if key != "post" and job.post_text:            # keep the written post in step with the facts
+        from routes.ai import _get_client
+        imp.write_post_safely(_get_client(), job)
     db.session.commit()
     _bust_cache()
     _update_channel_post(job)
@@ -256,9 +271,7 @@ def _update_channel_post(job: Job) -> None:
     if not post:
         return
     try:
-        social.telegram_api("editMessageCaption", chat_id=os.environ["TELEGRAM_CHANNEL_ID"], message_id=post.message_id,
-                            caption=social.spotlight_caption(job), parse_mode="HTML",
-                            reply_markup=social.apply_button(job))
+        social.edit_spotlight(job, post.message_id)
     except Exception as err:   # e.g. "message is not modified"
         print(f"[bot] caption edit skipped: {err}")
 
@@ -274,13 +287,16 @@ def publish(job: Job, post_it: bool) -> str:
 def repost(job: Job) -> str:
     """Post one opportunity to the channel as a spotlight; returns a problem note or ""."""
     note, message_id = "", ""
+    if not (job.post_text or "").strip():          # e.g. a scraped internship: write its post first
+        from routes.ai import _get_client
+        imp.write_post_safely(_get_client(), job)
     try:
         message_id = social.send_spotlight(job)
     except RuntimeError as err:
         social.send_telegram(social.build_text([job]))
         note = f"picture post failed ({err}); sent as text"
     job.posted_at = datetime.utcnow()
-    db.session.add(SocialPost(platform="telegram", text=social.spotlight_caption(job), job_ids=[job.id],
+    db.session.add(SocialPost(platform="telegram", text=social.post_body(job), job_ids=[job.id],
                               status="posted", error=note[:300] or None, message_id=message_id or None, source="bot"))
     db.session.commit()
     return note
